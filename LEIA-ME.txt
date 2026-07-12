@@ -1,0 +1,14 @@
+SIMULADOR DE CONSÓRCIO — PWA
+
+Envie todos estes arquivos para a raiz de um repositório no GitHub:
+index.html
+manifest.json
+service-worker.js
+icon-192.png
+icon-512.png
+
+Depois ative o GitHub Pages:
+Settings > Pages > Deploy from a branch > main > /(root) > Save.
+
+No Android:
+Abra o link no Chrome e toque em Instalar aplicativo.
