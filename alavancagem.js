@@ -21,10 +21,6 @@
     }).format(Number(value) || 0);
   }
 
-  function pct(value, decimals=1){
-    return `${Number(value || 0).toFixed(decimals).replace('.', ',')}%`;
-  }
-
   function formatMoneyInput(element){
     const digits = String(element.value || '').replace(/\D/g, '');
     element.value = digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '';
@@ -41,29 +37,8 @@
     return principal * monthlyRate * factor / (factor - 1);
   }
 
-  function adjustedRentTotal(baseRent, annualAdjustment, months){
-    let total = 0;
-    for(let month = 0; month < Math.max(0, months); month += 1){
-      const year = Math.floor(month / 12);
-      total += baseRent * Math.pow(1 + annualAdjustment, year);
-    }
-    return total;
-  }
-
-  function simulateCapitalBefore(initialCapital, monthlyYield, monthlyPayment, months){
-    let capital = initialCapital;
-    let externalContribution = 0;
-    for(let month = 0; month < months; month += 1){
-      const income = capital * monthlyYield;
-      const available = capital + income;
-      if(available >= monthlyPayment){
-        capital = available - monthlyPayment;
-      }else{
-        externalContribution += monthlyPayment - available;
-        capital = 0;
-      }
-    }
-    return { capital, externalContribution };
+  function futureValue(value, annualRate, months){
+    return value * Math.pow(1 + annualRate, months / 12);
   }
 
   function showError(message){
@@ -95,12 +70,12 @@
       investmentYield: number($('patRentabilidadeAplicacao').value) / 100,
       consortiumTerm: Math.round(number($('patPrazoConsorcio').value)),
       adminRate: number($('patTaxaAdmin').value) / 100,
+      consortiumAdjustment: number($('patReajusteConsorcio').value) / 100,
       reducedPaymentRate: number($('patParcelaReduzida').value) / 100,
       contemplationMonth: Math.round(number($('patMesContemplacao').value)),
       financingEntryRate: number($('patEntradaFinanciamento').value) / 100,
       financingAnnualRate: number($('patTaxaFinanciamento').value) / 100,
       financingTerm: Math.round(number($('patPrazoFinanciamento').value)),
-      analysisYears: number($('patPeriodoAnalise').value),
       appreciation: number($('patValorizacao').value) / 100,
       rentAdjustment: number($('patReajusteAluguel').value) / 100
     };
@@ -111,19 +86,187 @@
     if(input.credit <= 0) throw new Error('Informe o valor da carta.');
     if(input.ownCapital < 0 || input.ownBid < 0) throw new Error('Revise os valores de capital e lance.');
     if(input.embeddedBidRate < 0 || input.embeddedBidRate >= 1) throw new Error('O lance embutido deve ficar abaixo de 100% da carta.');
-    if(input.ownBid > input.ownCapital) throw new Error('O lance próprio não pode ser maior que o capital disponível no início.');
     if(input.consortiumTerm <= 0 || input.financingTerm <= 0) throw new Error('Revise os prazos informados.');
     if(input.reducedPaymentRate <= 0 || input.reducedPaymentRate > 1) throw new Error('Revise o percentual da parcela antes da contemplação.');
     if(input.financingEntryRate < 0 || input.financingEntryRate >= 1) throw new Error('A entrada do financiamento deve ficar abaixo de 100%.');
-    if(input.analysisYears <= 0) throw new Error('Informe um período válido para o comparativo.');
     if(input.contemplationMonth <= 0 || input.contemplationMonth > input.consortiumTerm) throw new Error('Revise o mês estimado da contemplação.');
   }
 
-  function setFlow(id, value){
-    const el = $(id);
-    el.textContent = `${value >= 0 ? '+' : '−'}${brl(Math.abs(value))}`;
-    el.classList.toggle('positive', value >= 0);
-    el.classList.toggle('negative', value < 0);
+  function simulateCapitalUntilContemplation(input, initialFullPayment){
+    let capital = input.ownCapital;
+    let currentFullPayment = initialFullPayment;
+
+    for(let month = 1; month < input.contemplationMonth; month += 1){
+      if(month > 1 && (month - 1) % 12 === 0){
+        currentFullPayment *= 1 + input.consortiumAdjustment;
+      }
+      const income = capital * input.investmentYield;
+      const reducedPayment = currentFullPayment * input.reducedPaymentRate;
+      capital = Math.max(0, capital + income - reducedPayment);
+    }
+    return capital;
+  }
+
+  function simulateConsortium(input){
+    let balance = input.credit * (1 + input.adminRate);
+    let currentFullPayment = balance / input.consortiumTerm;
+    const initialFullPayment = currentFullPayment;
+    const initialReducedPayment = initialFullPayment * input.reducedPaymentRate;
+    const capitalAtContemplation = simulateCapitalUntilContemplation(input, initialFullPayment);
+
+    const completedYears = Math.floor((input.contemplationMonth - 1) / 12);
+    const adjustedCredit = input.credit * Math.pow(1 + input.consortiumAdjustment, completedYears);
+    const embeddedBidRequested = adjustedCredit * input.embeddedBidRate;
+    const propertyAtContemplation = futureValue(input.propertyValue, input.appreciation, input.contemplationMonth - 1);
+    const netCredit = Math.max(0, adjustedCredit - embeddedBidRequested);
+    const purchaseComplement = Math.max(0, propertyAtContemplation - netCredit);
+
+    let totalInstallmentsPaid = 0;
+    let ownBidUsed = 0;
+    let embeddedBidUsed = 0;
+    let paymentAtContemplation = initialFullPayment;
+
+    for(let month = 1; month <= input.consortiumTerm; month += 1){
+      if(month > 1 && (month - 1) % 12 === 0){
+        balance *= 1 + input.consortiumAdjustment;
+        currentFullPayment *= 1 + input.consortiumAdjustment;
+      }
+
+      if(month < input.contemplationMonth){
+        const payment = Math.min(balance, currentFullPayment * input.reducedPaymentRate);
+        totalInstallmentsPaid += payment;
+        balance = Math.max(0, balance - payment);
+        continue;
+      }
+
+      if(month === input.contemplationMonth){
+        ownBidUsed = Math.min(input.ownBid, balance);
+        balance = Math.max(0, balance - ownBidUsed);
+        embeddedBidUsed = Math.min(embeddedBidRequested, balance);
+        balance = Math.max(0, balance - embeddedBidUsed);
+
+        const remainingMonths = input.consortiumTerm - month + 1;
+        currentFullPayment = remainingMonths > 0 ? balance / remainingMonths : 0;
+        paymentAtContemplation = currentFullPayment;
+      }
+
+      const payment = Math.min(balance, currentFullPayment);
+      totalInstallmentsPaid += payment;
+      balance = Math.max(0, balance - payment);
+    }
+
+    const totalPaid = totalInstallmentsPaid + ownBidUsed + purchaseComplement;
+    const capitalRequired = ownBidUsed + purchaseComplement;
+    const capitalGap = Math.max(0, capitalRequired - capitalAtContemplation);
+    const capitalRemaining = Math.max(0, capitalAtContemplation - capitalRequired);
+    const initialInvestmentIncome = input.ownCapital * input.investmentYield;
+    const rentAtContemplation = input.propertyValue * input.rentalYield * Math.pow(1 + input.rentAdjustment, completedYears);
+    const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.consortiumTerm);
+
+    return {
+      adjustedCredit,
+      embeddedBid: embeddedBidUsed,
+      netCredit,
+      propertyAtContemplation,
+      purchaseComplement,
+      ownBid: ownBidUsed,
+      capitalAtContemplation,
+      capitalRequired,
+      capitalGap,
+      capitalRemaining,
+      initialInvestmentIncome,
+      initialReducedPayment,
+      initialFullPayment,
+      paymentAtContemplation,
+      rentAtContemplation,
+      totalPaid,
+      propertyValueAtEnd
+    };
+  }
+
+  function simulateFinancing(input){
+    const entry = input.propertyValue * input.financingEntryRate;
+    const financedAmount = Math.max(0, input.propertyValue - entry);
+    const monthlyRate = annualToMonthly(input.financingAnnualRate);
+    const payment = pricePayment(financedAmount, monthlyRate, input.financingTerm);
+    const monthlyRent = input.propertyValue * input.rentalYield;
+    const totalPaid = entry + payment * input.financingTerm;
+    const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.financingTerm);
+
+    return { entry, financedAmount, payment, monthlyRent, totalPaid, propertyValueAtEnd };
+  }
+
+  function setMonthlyResult(labelId, valueId, income, payment){
+    const label = $(labelId);
+    const value = $(valueId);
+    const difference = income - payment;
+
+    if(difference >= 0){
+      label.textContent = 'Sobra mensal após pagar a parcela';
+      value.textContent = brl(difference);
+      value.classList.add('positive');
+      value.classList.remove('negative');
+    }else{
+      label.textContent = 'Complemento mensal do bolso';
+      value.textContent = brl(Math.abs(difference));
+      value.classList.add('negative');
+      value.classList.remove('positive');
+    }
+    return Math.max(0, payment - income);
+  }
+
+  function render(input, consortium, financing){
+    $('patResultSection').hidden = false;
+
+    $('patResCartaContemplacao').textContent = brl(consortium.adjustedCredit);
+    $('patResCreditoLiquido').textContent = brl(consortium.netCredit);
+    $('patResCapitalContemplacao').textContent = brl(consortium.capitalAtContemplation);
+    $('patResCapitalNecessario').textContent = brl(consortium.capitalRequired);
+    $('patResLanceProprio').textContent = brl(consortium.ownBid);
+    $('patResLanceEmbutido').textContent = brl(consortium.embeddedBid);
+    $('patResComplemento').textContent = brl(consortium.purchaseComplement);
+
+    $('patAntesRendimento').textContent = `${brl(consortium.initialInvestmentIncome)} / mês`;
+    $('patAntesParcela').textContent = `${brl(consortium.initialReducedPayment)} / mês`;
+    setMonthlyResult('patAntesSaldoLabel', 'patAntesSaldo', consortium.initialInvestmentIncome, consortium.initialReducedPayment);
+
+    const alert = $('patCapitalAlert');
+    if(consortium.capitalGap > 0){
+      alert.textContent = `No mês estimado da contemplação, ainda faltariam ${brl(consortium.capitalGap)} para cobrir o lance próprio e o complemento do imóvel.`;
+      alert.hidden = false;
+    }else{
+      alert.textContent = `Depois do lance e do complemento do imóvel, restariam aproximadamente ${brl(consortium.capitalRemaining)} do capital projetado.`;
+      alert.hidden = false;
+    }
+
+    $('patConsPrazoBadge').textContent = `${input.consortiumTerm} meses`;
+    $('patConsParcelaInicial').textContent = brl(consortium.initialFullPayment);
+    $('patConsParcela').textContent = brl(consortium.paymentAtContemplation);
+    $('patConsAluguel').textContent = brl(consortium.rentAtContemplation);
+    const consortiumPocket = setMonthlyResult('patConsSaldoLabel', 'patConsSaldo', consortium.rentAtContemplation, consortium.paymentAtContemplation);
+    $('patConsTotal').textContent = brl(consortium.totalPaid);
+    $('patConsImovelFinal').textContent = brl(consortium.propertyValueAtEnd);
+
+    $('patFinPrazoBadge').textContent = `${input.financingTerm} meses`;
+    $('patFinEntrada').textContent = brl(financing.entry);
+    $('patFinValor').textContent = brl(financing.financedAmount);
+    $('patFinParcela').textContent = brl(financing.payment);
+    $('patFinAluguel').textContent = brl(financing.monthlyRent);
+    const financingPocket = setMonthlyResult('patFinSaldoLabel', 'patFinSaldo', financing.monthlyRent, financing.payment);
+    $('patFinTotal').textContent = brl(financing.totalPaid);
+    $('patFinImovelFinal').textContent = brl(financing.propertyValueAtEnd);
+
+    const totalDifference = financing.totalPaid - consortium.totalPaid;
+    $('patResDiferencaCusto').textContent = totalDifference >= 0
+      ? `${brl(totalDifference)} a mais no financiamento`
+      : `${brl(Math.abs(totalDifference))} a mais no consórcio`;
+
+    const monthlyDifference = financingPocket - consortiumPocket;
+    $('patResDiferencaMensal').textContent = monthlyDifference >= 0
+      ? `${brl(monthlyDifference)} a menos do bolso no consórcio`
+      : `${brl(Math.abs(monthlyDifference))} a menos do bolso no financiamento`;
+
+    setTimeout(() => $('patResultSection').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
   function calculate(){
@@ -131,149 +274,12 @@
       const input = readInput();
       validate(input);
       clearError();
-
-      const embeddedBid = input.credit * input.embeddedBidRate;
-      const netCredit = Math.max(0, input.credit - embeddedBid);
-      const purchaseComplement = Math.max(0, input.propertyValue - netCredit);
-
-      const totalConsortiumCost = input.credit * (1 + input.adminRate);
-      const fullConsortiumPayment = totalConsortiumCost / input.consortiumTerm;
-      const reducedConsortiumPayment = fullConsortiumPayment * input.reducedPaymentRate;
-      const monthsBeforeContemplation = Math.max(0, input.contemplationMonth - 1);
-
-      const capitalSimulation = simulateCapitalBefore(
-        input.ownCapital,
-        input.investmentYield,
-        reducedConsortiumPayment,
-        monthsBeforeContemplation
-      );
-      const capitalAtContemplation = capitalSimulation.capital;
-      const capitalRequiredAtContemplation = input.ownBid + purchaseComplement;
-      if(capitalRequiredAtContemplation > capitalAtContemplation){
-        throw new Error(`No mês ${input.contemplationMonth}, o capital estimado não cobre o lance e o complemento do imóvel. Faltariam ${brl(capitalRequiredAtContemplation - capitalAtContemplation)}.`);
-      }
-
-      const capitalAfterPurchase = Math.max(0, capitalAtContemplation - capitalRequiredAtContemplation);
-      const initialInvestmentIncome = input.ownCapital * input.investmentYield;
-      const beforeCashFlow = initialInvestmentIncome - reducedConsortiumPayment;
-      const beforeCoverage = reducedConsortiumPayment > 0 ? initialInvestmentIncome / reducedConsortiumPayment * 100 : 0;
-
-      const monthlyRent = input.propertyValue * input.rentalYield;
-      const remainingCapitalIncome = capitalAfterPurchase * input.investmentYield;
-      const afterMonthlyIncome = monthlyRent + remainingCapitalIncome;
-      const afterCashFlow = afterMonthlyIncome - fullConsortiumPayment;
-      const afterCoverage = fullConsortiumPayment > 0 ? afterMonthlyIncome / fullConsortiumPayment * 100 : 0;
-
-      const prePaymentsTotal = reducedConsortiumPayment * monthsBeforeContemplation;
-      const consortiumBalanceAfterContemplation = Math.max(
-        0,
-        totalConsortiumCost - prePaymentsTotal - input.ownBid - embeddedBid
-      );
-      const postContemplationMonths = fullConsortiumPayment > 0
-        ? Math.ceil(consortiumBalanceAfterContemplation / fullConsortiumPayment)
-        : 0;
-      const estimatedConsortiumTerm = monthsBeforeContemplation + postContemplationMonths;
-      const totalConsortiumOperation = Math.max(0, totalConsortiumCost - embeddedBid + purchaseComplement);
-
-      const financingEntry = input.propertyValue * input.financingEntryRate;
-      if(financingEntry > input.ownCapital){
-        throw new Error(`A entrada configurada no financiamento exige ${brl(financingEntry)}, acima do capital próprio disponível.`);
-      }
-      const financedAmount = Math.max(0, input.propertyValue - financingEntry);
-      const financingMonthlyRate = annualToMonthly(input.financingAnnualRate);
-      const financingPayment = pricePayment(financedAmount, financingMonthlyRate, input.financingTerm);
-      const financingRemainingCapital = Math.max(0, input.ownCapital - financingEntry);
-      const financingInvestmentIncome = financingRemainingCapital * input.investmentYield;
-      const financingMonthlyIncome = monthlyRent + financingInvestmentIncome;
-      const financingCashFlow = financingMonthlyIncome - financingPayment;
-      const totalFinancingOperation = financingEntry + financingPayment * input.financingTerm;
-
-      const analysisMonths = Math.round(input.analysisYears * 12);
-      const consortiumRentMonths = Math.max(0, analysisMonths - input.contemplationMonth + 1);
-      const consortiumAccumulatedRent = adjustedRentTotal(monthlyRent, input.rentAdjustment, consortiumRentMonths);
-      const financingAccumulatedRent = adjustedRentTotal(monthlyRent, input.rentAdjustment, analysisMonths);
-
-      render({
-        input,
-        embeddedBid,
-        netCredit,
-        purchaseComplement,
-        capitalAtContemplation,
-        capitalAfterPurchase,
-        initialInvestmentIncome,
-        reducedConsortiumPayment,
-        beforeCashFlow,
-        beforeCoverage,
-        monthlyRent,
-        remainingCapitalIncome,
-        fullConsortiumPayment,
-        afterCashFlow,
-        afterCoverage,
-        estimatedConsortiumTerm,
-        totalConsortiumOperation,
-        consortiumAccumulatedRent,
-        financingEntry,
-        financedAmount,
-        financingPayment,
-        financingCashFlow,
-        totalFinancingOperation,
-        financingAccumulatedRent
-      });
+      const consortium = simulateConsortium(input);
+      const financing = simulateFinancing(input);
+      render(input, consortium, financing);
     }catch(error){
-      showError(error.message || 'Não foi possível calcular a estratégia.');
+      showError(error.message || 'Não foi possível calcular o comparativo.');
     }
-  }
-
-  function render(result){
-    $('patResultSection').hidden = false;
-
-    $('patResCapitalInicial').textContent = brl(result.input.ownCapital);
-    $('patResCapitalContemplacao').textContent = brl(result.capitalAtContemplation);
-    $('patResCreditoLiquido').textContent = brl(result.netCredit);
-    $('patResCapitalRestante').textContent = brl(result.capitalAfterPurchase);
-    $('patResLanceProprio').textContent = brl(result.input.ownBid);
-    $('patResLanceEmbutido').textContent = brl(result.embeddedBid);
-    $('patResComplemento').textContent = brl(result.purchaseComplement);
-
-    $('patAntesRendimento').textContent = `${brl(result.initialInvestmentIncome)} / mês`;
-    $('patAntesParcela').textContent = `${brl(result.reducedConsortiumPayment)} / mês`;
-    setFlow('patAntesFluxo', result.beforeCashFlow);
-    $('patAntesCoverageText').textContent = `${pct(result.beforeCoverage)} da parcela coberta pelo rendimento inicial`;
-    $('patAntesCoverageBar').style.width = `${Math.min(100, result.beforeCoverage)}%`;
-
-    $('patDepoisAluguel').textContent = `${brl(result.monthlyRent)} / mês`;
-    $('patDepoisRendimento').textContent = `${brl(result.remainingCapitalIncome)} / mês`;
-    $('patDepoisParcela').textContent = `${brl(result.fullConsortiumPayment)} / mês`;
-    setFlow('patDepoisFluxo', result.afterCashFlow);
-    $('patDepoisCoverageText').textContent = `${pct(result.afterCoverage)} da parcela coberta pelo aluguel e pelo capital restante`;
-    $('patDepoisCoverageBar').style.width = `${Math.min(100, result.afterCoverage)}%`;
-
-    $('patConsPrazoBadge').textContent = `${result.estimatedConsortiumTerm} meses estimados`;
-    $('patConsParcela').textContent = brl(result.fullConsortiumPayment);
-    $('patConsCredito').textContent = brl(result.netCredit);
-    $('patConsTotal').textContent = brl(result.totalConsortiumOperation);
-    $('patConsAluguelAcumulado').textContent = brl(result.consortiumAccumulatedRent);
-    setFlow('patConsFluxo', result.afterCashFlow);
-
-    $('patFinPrazoBadge').textContent = `${result.input.financingTerm} meses`;
-    $('patFinEntrada').textContent = brl(result.financingEntry);
-    $('patFinValor').textContent = brl(result.financedAmount);
-    $('patFinParcela').textContent = brl(result.financingPayment);
-    $('patFinTotal').textContent = brl(result.totalFinancingOperation);
-    $('patFinAluguelAcumulado').textContent = brl(result.financingAccumulatedRent);
-    setFlow('patFinFluxo', result.financingCashFlow);
-
-    const totalDifference = result.totalFinancingOperation - result.totalConsortiumOperation;
-    $('patResDiferencaCusto').textContent = totalDifference >= 0
-      ? `${brl(totalDifference)} a mais no financiamento`
-      : `${brl(Math.abs(totalDifference))} a mais no consórcio`;
-
-    const termDifference = result.input.financingTerm - result.estimatedConsortiumTerm;
-    $('patResDiferencaPrazo').textContent = termDifference >= 0
-      ? `${termDifference} meses a mais no financiamento`
-      : `${Math.abs(termDifference)} meses a mais no consórcio`;
-
-    setTimeout(() => $('patResultSection').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
   function bind(){

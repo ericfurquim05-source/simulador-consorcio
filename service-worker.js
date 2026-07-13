@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.1-alavancagem-fluxo';
+const VERSION = 'simulador-consorcio-v2.2.2-comparativo-direto';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
