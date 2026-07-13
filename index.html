@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1118">
-  <meta name="description" content="Simulador de consórcio com comparação financeira, gráfico, histórico e relatório profissional.">
+  <meta name="description" content="Simulador de consórcio com comparação financeira, gráfico e relatório profissional.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -188,10 +188,9 @@
           </article>
 
           <article class="panel actions-panel">
-            <h2>Apresentar ou guardar</h2>
+            <h2>Apresentar ao cliente</h2>
             <div class="action-grid">
-              <button id="saveHistoryBtn" class="action-button" type="button"><span>☆</span>Salvar no histórico</button>
-              <button id="pdfBtn" class="action-button" type="button"><span>▣</span>Gerar PDF profissional</button>
+              <button id="pdfBtn" class="action-button" type="button"><span>▣</span>Abrir relatório / PDF</button>
               <button id="copyBtn" class="action-button" type="button"><span>⧉</span>Copiar resumo</button>
               <button id="shareBtn" class="action-button whatsapp" type="button"><span>↗</span>Compartilhar</button>
             </div>
@@ -204,25 +203,11 @@
         </section>
       </section>
 
-      <section id="view-historico" class="view" data-view="historico">
-        <article class="panel">
-          <div class="section-heading">
-            <div>
-              <div class="eyebrow">Histórico local</div>
-              <h2>Simulações salvas</h2>
-              <p class="lead">As últimas simulações ficam guardadas somente neste aparelho.</p>
-            </div>
-            <button id="clearHistoryBtn" class="danger-text-button" type="button">Limpar tudo</button>
-          </div>
-          <div id="historyList" class="history-list"></div>
-        </article>
-      </section>
-
       <section id="view-configuracoes" class="view" data-view="configuracoes">
         <article class="panel">
           <div class="eyebrow">Personalização</div>
           <h2>Configurações do consultor</h2>
-          <p class="lead">Essas informações aparecem no PDF e ficam salvas neste navegador.</p>
+          <p class="lead">Essas informações aparecem no relatório e ficam salvas somente neste aparelho.</p>
           <div class="form-grid">
             <div class="field full">
               <label for="empresa">Nome da empresa</label>
@@ -269,7 +254,6 @@
 
     <nav class="bottom-nav" aria-label="Navegação principal">
       <button type="button" data-nav="simular" class="active"><span>⌁</span>Simular</button>
-      <button type="button" data-nav="historico"><span>◷</span>Histórico</button>
       <button type="button" data-nav="configuracoes"><span>⚙</span>Configurações</button>
     </nav>
   </div>
@@ -284,7 +268,6 @@
 
   <script src="./js/calculos.js" defer></script>
   <script src="./js/graficos.js" defer></script>
-  <script src="./js/historico.js" defer></script>
   <script src="./js/configuracoes.js" defer></script>
   <script src="./js/pdf.js" defer></script>
   <script src="./js/app.js" defer></script>
