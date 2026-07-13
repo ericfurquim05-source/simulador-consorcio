@@ -101,7 +101,27 @@ button{cursor:pointer}
 
 
 
-/* Alavancagem patrimonial — protótipo v2.2.1 */
+/* Alavancagem patrimonial — protótipo v2.2.2 */
 .beta-pill{background:#35250e;border-color:#76501c;color:#ffc56f}.patrimony-hero{border-color:#3b4b5d}.property-segment{margin-top:1px}.patrimony-form{margin-top:14px}.patrimony-assumptions{margin-top:14px}.patrimony-headlines .headline-card strong{font-size:18px}.patrimony-headlines .gain-card strong{font-size:19px}.pat-config-group{margin-top:14px;padding-top:2px}.pat-config-group+.pat-config-group{border-top:1px solid var(--line);padding-top:14px}.pat-config-title{font-size:10px;font-weight:950;letter-spacing:.1em;text-transform:uppercase;color:var(--orange-2)}.operation-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}.operation-mini-grid>div{padding:12px;background:#0b1219;border:1px solid var(--line);border-radius:13px}.operation-mini-grid span{display:block;color:var(--muted);font-size:9px;line-height:1.35}.operation-mini-grid strong{display:block;margin-top:6px;font-size:14px}.phase-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:15px}.phase-card{background:#0b1219;border:1px solid var(--line);border-radius:16px;overflow:hidden}.phase-title{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line)}.phase-title>span{width:26px;height:26px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(135deg,var(--orange-2),var(--orange));font-weight:950;font-size:11px}.phase-title b{display:block;font-size:13px}.phase-title small{display:block;margin-top:2px;color:var(--muted);font-size:8px;line-height:1.35}.scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:15px}.scenario-card{background:#0b1219;border:1px solid var(--line);border-radius:16px;overflow:hidden}.consorcio-scenario{border-color:#6b471b}.financing-scenario{border-color:#284e6d}.scenario-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line)}.scenario-title span{font-size:17px;font-weight:900}.scenario-title b{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right}.metric-list>div{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid rgba(39,52,66,.78)}.metric-list span{max-width:58%;font-size:9px;line-height:1.35;color:var(--muted)}.metric-list strong{text-align:right;font-size:13px}.metric-list .metric-emphasis{background:rgba(88,217,121,.045)}.metric-list .metric-emphasis strong{font-size:17px}.coverage{padding:12px 14px}.coverage>div{height:7px;background:#1a2530;border-radius:999px;overflow:hidden}.coverage>div span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--green));border-radius:999px;transition:width .5s ease}.coverage small{display:block;margin-top:6px;color:var(--muted);font-size:9px;line-height:1.35}.patrimony-differences{margin-top:11px}.bottom-nav{grid-template-columns:repeat(3,1fr)}
 @media(max-width:680px){.phase-grid,.scenario-grid,.operation-mini-grid{grid-template-columns:1fr}.patrimony-headlines .headline-card{min-height:82px}.scenario-title span{font-size:16px}.metric-list span{max-width:55%}.pat-config-group .assumptions-grid{grid-template-columns:1fr}}
 @media(max-width:390px){.bottom-nav button{padding:7px 4px;font-size:8px}.bottom-nav button span{font-size:16px}.metric-list>div{padding:10px 11px}.metric-list strong{font-size:12px}}
+
+
+/* Ajustes v2.2.2 — comparação direta */
+.before-summary{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.before-summary-title{font-size:10px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:var(--orange-2);margin-bottom:9px}
+.message.warning{margin-top:12px;background:#27230f;border:1px solid #65551f;color:#eedc9d}
+.scenario-card .metric-list .metric-emphasis span{font-weight:800;color:#d7e0e8}
+.scenario-card .metric-list .metric-emphasis strong.negative{color:var(--red)}
+.scenario-card .metric-list .metric-emphasis strong.positive{color:var(--green)}
+@media(max-width:680px){
+  .patrimony-headlines{grid-template-columns:1fr 1fr}
+  .patrimony-headlines .headline-card{min-height:92px}
+  .patrimony-headlines .headline-card strong{font-size:15px}
+  .operation-mini-grid{grid-template-columns:1fr}
+  .difference-strip.patrimony-differences{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .patrimony-headlines{grid-template-columns:1fr}
+  .patrimony-headlines .headline-card{min-height:auto}
+}
