@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.1.9-textos-congruentes';
+const VERSION = 'simulador-consorcio-v2.2.0-alavancagem-beta';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
@@ -10,6 +10,7 @@ const ASSETS = [
   './configuracoes.js',
   './pdf.js',
   './app.js',
+  './alavancagem.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

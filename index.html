@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.1.9</title>
-  <link rel="manifest" href="./manifest.json?v=216">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=216">
-  <link rel="stylesheet" href="./estilos.css?v=216">
+  <title>Simulador de Consórcio — v2.2.0 BETA</title>
+  <link rel="manifest" href="./manifest.json?v=220">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=220">
+  <link rel="stylesheet" href="./estilos.css?v=220">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.1.9</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.0 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -198,6 +198,186 @@
         </section>
       </section>
 
+
+      <section id="view-patrimonio" class="view" data-view="patrimonio">
+        <article class="panel hero-panel patrimony-hero">
+          <div class="result-topline">
+            <div>
+              <div class="eyebrow">Protótipo para investidores</div>
+              <h2>Alavancagem patrimonial</h2>
+            </div>
+            <span class="pill beta-pill">BETA</span>
+          </div>
+          <p class="lead">Compare a compra de um imóvel para locação usando consórcio ou financiamento. Todos os valores são editáveis.</p>
+
+          <div class="field full">
+            <label>Tipo de imóvel</label>
+            <div class="segment property-segment" role="group" aria-label="Tipo de imóvel">
+              <button type="button" data-property-type="residencial" class="active">Residencial</button>
+              <button type="button" data-property-type="comercial">Comercial / outros</button>
+            </div>
+            <small>Referência inicial: 0,50% a.m. no residencial e 0,70% a.m. no comercial. A taxa pode ser alterada.</small>
+          </div>
+
+          <div class="form-grid patrimony-form">
+            <div class="field">
+              <label for="patValorImovel">Valor do imóvel</label>
+              <div class="control money-control"><span>R$</span><input id="patValorImovel" type="text" inputmode="numeric" value="500.000" autocomplete="off"></div>
+            </div>
+            <div class="field">
+              <label for="patCredito">Valor da carta</label>
+              <div class="control money-control"><span>R$</span><input id="patCredito" type="text" inputmode="numeric" value="500.000" autocomplete="off"></div>
+            </div>
+            <div class="field">
+              <label for="patCapital">Capital próprio disponível</label>
+              <div class="control money-control"><span>R$</span><input id="patCapital" type="text" inputmode="numeric" value="500.000" autocomplete="off"></div>
+            </div>
+            <div class="field">
+              <label for="patLance">Lance com recursos próprios</label>
+              <div class="control money-control"><span>R$</span><input id="patLance" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
+              <small>O protótipo considera a carta integral para a compra e o lance amortizando o saldo.</small>
+            </div>
+            <div class="field">
+              <label for="patRentabilidadeAluguel">Rentabilidade do aluguel</label>
+              <div class="control"><input id="patRentabilidadeAluguel" type="number" value="0.50" step="0.01" min="0"><span>% a.m.</span></div>
+            </div>
+            <div class="field">
+              <label for="patRentabilidadeAplicacao">Rendimento do capital preservado</label>
+              <div class="control"><input id="patRentabilidadeAplicacao" type="number" value="1.00" step="0.01" min="0"><span>% a.m.</span></div>
+            </div>
+          </div>
+
+          <details class="assumptions patrimony-assumptions">
+            <summary><span>Premissas do protótipo</span><small>Valores editáveis</small></summary>
+            <div class="form-grid assumptions-grid">
+              <div class="field">
+                <label for="patPrazoConsorcio">Prazo do consórcio</label>
+                <div class="control"><input id="patPrazoConsorcio" type="number" value="220" min="1" max="300"><span>meses</span></div>
+              </div>
+              <div class="field">
+                <label for="patTaxaAdmin">Taxa administrativa</label>
+                <div class="control"><input id="patTaxaAdmin" type="number" value="24.2" step="0.1" min="0"><span>%</span></div>
+              </div>
+              <div class="field">
+                <label for="patTaxaFinanciamento">Taxa do financiamento</label>
+                <div class="control"><input id="patTaxaFinanciamento" type="number" value="1.00" step="0.01" min="0"><span>% a.m.</span></div>
+              </div>
+              <div class="field">
+                <label for="patPrazoFinanciamento">Prazo do financiamento</label>
+                <div class="control"><input id="patPrazoFinanciamento" type="number" value="360" min="1" max="500"><span>meses</span></div>
+              </div>
+              <div class="field">
+                <label for="patMesContemplacao">Mês estimado da contemplação</label>
+                <div class="control"><input id="patMesContemplacao" type="number" value="1" min="1" max="220"><span>mês</span></div>
+              </div>
+              <div class="field">
+                <label for="patPeriodoAnalise">Período da análise</label>
+                <div class="control"><input id="patPeriodoAnalise" type="number" value="10" min="1" max="30"><span>anos</span></div>
+              </div>
+              <div class="field">
+                <label for="patValorizacao">Valorização do imóvel</label>
+                <div class="control"><input id="patValorizacao" type="number" value="5.0" step="0.1" min="0"><span>% a.a.</span></div>
+              </div>
+              <div class="field">
+                <label for="patReajusteAluguel">Reajuste do aluguel</label>
+                <div class="control"><input id="patReajusteAluguel" type="number" value="5.0" step="0.1" min="0"><span>% a.a.</span></div>
+              </div>
+            </div>
+            <div class="assumption-footer">
+              <span>Financiamento calculado pelo <b>sistema Price</b>, sem CET e despesas adicionais.</span>
+            </div>
+          </details>
+
+          <div id="patError" class="message error" hidden></div>
+          <button id="patCalcularBtn" class="primary-button" type="button">Comparar estratégias</button>
+        </article>
+
+        <section id="patResultSection" class="result-stack" hidden>
+          <article class="panel patrimony-summary">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Estrutura da operação</div>
+                <h2>Como o capital foi distribuído</h2>
+              </div>
+            </div>
+            <div class="headline-grid patrimony-headlines">
+              <div class="headline-card"><span>Capital usado no lance</span><strong id="patResLance">R$ 0,00</strong></div>
+              <div class="headline-card"><span>Capital mantido aplicado</span><strong id="patResCapitalPreservado">R$ 0,00</strong></div>
+              <div class="headline-card highlighted"><span>Aluguel mensal estimado</span><strong id="patResAluguel">R$ 0,00</strong></div>
+              <div class="headline-card gain-card"><span>Rendimento mensal da aplicação</span><strong id="patResRendimento">R$ 0,00</strong></div>
+            </div>
+            <div class="leverage-line">
+              <span>Patrimônio adquirido</span>
+              <strong id="patResPatrimonioAdquirido">R$ 0,00</strong>
+              <small id="patResAlavancagem">0,00x o capital usado</small>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Comparação mensal</div>
+                <h2>Consórcio x financiamento</h2>
+              </div>
+            </div>
+            <div class="scenario-grid">
+              <div class="scenario-card consorcio-scenario">
+                <div class="scenario-title"><span>Consórcio</span><b>Com lance próprio</b></div>
+                <div class="metric-list">
+                  <div><span>Crédito disponível para compra</span><strong id="patConsCredito">R$ 0,00</strong></div>
+                  <div><span>Parcela cheia estimada</span><strong id="patConsParcela">R$ 0,00</strong></div>
+                  <div><span>Prazo equivalente após o lance</span><strong id="patConsPrazo">0 meses</strong></div>
+                  <div><span>Aluguel + rendimento da aplicação</span><strong id="patConsReceita">R$ 0,00</strong></div>
+                  <div class="metric-emphasis"><span>Fluxo mensal estimado</span><strong id="patConsFluxo">R$ 0,00</strong></div>
+                </div>
+                <div class="coverage"><div><span id="patConsCoverageBar"></span></div><small id="patConsCoverageText">0% da parcela coberta</small></div>
+              </div>
+
+              <div class="scenario-card financing-scenario">
+                <div class="scenario-title"><span>Financiamento</span><b>Mesma entrada</b></div>
+                <div class="metric-list">
+                  <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
+                  <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
+                  <div><span>Parcela estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
+                  <div><span>Aluguel + rendimento da aplicação</span><strong id="patFinReceita">R$ 0,00</strong></div>
+                  <div class="metric-emphasis"><span>Fluxo mensal estimado</span><strong id="patFinFluxo">R$ 0,00</strong></div>
+                </div>
+                <div class="coverage"><div><span id="patFinCoverageBar"></span></div><small id="patFinCoverageText">0% da parcela coberta</small></div>
+              </div>
+            </div>
+            <div class="difference-strip patrimony-differences">
+              <div class="difference-item"><span>Diferença entre as parcelas</span><strong id="patResDiferencaParcela">R$ 0,00</strong></div>
+              <div class="difference-item"><span>Diferença do custo total estimado</span><strong id="patResDiferencaCusto">R$ 0,00</strong></div>
+            </div>
+          </article>
+
+          <article class="panel patrimony-projection">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Visão patrimonial</div>
+                <h2 id="patProjectionTitle">Projeção em 10 anos</h2>
+              </div>
+            </div>
+            <div class="projection-grid">
+              <div><span>Imóvel estimado no cenário consórcio</span><strong id="patProjImovelCons">R$ 0,00</strong></div>
+              <div><span>Imóvel estimado no financiamento</span><strong id="patProjImovelFin">R$ 0,00</strong></div>
+              <div><span>Saldo devedor estimado do consórcio</span><strong id="patProjSaldoCons">R$ 0,00</strong></div>
+              <div><span>Saldo devedor estimado do financiamento</span><strong id="patProjSaldoFin">R$ 0,00</strong></div>
+              <div class="projection-highlight"><span>Patrimônio líquido — consórcio</span><strong id="patProjLiquidoCons">R$ 0,00</strong></div>
+              <div class="projection-highlight"><span>Patrimônio líquido — financiamento</span><strong id="patProjLiquidoFin">R$ 0,00</strong></div>
+            </div>
+            <details class="calculation-note">
+              <summary>O que esta primeira versão considera?</summary>
+              <p>O lance próprio reduz o saldo estimado a pagar e preserva o valor integral da carta para a compra. O capital restante continua aplicado, e seus rendimentos são somados ao aluguel. A projeção ainda não inclui CET, impostos, vacância, manutenção nem reajuste anual da parcela do consórcio.</p>
+            </details>
+          </article>
+
+          <article class="disclaimer">
+            <b>Protótipo:</b> esta comparação serve para estudo de viabilidade. A contemplação não é garantida e a forma de amortização do lance depende das regras do contrato e da administradora.
+          </article>
+        </section>
+      </section>
+
       <section id="view-configuracoes" class="view" data-view="configuracoes">
         <article class="panel">
           <div class="eyebrow">Personalização</div>
@@ -249,6 +429,7 @@
 
     <nav class="bottom-nav" aria-label="Navegação principal">
       <button type="button" data-nav="simular" class="active"><span>⌁</span>Simular</button>
+      <button type="button" data-nav="patrimonio"><span>⌂</span>Patrimônio</button>
       <button type="button" data-nav="configuracoes"><span>⚙</span>Configurações</button>
     </nav>
   </div>
@@ -261,10 +442,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=216" defer></script>
-  <script src="./graficos.js?v=216" defer></script>
-  <script src="./configuracoes.js?v=216" defer></script>
-  <script src="./pdf.js?v=216" defer></script>
-  <script src="./app.js?v=216" defer></script>
+  <script src="./calculos.js?v=220" defer></script>
+  <script src="./graficos.js?v=220" defer></script>
+  <script src="./configuracoes.js?v=220" defer></script>
+  <script src="./pdf.js?v=220" defer></script>
+  <script src="./app.js?v=220" defer></script>
+  <script src="./alavancagem.js?v=220" defer></script>
 </body>
 </html>
