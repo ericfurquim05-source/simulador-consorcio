@@ -89,31 +89,14 @@
     }).join('');
   }
 
-  function renderConclusion(result){
-    const differenceFixed = result.consortiumGain - result.fixedGain;
-    const differenceSavings = result.consortiumGain - result.savingsGain;
-
-    const compare = (value, name) =>
-      `O consórcio ficou <b class="${value >= 0 ? 'positive' : 'negative'}">` +
-      `${value >= 0 ? 'acima' : 'abaixo'} de ${name} em ` +
-      `${S.Calculos.brl(Math.abs(value))}</b>.`;
-
-    const resultLabel = result.consortiumGain >= 0
-      ? `um possível ganho de <b class="positive">${S.Calculos.brl(result.consortiumGain)}</b>`
-      : `um resultado estimado de <b class="negative">${S.Calculos.brl(result.consortiumGain)}</b>`;
-
-    $('automaticConclusion').innerHTML =
-      `<b>Leitura automática do cenário</b><br>` +
-      `Com parcela inicial aproximada de <b>${S.Calculos.brl(result.basePayment)}</b> e ` +
-      `total pago de <b>${S.Calculos.brl(result.totalPaid)}</b> em ${result.input.months} meses, ` +
-      `a venda projetada da carta poderia gerar ${resultLabel}. ` +
-      `${compare(differenceFixed, 'renda fixa')} ${compare(differenceSavings, 'poupança')}` +
-      `<br><br>Nesta projeção, <b>${result.best.name.toLowerCase()}</b> apresentou o maior resultado estimado.`;
-  }
-
   function renderResult(result){
     state.result = result;
     $('resultSection').hidden = false;
+    const detailsBox = $('detailsBox');
+    const detailsButton = $('toggleDetailsBtn');
+    detailsBox.hidden = true;
+    detailsButton.textContent = 'Ver detalhes do cálculo';
+    detailsButton.setAttribute('aria-expanded', 'false');
     $('resultTitle').textContent = `Cenário em ${result.input.months} meses`;
     $('strategyBadge').textContent = result.input.strategy === 'com'
       ? `Com lance de ${S.Calculos.percent(result.input.bidRate * 100)}`
@@ -140,7 +123,6 @@
     S.Graficos.render($('comparisonChart'), result, state.chartMetric);
     S.Graficos.difference($('differenceStrip'), result);
     renderTable(result);
-    renderConclusion(result);
 
     setTimeout(() => {
       $('resultSection').scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -249,9 +231,11 @@
     $('toggleDetailsBtn').addEventListener('click', () => {
       const box = $('detailsBox');
       box.hidden = !box.hidden;
-      $('toggleDetailsBtn').textContent = box.hidden
-        ? 'Ver detalhes do cálculo'
-        : 'Ocultar detalhes do cálculo';
+      const expanded = !box.hidden;
+      $('toggleDetailsBtn').textContent = expanded
+        ? 'Ocultar detalhes do cálculo'
+        : 'Ver detalhes do cálculo';
+      $('toggleDetailsBtn').setAttribute('aria-expanded', String(expanded));
     });
 
     document.querySelectorAll('[data-chart-metric]').forEach(button => {

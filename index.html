@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.1.3</title>
-  <link rel="manifest" href="./manifest.json?v=213">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=213">
-  <link rel="stylesheet" href="./estilos.css?v=213">
+  <title>Simulador de Consórcio — v2.1.4</title>
+  <link rel="manifest" href="./manifest.json?v=214">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=214">
+  <link rel="stylesheet" href="./estilos.css?v=214">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.1.3</p>
+          <p>Simulações claras para apresentar ao cliente · v2.1.4</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -139,7 +139,7 @@
               <div><span>Carta corrigida</span><strong id="resCreditoCorrigido">R$ 0,00</strong></div>
             </div>
 
-            <button id="toggleDetailsBtn" class="secondary-button" type="button">Ver detalhes do cálculo</button>
+            <button id="toggleDetailsBtn" class="secondary-button" type="button" aria-expanded="false" aria-controls="detailsBox">Ver detalhes do cálculo</button>
             <div id="detailsBox" class="details-grid" hidden>
               <div><span>Crédito disponível</span><strong id="resCreditoLiquido">R$ 0,00</strong></div>
               <div><span>Reajustes considerados</span><strong id="resReajustes">0</strong></div>
@@ -177,7 +177,6 @@
                 <tbody id="comparisonTableBody"></tbody>
               </table>
             </div>
-            <div id="automaticConclusion" class="conclusion-card"></div>
             <details class="calculation-note">
               <summary>Como a comparação foi calculada?</summary>
               <p>O mesmo valor de cada parcela é considerado como aporte mensal nas alternativas. O aplicativo mostra valores brutos e não desconta imposto. As taxas são editáveis e servem como premissas da projeção.</p>
@@ -263,10 +262,10 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=213" defer></script>
-  <script src="./graficos.js?v=213" defer></script>
-  <script src="./configuracoes.js?v=213" defer></script>
-  <script src="./pdf.js?v=213" defer></script>
-  <script src="./app.js?v=213" defer></script>
+  <script src="./calculos.js?v=214" defer></script>
+  <script src="./graficos.js?v=214" defer></script>
+  <script src="./configuracoes.js?v=214" defer></script>
+  <script src="./pdf.js?v=214" defer></script>
+  <script src="./app.js?v=214" defer></script>
 </body>
 </html>

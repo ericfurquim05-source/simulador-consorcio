@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.1.2-responsive-flat';
+const VERSION = 'simulador-consorcio-v2.1.4-compact-report';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
