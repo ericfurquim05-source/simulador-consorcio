@@ -29,11 +29,11 @@
           const names = await caches.keys();
           await Promise.all(names.map(name => caches.delete(name)));
         }
-        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.1.1…';
+        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.1.2…';
       } catch (e) {
         document.getElementById('status').textContent = 'Abrindo a versão atualizada…';
       }
-      setTimeout(() => location.replace('./index.html?v=211&t=' + Date.now()), 800);
+      setTimeout(() => location.replace('./index.html?v=212&t=' + Date.now()), 800);
     })();
   </script>
 </body>

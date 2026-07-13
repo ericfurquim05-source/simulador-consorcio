@@ -1,4 +1,4 @@
-SIMULADOR DE CONSÓRCIO — VERSÃO 2.1.1 (ARQUIVOS NA RAIZ)
+SIMULADOR DE CONSÓRCIO — VERSÃO 2.1.2 (ARQUIVOS NA RAIZ)
 
 Todos os arquivos deste ZIP ficam no mesmo nível. Não existem pastas.
 
@@ -7,7 +7,12 @@ PUBLICAÇÃO:
 2. Confirme em Commit changes.
 3. Aguarde o GitHub Pages concluir a publicação.
 4. Abra: https://ericfurquim05-source.github.io/simulador-consorcio/reset.html
-5. A página limpa a versão antiga salva e abre o simulador v2.1.1.
+5. A página limpa a versão antiga salva e abre o simulador v2.1.2.
 
 SINAL DE QUE ATUALIZOU:
-No topo do site aparece “v2.1.1”.
+No topo do site aparece “v2.1.2”.
+
+AJUSTE DA VERSÃO 2.1.2
+- Gráfico limitado à largura do celular.
+- Comparação financeira vira cartões no celular.
+- Não é necessário diminuir a tela ou arrastar para o lado.

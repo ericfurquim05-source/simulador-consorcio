@@ -4,6 +4,10 @@
   --green:#58d979;--blue:#5aaeff;--yellow:#ffd05c;--red:#ff7272;--shadow:0 20px 48px rgba(0,0,0,.22)
 }
 *{box-sizing:border-box}
+html,body{max-width:100%}
+body{overflow-x:hidden}
+img,svg,canvas{max-width:100%}
+main,.view,.panel{min-width:0}
 html{scroll-behavior:smooth;background:var(--bg)}
 body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#1b2a3a 0,transparent 42%),linear-gradient(180deg,#0e151e 0,#080d13 55%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input{font:inherit}
@@ -30,5 +34,61 @@ button{cursor:pointer}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}.action-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:13px;border:1px solid var(--line);background:#202b37;color:#fff;font-size:11px;font-weight:850}.action-button span{font-size:16px}.action-button.whatsapp{background:#1c873c;border-color:#1c873c}.disclaimer{border:1px solid #665523;background:#292313;color:#e8dba9;border-radius:15px;padding:13px;font-size:10px;line-height:1.55;margin-bottom:14px}
 
 .settings-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.settings-actions .primary-button,.settings-actions .secondary-button{margin:0}.bottom-nav{position:fixed;z-index:30;left:50%;bottom:12px;transform:translateX(-50%);display:grid;grid-template-columns:repeat(2,1fr);width:min(560px,calc(100% - 24px));padding:5px;border-radius:18px;background:rgba(13,20,29,.94);border:1px solid #334150;box-shadow:0 18px 45px rgba(0,0,0,.42);backdrop-filter:blur(15px);padding-bottom:calc(5px + env(safe-area-inset-bottom))}.bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;border-radius:13px;background:transparent;color:var(--muted);padding:8px;font-size:9px;font-weight:850}.bottom-nav button span{font-size:17px}.bottom-nav button.active{background:#222d39;color:#fff}.app-dialog{width:min(420px,calc(100% - 28px));border:1px solid var(--line);border-radius:20px;background:#111923;color:#fff;padding:0;box-shadow:0 30px 80px rgba(0,0,0,.55)}.app-dialog::backdrop{background:rgba(0,0,0,.72)}.app-dialog form{padding:20px;position:relative}.dialog-close{position:absolute;right:12px;top:10px;border:0;background:transparent;color:#fff;font-size:25px}.app-dialog h2{margin:0 0 12px}.app-dialog p,.app-dialog li{font-size:12px;color:var(--muted);line-height:1.55}
-@media(max-width:680px){.app-shell{padding-left:12px;padding-right:12px}.brand h1{font-size:18px}.brand p{font-size:10px}.form-grid,.headline-grid,.details-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.strategy-explain{grid-template-columns:1fr}.result-topline,.section-heading{align-items:flex-start}.chart-panel .section-heading{display:block}.chart-toggle{width:100%;margin-top:12px}.chart-row{grid-template-columns:1fr}.bar-track{height:42px}.chart-label{display:flex;justify-content:space-between;align-items:end;gap:10px}.chart-label span{margin:0}.chart-exact{display:block;font-size:11px;font-weight:900;color:#fff}.bar-value{display:none}.difference-strip,.action-grid,.settings-actions{grid-template-columns:1fr}.comparison-table{min-width:560px}.credit-growth strong{font-size:15px}}
+@media(max-width:680px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .app-shell,main,.view,.panel,.result-stack{width:100%;max-width:100%;min-width:0}
+  .app-shell{padding-left:12px;padding-right:12px}
+  .panel{padding:16px}
+  .brand{min-width:0}.brand h1{font-size:18px}.brand p{font-size:10px;overflow-wrap:anywhere}
+  .form-grid,.headline-grid,.details-grid{grid-template-columns:1fr}
+  .field,.field.full{grid-column:auto;min-width:0}
+  .strategy-explain{grid-template-columns:1fr}
+  .result-topline,.section-heading{align-items:flex-start;min-width:0}
+  .result-topline>div,.section-heading>div{min-width:0}
+  .panel h2{overflow-wrap:anywhere}
+
+  /* Gráfico sempre dentro da largura do celular */
+  .chart-panel{overflow:hidden}
+  .chart-panel .section-heading{display:block}
+  .chart-toggle{width:100%;max-width:100%;margin-top:12px}
+  .comparison-chart{width:100%;max-width:100%;min-width:0}
+  .chart-row{display:block;width:100%;max-width:100%;min-width:0}
+  .chart-label{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;width:100%;min-width:0;margin-bottom:7px}
+  .chart-label>div{min-width:0}
+  .chart-label b,.chart-label span{overflow-wrap:anywhere}
+  .chart-label span{margin:0}
+  .chart-exact{display:block;max-width:46vw;text-align:right;font-size:clamp(10px,3vw,12px);font-weight:900;color:#fff;white-space:normal}
+  .bar-track{width:100%;max-width:100%;min-width:0;height:38px}
+  .bar-fill{max-width:100%;padding:0}
+  .bar-value{display:none}
+  .difference-strip,.action-grid,.settings-actions{grid-template-columns:1fr}
+
+  /* A tabela vira cartões no celular: sem rolagem lateral e sem precisar diminuir a tela */
+  .table-wrap{width:100%;max-width:100%;overflow:visible;margin-top:14px}
+  .comparison-table{display:block;width:100%;max-width:100%;min-width:0;border-spacing:0}
+  .comparison-table thead{display:none}
+  .comparison-table tbody{display:grid;gap:10px;width:100%}
+  .comparison-table tr{display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;background:#0b1219;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+  .comparison-table td{display:flex;flex-direction:column;justify-content:center;min-width:0;background:transparent;border:0!important;border-radius:0!important;padding:11px 10px;text-align:left!important;font-size:12px;overflow-wrap:anywhere}
+  .comparison-table td:first-child{grid-column:1/-1;border-bottom:1px solid var(--line)!important;font-size:13px}
+  .comparison-table td:nth-child(2),.comparison-table td:nth-child(3){border-bottom:1px solid var(--line)!important}
+  .comparison-table td:nth-child(2),.comparison-table td:nth-child(4){border-right:1px solid var(--line)!important}
+  .comparison-table td:nth-child(2)::before{content:'Você colocou'}
+  .comparison-table td:nth-child(3)::before{content:'Ganho estimado'}
+  .comparison-table td:nth-child(4)::before{content:'Total final'}
+  .comparison-table td:not(:first-child)::before{display:block;margin-bottom:5px;color:var(--muted);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .best-badge{margin:5px 0 0;width:max-content}
+  .credit-growth strong{font-size:15px;overflow-wrap:anywhere}
+}
+@media(max-width:390px){
+  .app-shell{padding-left:10px;padding-right:10px}
+  .panel{padding:14px;border-radius:18px}
+  .brand-mark{width:44px;height:44px}
+  .brand h1{font-size:16px}
+  .headline-card strong{font-size:19px}
+  .headline-card.gain-card strong{font-size:23px}
+  .credit-growth{padding:11px;gap:6px}
+  .credit-growth strong{font-size:13px}
+  .comparison-table td{padding:10px 8px;font-size:11px}
+}
 @media print{.bottom-nav,.app-header,.actions-panel,.secondary-button,.disclaimer{display:none!important}.app-shell{width:100%;padding:0}.panel{box-shadow:none;break-inside:avoid}.view{display:block!important}}
