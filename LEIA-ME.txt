@@ -1,29 +1,13 @@
-SIMULADOR DE CONSÓRCIO — VERSÃO 2.1
+SIMULADOR DE CONSÓRCIO — VERSÃO 2.1.1 (ARQUIVOS NA RAIZ)
 
-ESTA PASTA JÁ ESTÁ PRONTA PARA PUBLICAR NO GITHUB PAGES.
+Todos os arquivos deste ZIP ficam no mesmo nível. Não existem pastas.
 
-RECURSOS:
-- Simulação sem lance e com lance fixo.
-- INCC, percentual de venda, renda fixa e poupança editáveis.
-- Gráfico profissional com valores exatos.
-- Comparação por ganho ou total final.
-- Relatório profissional pronto para salvar como PDF.
-- Compartilhamento e cópia do resumo.
-- Configurações de empresa, consultor, WhatsApp e parâmetros técnicos.
-- Instalação no Android e iPhone.
-- Funcionamento offline após o primeiro acesso.
-- Sem histórico, login ou sistema de licenças.
+PUBLICAÇÃO:
+1. Envie todos os arquivos para a raiz do repositório.
+2. Confirme em Commit changes.
+3. Aguarde o GitHub Pages concluir a publicação.
+4. Abra: https://ericfurquim05-source.github.io/simulador-consorcio/reset.html
+5. A página limpa a versão antiga salva e abre o simulador v2.1.1.
 
-PARA ATUALIZAR O GITHUB:
-1. Extraia este ZIP.
-2. Abra o repositório simulador-consorcio.
-3. Envie TODO o conteúdo desta pasta para a raiz do repositório.
-4. Confirme a substituição dos arquivos de mesmo nome.
-5. Clique em Confirmar alterações.
-6. Aguarde a publicação do GitHub Pages.
-7. Abra o mesmo endereço do seu aplicativo.
-
-IMPORTANTE:
-- Envie as pastas css, js e assets completas.
-- Não envie apenas o arquivo ZIP para o GitHub.
-- O arquivo index.html precisa ficar na raiz do repositório.
+SINAL DE QUE ATUALIZOU:
+No topo do site aparece “v2.1.1”.

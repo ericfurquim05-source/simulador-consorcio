@@ -1,56 +1,65 @@
-const VERSION='simulador-consorcio-v2.1.0';
-const STATIC_CACHE=`${VERSION}-static`;
-const ASSETS=[
+const VERSION = 'simulador-consorcio-v2.1.1-flat';
+const STATIC_CACHE = `${VERSION}-static`;
+
+const ASSETS = [
   './',
   './index.html',
-  './css/estilos.css',
-  './js/calculos.js',
-  './js/graficos.js',
-  './js/configuracoes.js',
-  './js/pdf.js',
-  './js/app.js',
+  './estilos.css',
+  './calculos.js',
+  './graficos.js',
+  './configuracoes.js',
+  './pdf.js',
+  './app.js',
   './manifest.json',
-  './assets/icon-192.png',
-  './assets/icon-512.png'
+  './icon-192.png',
+  './icon-512.png',
+  './reset.html'
 ];
 
-self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(STATIC_CACHE).then(cache=>cache.addAll(ASSETS)));
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then(cache =>
+      Promise.all(
+        ASSETS.map(url =>
+          cache.add(new Request(url, { cache: 'reload' })).catch(() => null)
+        )
+      )
+    )
+  );
   self.skipWaiting();
 });
 
-self.addEventListener('activate',event=>{
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys=>
-      Promise.all(keys.filter(key=>key!==STATIC_CACHE).map(key=>caches.delete(key)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== STATIC_CACHE).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET') return;
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
 
-  if(event.request.mode==='navigate'){
+  if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then(response=>{
-          const copy=response.clone();
-          caches.open(STATIC_CACHE).then(cache=>cache.put('./index.html',copy));
+      fetch(event.request, { cache: 'no-store' })
+        .then(response => {
+          const copy = response.clone();
+          caches.open(STATIC_CACHE).then(cache => cache.put('./index.html', copy));
           return response;
         })
-        .catch(()=>caches.match('./index.html'))
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then(cached=>
-      cached || fetch(event.request).then(response=>{
-        const copy=response.clone();
-        caches.open(STATIC_CACHE).then(cache=>cache.put(event.request,copy));
+    fetch(event.request, { cache: 'no-store' })
+      .then(response => {
+        const copy = response.clone();
+        caches.open(STATIC_CACHE).then(cache => cache.put(event.request, copy));
         return response;
       })
-    )
+      .catch(() => caches.match(event.request))
   );
 });
