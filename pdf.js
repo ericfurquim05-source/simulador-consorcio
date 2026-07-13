@@ -123,7 +123,7 @@
             <div class="metric"><span>Parcela inicial</span><b>${calc.brl(result.basePayment)}</b></div>
             <div class="metric"><span>Total pago no período</span><b>${calc.brl(result.totalPaid)}</b></div>
             <div class="metric main"><span>Valor estimado recebido</span><b>${calc.brl(result.received)}</b></div>
-            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade do consórcio</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Eficiência do capital</span><strong>${calc.brl(result.consortiumCapitalEfficiency)} por R$ 1</strong></div></div></div>
+            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade sobre o valor investido</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Retorno para cada R$ 1 investido</span><strong>${calc.brl(result.consortiumCapitalEfficiency)}</strong></div></div></div>
           </div>
           <div class="growth"><div><span>Carta inicial</span><b>${calc.brl(result.input.credit)}</b></div><div class="arrow">→</div><div><span>Carta corrigida</span><b>${calc.brl(result.correctedCredit)}</b></div></div>
         </div>
@@ -136,7 +136,7 @@
 
         <div class="section">
           <h2>Comparação completa</h2>
-          <table class="table"><thead><tr><th>Opção</th><th>Valor colocado</th><th>Ganho estimado</th><th>Rentabilidade</th></tr></thead><tbody>${result.options.map(option => { const profitability = option.invested ? option.gain / option.invested * 100 : 0; return `<tr><td>${escapeHtml(option.name)}</td><td>${calc.brl(option.invested)}</td><td>${calc.brl(option.gain)}</td><td>${calc.percent(profitability, 1)}</td></tr>`; }).join('')}</tbody></table>
+          <table class="table"><thead><tr><th>Opção</th><th>Valor colocado</th><th>Ganho estimado</th><th>Rentabilidade sobre o valor investido</th></tr></thead><tbody>${result.options.map(option => { const profitability = option.invested ? option.gain / option.invested * 100 : 0; return `<tr><td>${escapeHtml(option.name)}</td><td>${calc.brl(option.invested)}</td><td>${calc.brl(option.gain)}</td><td>${calc.percent(profitability, 1)}</td></tr>`; }).join('')}</tbody></table>
         </div>
 
         <div class="fine"><b>Premissas:</b> INCC ${calc.percent(result.input.incc * 100)} a.a.; venda estimada em ${calc.percent(result.input.saleRate * 100)} do crédito disponível; renda fixa de ${calc.percent(result.input.fixedAnnual * 100)} a.a.; poupança de ${calc.percent(result.input.savingsMonthly * 100, 4)} a.m.; referência: ${escapeHtml(result.input.reference || 'não informada')}.<br><b>Aviso:</b> projeção matemática sem garantia de contemplação, prazo, valor de venda ou rentabilidade. Relatório emitido por ${company}.</div>

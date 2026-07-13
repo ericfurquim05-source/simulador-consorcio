@@ -87,7 +87,7 @@
         <td>${S.Calculos.brl(option.invested)}</td>
         <td class="${gainClass}">${S.Calculos.brl(option.gain)}</td>
         <td class="${gainClass}">${S.Calculos.percent(profitability, 1)}</td>
-        <td>${S.Calculos.brl(capitalEfficiency)} por R$ 1</td>
+        <td>${S.Calculos.brl(capitalEfficiency)}</td>
       </tr>`;
     }).join('');
   }

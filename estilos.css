@@ -77,8 +77,8 @@ button{cursor:pointer}
   .comparison-table td:nth-child(5){grid-column:1/-1}
   .comparison-table td:nth-child(2)::before{content:'Você colocou'}
   .comparison-table td:nth-child(3)::before{content:'Ganho estimado'}
-  .comparison-table td:nth-child(4)::before{content:'Rentabilidade'}
-  .comparison-table td:nth-child(5)::before{content:'Eficiência do capital'}
+  .comparison-table td:nth-child(4)::before{content:'Rentabilidade sobre o valor investido'}
+  .comparison-table td:nth-child(5)::before{content:'Retorno para cada R$ 1 investido'}
   .comparison-table td:not(:first-child)::before{display:block;margin-bottom:5px;color:var(--muted);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
   .best-badge{margin:5px 0 0;width:max-content}
   .credit-growth strong{font-size:15px;overflow-wrap:anywhere}
