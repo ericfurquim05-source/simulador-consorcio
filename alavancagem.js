@@ -1,8 +1,19 @@
 (function(global){
   'use strict';
 
-  const $ = id => document.getElementById(id);
+  const get = id => document.getElementById(id);
   const state = { propertyType: 'residencial' };
+
+  function valueOf(id, fallback = ''){
+    const element = get(id);
+    return element && 'value' in element ? element.value : fallback;
+  }
+
+  function setText(id, text){
+    const element = get(id);
+    if(element) element.textContent = text;
+    return element;
+  }
 
   function number(value){
     const parsed = parseFloat(String(value ?? '').replace(',', '.'));
@@ -22,6 +33,7 @@
   }
 
   function formatMoneyInput(element){
+    if(!element) return;
     const digits = String(element.value || '').replace(/\D/g, '');
     element.value = digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '';
   }
@@ -42,13 +54,15 @@
   }
 
   function showError(message){
-    const el = $('patError');
-    el.textContent = message;
-    el.hidden = false;
+    const element = get('patError');
+    if(!element) return;
+    element.textContent = message;
+    element.hidden = false;
   }
 
   function clearError(){
-    $('patError').hidden = true;
+    const element = get('patError');
+    if(element) element.hidden = true;
   }
 
   function setPropertyType(type){
@@ -56,28 +70,29 @@
     document.querySelectorAll('[data-property-type]').forEach(button => {
       button.classList.toggle('active', button.dataset.propertyType === type);
     });
-    $('patRentabilidadeAluguel').value = type === 'comercial' ? '0.70' : '0.50';
+    const yieldInput = get('patRentabilidadeAluguel');
+    if(yieldInput) yieldInput.value = type === 'comercial' ? '0.70' : '0.50';
   }
 
   function readInput(){
     return {
-      propertyValue: moneyFromText($('patValorImovel').value),
-      credit: moneyFromText($('patCredito').value),
-      ownCapital: moneyFromText($('patCapital').value),
-      ownBid: moneyFromText($('patLance').value),
-      embeddedBidRate: number($('patLanceEmbutido').value) / 100,
-      rentalYield: number($('patRentabilidadeAluguel').value) / 100,
-      investmentYield: number($('patRentabilidadeAplicacao').value) / 100,
-      consortiumTerm: Math.round(number($('patPrazoConsorcio').value)),
-      adminRate: number($('patTaxaAdmin').value) / 100,
-      consortiumAdjustment: number($('patReajusteConsorcio').value) / 100,
-      reducedPaymentRate: number($('patParcelaReduzida').value) / 100,
-      contemplationMonth: Math.round(number($('patMesContemplacao').value)),
-      financingEntryRate: number($('patEntradaFinanciamento').value) / 100,
-      financingAnnualRate: number($('patTaxaFinanciamento').value) / 100,
-      financingTerm: Math.round(number($('patPrazoFinanciamento').value)),
-      appreciation: number($('patValorizacao').value) / 100,
-      rentAdjustment: number($('patReajusteAluguel').value) / 100
+      propertyValue: moneyFromText(valueOf('patValorImovel')),
+      credit: moneyFromText(valueOf('patCredito')),
+      ownCapital: moneyFromText(valueOf('patCapital')),
+      ownBid: moneyFromText(valueOf('patLance')),
+      embeddedBidRate: number(valueOf('patLanceEmbutido', '0')) / 100,
+      rentalYield: number(valueOf('patRentabilidadeAluguel', '0.50')) / 100,
+      investmentYield: number(valueOf('patRentabilidadeAplicacao', '1')) / 100,
+      consortiumTerm: Math.round(number(valueOf('patPrazoConsorcio', '220'))),
+      adminRate: number(valueOf('patTaxaAdmin', '24.2')) / 100,
+      consortiumAdjustment: number(valueOf('patReajusteConsorcio', '5')) / 100,
+      reducedPaymentRate: number(valueOf('patParcelaReduzida', '50')) / 100,
+      contemplationMonth: Math.round(number(valueOf('patMesContemplacao', '24'))),
+      financingEntryRate: number(valueOf('patEntradaFinanciamento', '20')) / 100,
+      financingAnnualRate: number(valueOf('patTaxaFinanciamento', '12')) / 100,
+      financingTerm: Math.round(number(valueOf('patPrazoFinanciamento', '360'))),
+      appreciation: number(valueOf('patValorizacao', '5')) / 100,
+      rentAdjustment: number(valueOf('patReajusteAluguel', '5')) / 100
     };
   }
 
@@ -197,76 +212,86 @@
   }
 
   function setMonthlyResult(labelId, valueId, income, payment){
-    const label = $(labelId);
-    const value = $(valueId);
+    const label = get(labelId);
+    const value = get(valueId);
     const difference = income - payment;
 
-    if(difference >= 0){
-      label.textContent = 'Sobra mensal após pagar a parcela';
-      value.textContent = brl(difference);
-      value.classList.add('positive');
-      value.classList.remove('negative');
-    }else{
-      label.textContent = 'Complemento mensal do bolso';
-      value.textContent = brl(Math.abs(difference));
-      value.classList.add('negative');
-      value.classList.remove('positive');
+    if(label && value){
+      if(difference >= 0){
+        label.textContent = 'Sobra mensal após pagar a parcela';
+        value.textContent = brl(difference);
+        value.classList.add('positive');
+        value.classList.remove('negative');
+      }else{
+        label.textContent = 'Complemento mensal do bolso';
+        value.textContent = brl(Math.abs(difference));
+        value.classList.add('negative');
+        value.classList.remove('positive');
+      }
     }
     return Math.max(0, payment - income);
   }
 
   function render(input, consortium, financing){
-    $('patResultSection').hidden = false;
+    const resultSection = get('patResultSection');
+    if(resultSection) resultSection.hidden = false;
 
-    $('patResCartaContemplacao').textContent = brl(consortium.adjustedCredit);
-    $('patResCreditoLiquido').textContent = brl(consortium.netCredit);
-    $('patResCapitalContemplacao').textContent = brl(consortium.capitalAtContemplation);
-    $('patResCapitalNecessario').textContent = brl(consortium.capitalRequired);
-    $('patResLanceProprio').textContent = brl(consortium.ownBid);
-    $('patResLanceEmbutido').textContent = brl(consortium.embeddedBid);
-    $('patResComplemento').textContent = brl(consortium.purchaseComplement);
+    setText('patResCartaContemplacao', brl(consortium.adjustedCredit));
+    setText('patResCreditoLiquido', brl(consortium.netCredit));
+    setText('patResCapitalContemplacao', brl(consortium.capitalAtContemplation));
+    setText('patResCapitalNecessario', brl(consortium.capitalRequired));
+    setText('patResLanceProprio', brl(consortium.ownBid));
+    setText('patResLanceEmbutido', brl(consortium.embeddedBid));
+    setText('patResComplemento', brl(consortium.purchaseComplement));
 
-    $('patAntesRendimento').textContent = `${brl(consortium.initialInvestmentIncome)} / mês`;
-    $('patAntesParcela').textContent = `${brl(consortium.initialReducedPayment)} / mês`;
+    setText('patAntesRendimento', `${brl(consortium.initialInvestmentIncome)} / mês`);
+    setText('patAntesParcela', `${brl(consortium.initialReducedPayment)} / mês`);
     setMonthlyResult('patAntesSaldoLabel', 'patAntesSaldo', consortium.initialInvestmentIncome, consortium.initialReducedPayment);
 
-    const alert = $('patCapitalAlert');
-    if(consortium.capitalGap > 0){
-      alert.textContent = `No mês estimado da contemplação, ainda faltariam ${brl(consortium.capitalGap)} para cobrir o lance próprio e o complemento do imóvel.`;
-      alert.hidden = false;
-    }else{
-      alert.textContent = `Depois do lance e do complemento do imóvel, restariam aproximadamente ${brl(consortium.capitalRemaining)} do capital projetado.`;
+    const alert = get('patCapitalAlert');
+    if(alert){
+      alert.textContent = consortium.capitalGap > 0
+        ? `No mês estimado da contemplação, ainda faltariam ${brl(consortium.capitalGap)} para cobrir o lance próprio e o complemento do imóvel.`
+        : `Depois do lance e do complemento do imóvel, restariam aproximadamente ${brl(consortium.capitalRemaining)} do capital projetado.`;
       alert.hidden = false;
     }
 
-    $('patConsPrazoBadge').textContent = `${input.consortiumTerm} meses`;
-    $('patConsParcelaInicial').textContent = brl(consortium.initialFullPayment);
-    $('patConsParcela').textContent = brl(consortium.paymentAtContemplation);
-    $('patConsAluguel').textContent = brl(consortium.rentAtContemplation);
+    setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
+    setText('patConsParcelaInicial', brl(consortium.initialFullPayment));
+    setText('patConsParcela', brl(consortium.paymentAtContemplation));
+    setText('patConsAluguel', brl(consortium.rentAtContemplation));
     const consortiumPocket = setMonthlyResult('patConsSaldoLabel', 'patConsSaldo', consortium.rentAtContemplation, consortium.paymentAtContemplation);
-    $('patConsTotal').textContent = brl(consortium.totalPaid);
-    $('patConsImovelFinal').textContent = brl(consortium.propertyValueAtEnd);
+    setText('patConsTotal', brl(consortium.totalPaid));
+    setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
 
-    $('patFinPrazoBadge').textContent = `${input.financingTerm} meses`;
-    $('patFinEntrada').textContent = brl(financing.entry);
-    $('patFinValor').textContent = brl(financing.financedAmount);
-    $('patFinParcela').textContent = brl(financing.payment);
-    $('patFinAluguel').textContent = brl(financing.monthlyRent);
+    setText('patFinPrazoBadge', `${input.financingTerm} meses`);
+    setText('patFinEntrada', brl(financing.entry));
+    setText('patFinValor', brl(financing.financedAmount));
+    setText('patFinParcela', brl(financing.payment));
+    setText('patFinAluguel', brl(financing.monthlyRent));
     const financingPocket = setMonthlyResult('patFinSaldoLabel', 'patFinSaldo', financing.monthlyRent, financing.payment);
-    $('patFinTotal').textContent = brl(financing.totalPaid);
-    $('patFinImovelFinal').textContent = brl(financing.propertyValueAtEnd);
+    setText('patFinTotal', brl(financing.totalPaid));
+    setText('patFinImovelFinal', brl(financing.propertyValueAtEnd));
 
     const totalDifference = financing.totalPaid - consortium.totalPaid;
-    $('patResDiferencaCusto').textContent = totalDifference >= 0
-      ? `${brl(totalDifference)} a mais no financiamento`
-      : `${brl(Math.abs(totalDifference))} a mais no consórcio`;
+    setText(
+      'patResDiferencaCusto',
+      totalDifference >= 0
+        ? `${brl(totalDifference)} a mais no financiamento`
+        : `${brl(Math.abs(totalDifference))} a mais no consórcio`
+    );
 
     const monthlyDifference = financingPocket - consortiumPocket;
-    $('patResDiferencaMensal').textContent = monthlyDifference >= 0
-      ? `${brl(monthlyDifference)} a menos do bolso no consórcio`
-      : `${brl(Math.abs(monthlyDifference))} a menos do bolso no financiamento`;
+    setText(
+      'patResDiferencaMensal',
+      monthlyDifference >= 0
+        ? `${brl(monthlyDifference)} a menos do bolso no consórcio`
+        : `${brl(Math.abs(monthlyDifference))} a menos do bolso no financiamento`
+    );
 
-    setTimeout(() => $('patResultSection').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    if(resultSection){
+      setTimeout(() => resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
   }
 
   function calculate(){
@@ -278,28 +303,31 @@
       const financing = simulateFinancing(input);
       render(input, consortium, financing);
     }catch(error){
+      console.error('Erro no comparativo patrimonial:', error);
       showError(error.message || 'Não foi possível calcular o comparativo.');
     }
   }
 
   function bind(){
     ['patValorImovel','patCredito','patCapital','patLance'].forEach(id => {
-      const el = $(id);
-      el.addEventListener('input', () => formatMoneyInput(el));
-      el.addEventListener('focus', event => event.target.select());
+      const element = get(id);
+      if(!element) return;
+      element.addEventListener('input', () => formatMoneyInput(element));
+      element.addEventListener('focus', event => event.target.select());
     });
 
     document.querySelectorAll('[data-property-type]').forEach(button => {
       button.addEventListener('click', () => setPropertyType(button.dataset.propertyType));
     });
 
-    $('patCalcularBtn').addEventListener('click', calculate);
+    const calculateButton = get('patCalcularBtn');
+    if(calculateButton) calculateButton.addEventListener('click', calculate);
   }
 
   function init(){
-    if(!$('patCalcularBtn')) return;
+    if(!get('patCalcularBtn')) return;
     bind();
-    setPropertyType('residencial');
+    setPropertyType(state.propertyType);
   }
 
   document.addEventListener('DOMContentLoaded', init);
