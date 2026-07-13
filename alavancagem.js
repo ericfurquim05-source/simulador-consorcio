@@ -223,7 +223,7 @@
         value.classList.add('positive');
         value.classList.remove('negative');
       }else{
-        label.textContent = 'Complemento mensal do bolso';
+        label.textContent = 'Valor mensal que ainda sai do bolso';
         value.textContent = brl(Math.abs(difference));
         value.classList.add('negative');
         value.classList.remove('positive');
@@ -265,6 +265,8 @@
     setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
 
     setText('patFinPrazoBadge', `${input.financingTerm} meses`);
+    setText('patFinPrazoDetalhe', `${input.financingTerm} meses`);
+    setText('patFinTaxaDetalhe', `${(input.financingAnnualRate * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.a.`);
     setText('patFinEntrada', brl(financing.entry));
     setText('patFinValor', brl(financing.financedAmount));
     setText('patFinParcela', brl(financing.payment));

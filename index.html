@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.3 BETA</title>
+  <title>Simulador de Consórcio — v2.2.4 BETA</title>
   <link rel="manifest" href="./manifest.json?v=223">
   <link rel="apple-touch-icon" href="./icon-192.png?v=223">
   <link rel="stylesheet" href="./estilos.css?v=223">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.3 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.4 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -322,75 +322,89 @@
         </article>
 
         <section id="patResultSection" class="result-stack" hidden>
-          <article class="panel patrimony-summary">
-            <div class="section-heading">
-              <div>
-                <div class="eyebrow">Estrutura da operação</div>
-                <h2>Crédito e contemplação</h2>
-              </div>
-            </div>
-            <div class="headline-grid patrimony-headlines">
-              <div class="headline-card"><span>Carta estimada na contemplação</span><strong id="patResCartaContemplacao">R$ 0,00</strong></div>
-              <div class="headline-card highlighted"><span>Crédito líquido para comprar</span><strong id="patResCreditoLiquido">R$ 0,00</strong></div>
-              <div class="headline-card"><span>Capital estimado na contemplação</span><strong id="patResCapitalContemplacao">R$ 0,00</strong></div>
-              <div class="headline-card gain-card"><span>Capital necessário na contemplação</span><strong id="patResCapitalNecessario">R$ 0,00</strong></div>
-            </div>
-            <div class="operation-mini-grid">
-              <div><span>Lance próprio utilizado</span><strong id="patResLanceProprio">R$ 0,00</strong></div>
-              <div><span>Lance embutido</span><strong id="patResLanceEmbutido">R$ 0,00</strong></div>
-              <div><span>Complemento para comprar o imóvel</span><strong id="patResComplemento">R$ 0,00</strong></div>
-            </div>
-            <div class="before-summary">
-              <div class="before-summary-title">Antes da contemplação</div>
-              <div class="operation-mini-grid">
-                <div><span>Rendimento mensal inicial do capital</span><strong id="patAntesRendimento">R$ 0,00</strong></div>
-                <div><span>Parcela reduzida inicial</span><strong id="patAntesParcela">R$ 0,00</strong></div>
-                <div><span id="patAntesSaldoLabel">Complemento mensal do bolso</span><strong id="patAntesSaldo">R$ 0,00</strong></div>
-              </div>
-            </div>
-            <div id="patCapitalAlert" class="message warning" hidden></div>
-          </article>
-
-          <article class="panel">
-            <div class="section-heading">
+          <article class="panel comparison-focus-panel">
+            <div class="section-heading comparison-main-heading">
               <div>
                 <div class="eyebrow">Comparativo principal</div>
                 <h2>Consórcio x financiamento</h2>
+                <p class="lead comparison-lead">Compare a parcela mensal, o valor do aluguel e o total estimado pago no final de cada operação.</p>
               </div>
             </div>
-            <div class="scenario-grid">
+
+            <div class="difference-strip patrimony-differences result-differences">
+              <div class="difference-item featured-difference">
+                <span>Diferença no total estimado pago</span>
+                <strong id="patResDiferencaCusto">R$ 0,00</strong>
+              </div>
+              <div class="difference-item">
+                <span>Diferença mensal depois do aluguel</span>
+                <strong id="patResDiferencaMensal">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <div class="scenario-grid professional-scenario-grid">
               <div class="scenario-card consorcio-scenario">
                 <div class="scenario-title"><span>Consórcio</span><b id="patConsPrazoBadge">0 meses</b></div>
                 <div class="metric-list">
                   <div><span>Parcela cheia inicial</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
-                  <div><span>Parcela cheia na contemplação</span><strong id="patConsParcela">R$ 0,00</strong></div>
+                  <div><span>Parcela cheia após a contemplação</span><strong id="patConsParcela">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
-                  <div class="metric-emphasis"><span id="patConsSaldoLabel">Complemento mensal do bolso</span><strong id="patConsSaldo">R$ 0,00</strong></div>
-                  <div><span>Total estimado pago no final</span><strong id="patConsTotal">R$ 0,00</strong></div>
-                  <div><span>Valor estimado do imóvel ao final</span><strong id="patConsImovelFinal">R$ 0,00</strong></div>
+                  <div class="metric-emphasis"><span id="patConsSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patConsSaldo">R$ 0,00</strong></div>
+                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patConsTotal">R$ 0,00</strong></div>
                 </div>
               </div>
 
               <div class="scenario-card financing-scenario">
                 <div class="scenario-title"><span>Financiamento</span><b id="patFinPrazoBadge">0 meses</b></div>
                 <div class="metric-list">
-                  <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
-                  <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
                   <div><span>Parcela inicial estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patFinAluguel">R$ 0,00</strong></div>
-                  <div class="metric-emphasis"><span id="patFinSaldoLabel">Complemento mensal do bolso</span><strong id="patFinSaldo">R$ 0,00</strong></div>
-                  <div><span>Total estimado pago no final</span><strong id="patFinTotal">R$ 0,00</strong></div>
-                  <div><span>Valor estimado do imóvel ao final</span><strong id="patFinImovelFinal">R$ 0,00</strong></div>
+                  <div class="metric-emphasis"><span id="patFinSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patFinSaldo">R$ 0,00</strong></div>
+                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patFinTotal">R$ 0,00</strong></div>
                 </div>
               </div>
             </div>
-            <div class="difference-strip patrimony-differences">
-              <div class="difference-item"><span>Diferença no total estimado pago</span><strong id="patResDiferencaCusto">R$ 0,00</strong></div>
-              <div class="difference-item"><span>Diferença mensal depois do aluguel</span><strong id="patResDiferencaMensal">R$ 0,00</strong></div>
-            </div>
+
+            <details class="calculation-note operation-details">
+              <summary>Ver detalhes da operação</summary>
+              <div class="operation-detail-grid">
+                <section class="operation-detail-card">
+                  <h3>Estrutura do consórcio</h3>
+                  <div class="operation-detail-list">
+                    <div><span>Carta estimada na contemplação</span><strong id="patResCartaContemplacao">R$ 0,00</strong></div>
+                    <div><span>Crédito líquido liberado</span><strong id="patResCreditoLiquido">R$ 0,00</strong></div>
+                    <div><span>Lance próprio utilizado</span><strong id="patResLanceProprio">R$ 0,00</strong></div>
+                    <div><span>Lance embutido</span><strong id="patResLanceEmbutido">R$ 0,00</strong></div>
+                    <div><span>Complemento para adquirir o imóvel</span><strong id="patResComplemento">R$ 0,00</strong></div>
+                    <div><span>Capital estimado disponível na contemplação</span><strong id="patResCapitalContemplacao">R$ 0,00</strong></div>
+                  </div>
+                  <div class="before-summary compact-before-summary">
+                    <div class="before-summary-title">Antes da contemplação</div>
+                    <div class="operation-detail-list">
+                      <div><span>Rendimento mensal inicial do capital</span><strong id="patAntesRendimento">R$ 0,00</strong></div>
+                      <div><span>Parcela reduzida inicial</span><strong id="patAntesParcela">R$ 0,00</strong></div>
+                      <div><span id="patAntesSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patAntesSaldo">R$ 0,00</strong></div>
+                    </div>
+                  </div>
+                  <div id="patCapitalAlert" class="message warning" hidden></div>
+                </section>
+
+                <section class="operation-detail-card">
+                  <h3>Estrutura do financiamento</h3>
+                  <div class="operation-detail-list">
+                    <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
+                    <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
+                    <div><span>Prazo contratado</span><strong id="patFinPrazoDetalhe">0 meses</strong></div>
+                    <div><span>Taxa anual informada</span><strong id="patFinTaxaDetalhe">0,00% a.a.</strong></div>
+                    <div><span>Sistema de cálculo</span><strong>Price</strong></div>
+                  </div>
+                </section>
+              </div>
+            </details>
+
             <details class="calculation-note">
               <summary>Como esta versão calcula?</summary>
-              <p>No consórcio, a parcela cheia considera a carta, a taxa administrativa, o prazo, o reajuste anual e os lances informados. O lance próprio antecipa saldo; o lance embutido reduz o crédito liberado. O total estimado pago inclui parcelas, lance próprio e eventual complemento para comprar o mesmo imóvel. No financiamento, a entrada e as parcelas são calculadas pelo sistema Price. O aluguel aparece apenas como renda mensal para mostrar quanto ainda precisa sair do bolso.</p>
+              <p>No consórcio, o total estimado considera as parcelas, o lance próprio e eventual complemento para adquirir o mesmo imóvel. O lance embutido reduz o crédito liberado. No financiamento, o total considera a entrada e as parcelas estimadas pelo sistema Price. O aluguel aparece somente como renda mensal para mostrar quanto ainda precisa sair do bolso.</p>
             </details>
           </article>
 
@@ -464,11 +478,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=223" defer></script>
-  <script src="./graficos.js?v=223" defer></script>
-  <script src="./configuracoes.js?v=223" defer></script>
-  <script src="./pdf.js?v=223" defer></script>
-  <script src="./app.js?v=223" defer></script>
-  <script src="./alavancagem.js?v=223" defer></script>
+  <script src="./calculos.js?v=224" defer></script>
+  <script src="./graficos.js?v=224" defer></script>
+  <script src="./configuracoes.js?v=224" defer></script>
+  <script src="./pdf.js?v=224" defer></script>
+  <script src="./app.js?v=224" defer></script>
+  <script src="./alavancagem.js?v=224" defer></script>
 </body>
 </html>

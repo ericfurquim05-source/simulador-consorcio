@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.3-correcao-erro';
+const VERSION = 'simulador-consorcio-v2.2.4-comparativo-profissional';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [

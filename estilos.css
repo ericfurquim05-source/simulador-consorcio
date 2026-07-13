@@ -125,3 +125,34 @@ button{cursor:pointer}
   .patrimony-headlines{grid-template-columns:1fr}
   .patrimony-headlines .headline-card{min-height:auto}
 }
+
+
+/* Alavancagem patrimonial — refinamento profissional v2.2.4 */
+.comparison-focus-panel{border-color:#35465a}
+.comparison-main-heading{margin-bottom:0}
+.comparison-lead{margin:7px 0 0;max-width:620px}
+.result-differences{margin:16px 0 14px}
+.result-differences .difference-item{background:#0b1219}
+.result-differences .featured-difference{border-color:#6b471b;background:linear-gradient(145deg,#18130d,#0b1219)}
+.professional-scenario-grid{margin-top:0}
+.metric-list .metric-total{background:linear-gradient(90deg,rgba(255,138,0,.08),rgba(255,138,0,.015));border-top:1px solid rgba(255,138,0,.25)}
+.metric-list .metric-total span{font-weight:850;color:#e4eaf0}
+.metric-list .metric-total strong{font-size:18px;color:#fff}
+.operation-details{margin-top:14px}
+.operation-details>summary{font-weight:900;color:#e9eef4}
+.operation-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}
+.operation-detail-card{background:#0b1219;border:1px solid var(--line);border-radius:15px;padding:13px;min-width:0}
+.operation-detail-card h3{margin:0 0 9px;font-size:13px}
+.operation-detail-list{display:grid;gap:0}
+.operation-detail-list>div{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(39,52,66,.72)}
+.operation-detail-list>div:last-child{border-bottom:0}
+.operation-detail-list span{max-width:58%;font-size:9px;line-height:1.35;color:var(--muted)}
+.operation-detail-list strong{text-align:right;font-size:12px;overflow-wrap:anywhere}
+.compact-before-summary{margin-top:12px;padding-top:12px}
+.operation-detail-card .message.warning{font-size:10px;line-height:1.45}
+@media(max-width:680px){
+  .operation-detail-grid{grid-template-columns:1fr}
+  .result-differences{grid-template-columns:1fr}
+  .professional-scenario-grid{grid-template-columns:1fr}
+  .metric-list .metric-total strong{font-size:17px}
+}
