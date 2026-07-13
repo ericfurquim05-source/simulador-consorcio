@@ -1,18 +1,15 @@
-SIMULADOR DE CONSÓRCIO — VERSÃO 2.1.2 (ARQUIVOS NA RAIZ)
+SIMULADOR DE CONSÓRCIO — v2.1.6
 
-Todos os arquivos deste ZIP ficam no mesmo nível. Não existem pastas.
+ARQUIVOS PARA PUBLICAÇÃO
+Todos os arquivos deste pacote ficam soltos na raiz do repositório. Não crie pastas.
 
-PUBLICAÇÃO:
-1. Envie todos os arquivos para a raiz do repositório.
-2. Confirme em Commit changes.
-3. Aguarde o GitHub Pages concluir a publicação.
-4. Abra: https://ericfurquim05-source.github.io/simulador-consorcio/reset.html
-5. A página limpa a versão antiga salva e abre o simulador v2.1.2.
+NOVIDADE DESTA VERSÃO
+- Rentabilidade do consórcio sobre o valor pago.
+- Eficiência do capital: mostra quanto retornou para cada R$ 1,00 pago.
+- Exemplo: R$ 3,21 por R$ 1 significa R$ 3,21 recebidos no total para cada R$ 1,00 pago.
 
-SINAL DE QUE ATUALIZOU:
-No topo do site aparece “v2.1.2”.
-
-AJUSTE DA VERSÃO 2.1.2
-- Gráfico limitado à largura do celular.
-- Comparação financeira vira cartões no celular.
-- Não é necessário diminuir a tela ou arrastar para o lado.
+ATUALIZAÇÃO
+1. Extraia o ZIP.
+2. Envie todos os arquivos para a raiz do GitHub, substituindo os atuais.
+3. Confirme o commit.
+4. Abra reset.html uma vez para limpar o cache antigo.

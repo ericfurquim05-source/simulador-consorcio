@@ -74,6 +74,7 @@
     const received = netCredit * input.saleRate;
     const consortiumGain = received - totalPaid;
     const consortiumRoi = totalPaid ? consortiumGain/totalPaid*100 : 0;
+    const consortiumCapitalEfficiency = totalPaid ? received/totalPaid : 0;
 
     const fixedMonthly = Math.pow(1+input.fixedAnnual,1/12)-1;
     const fixedBalance = calcFlow(payments,fixedMonthly);
@@ -93,7 +94,7 @@
       createdAt:new Date().toISOString(),
       input,
       basePayment,payments,totalPaid,adjustments,correctedCredit,netCredit,received,
-      consortiumGain,consortiumRoi,fixedMonthly,fixedBalance,fixedGain,savingsBalance,savingsGain,
+      consortiumGain,consortiumRoi,consortiumCapitalEfficiency,fixedMonthly,fixedBalance,fixedGain,savingsBalance,savingsGain,
       options,best
     };
   }

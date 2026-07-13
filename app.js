@@ -80,11 +80,14 @@
         ? '<span class="best-badge">MAIOR RESULTADO</span>'
         : '';
       const gainClass = option.gain >= 0 ? 'positive' : 'negative';
+      const profitability = option.invested ? option.gain / option.invested * 100 : 0;
+      const capitalEfficiency = option.invested ? option.total / option.invested : 0;
       return `<tr>
         <td>${option.name}${badge}</td>
         <td>${S.Calculos.brl(option.invested)}</td>
         <td class="${gainClass}">${S.Calculos.brl(option.gain)}</td>
-        <td>${S.Calculos.brl(option.total)}</td>
+        <td class="${gainClass}">${S.Calculos.percent(profitability, 1)}</td>
+        <td>${S.Calculos.brl(capitalEfficiency)} por R$ 1</td>
       </tr>`;
     }).join('');
   }
@@ -107,8 +110,6 @@
     $('resRecebido').textContent = S.Calculos.brl(result.received);
     $('resGanho').textContent = S.Calculos.brl(result.consortiumGain);
     $('resGanho').classList.toggle('negative', result.consortiumGain < 0);
-    $('resRoi').textContent =
-      `Retorno estimado de ${S.Calculos.percent(result.consortiumRoi)} sobre o valor pago.`;
 
     $('resCreditoInicial').textContent = S.Calculos.brl(result.input.credit);
     $('resCreditoCorrigido').textContent = S.Calculos.brl(result.correctedCredit);

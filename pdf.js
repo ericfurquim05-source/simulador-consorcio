@@ -67,6 +67,10 @@
         .metric.main{border-color:#ffb45d;background:#fff8ef}
         .metric.gain{border-color:#90d7a4;background:#f0fbf3}
         .metric.gain b{color:#248a42}
+        .metric-insights{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid #cfe6d5}
+        .metric-insights div+div{padding-left:8px;border-left:1px solid #cfe6d5}
+        .metric-insights span{display:block;color:#4f6455;font-size:8px;line-height:1.2}
+        .metric-insights strong{display:block;margin-top:3px;color:#248a42;font-size:10px;line-height:1.2}
         .growth{display:flex;justify-content:space-between;align-items:center;background:#17212b;color:#fff;border-radius:9px;padding:10px 13px;margin-top:8px}
         .growth div{text-align:center;flex:1}
         .growth span{display:block;color:#aeb9c3;font-size:10px}
@@ -119,7 +123,7 @@
             <div class="metric"><span>Parcela inicial</span><b>${calc.brl(result.basePayment)}</b></div>
             <div class="metric"><span>Total pago no período</span><b>${calc.brl(result.totalPaid)}</b></div>
             <div class="metric main"><span>Valor estimado recebido</span><b>${calc.brl(result.received)}</b></div>
-            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b></div>
+            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade do consórcio</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Eficiência do capital</span><strong>${calc.brl(result.consortiumCapitalEfficiency)} por R$ 1</strong></div></div></div>
           </div>
           <div class="growth"><div><span>Carta inicial</span><b>${calc.brl(result.input.credit)}</b></div><div class="arrow">→</div><div><span>Carta corrigida</span><b>${calc.brl(result.correctedCredit)}</b></div></div>
         </div>
@@ -132,7 +136,7 @@
 
         <div class="section">
           <h2>Comparação completa</h2>
-          <table class="table"><thead><tr><th>Opção</th><th>Valor colocado</th><th>Ganho estimado</th><th>Total final</th></tr></thead><tbody>${result.options.map(option => `<tr><td>${escapeHtml(option.name)}</td><td>${calc.brl(option.invested)}</td><td>${calc.brl(option.gain)}</td><td>${calc.brl(option.total)}</td></tr>`).join('')}</tbody></table>
+          <table class="table"><thead><tr><th>Opção</th><th>Valor colocado</th><th>Ganho estimado</th><th>Rentabilidade</th></tr></thead><tbody>${result.options.map(option => { const profitability = option.invested ? option.gain / option.invested * 100 : 0; return `<tr><td>${escapeHtml(option.name)}</td><td>${calc.brl(option.invested)}</td><td>${calc.brl(option.gain)}</td><td>${calc.percent(profitability, 1)}</td></tr>`; }).join('')}</tbody></table>
         </div>
 
         <div class="fine"><b>Premissas:</b> INCC ${calc.percent(result.input.incc * 100)} a.a.; venda estimada em ${calc.percent(result.input.saleRate * 100)} do crédito disponível; renda fixa de ${calc.percent(result.input.fixedAnnual * 100)} a.a.; poupança de ${calc.percent(result.input.savingsMonthly * 100, 4)} a.m.; referência: ${escapeHtml(result.input.reference || 'não informada')}.<br><b>Aviso:</b> projeção matemática sem garantia de contemplação, prazo, valor de venda ou rentabilidade. Relatório emitido por ${company}.</div>
