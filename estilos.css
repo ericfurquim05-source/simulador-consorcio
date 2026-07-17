@@ -156,3 +156,8 @@ button{cursor:pointer}
   .professional-scenario-grid{grid-template-columns:1fr}
   .metric-list .metric-total strong{font-size:17px}
 }
+
+/* Ajustes v2.2.5 — financiamento imobiliário */
+.control select{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#fff;padding:13px 6px;font-size:16px;appearance:auto}
+.control select option{background:#0d141d;color:#fff}
+.select-control{padding-right:10px}

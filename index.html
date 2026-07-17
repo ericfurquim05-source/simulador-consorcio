@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.4 BETA</title>
-  <link rel="manifest" href="./manifest.json?v=223">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=223">
-  <link rel="stylesheet" href="./estilos.css?v=223">
+  <title>Simulador de Consórcio — v2.2.5 BETA</title>
+  <link rel="manifest" href="./manifest.json?v=225">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=225">
+  <link rel="stylesheet" href="./estilos.css?v=225">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.4 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.5 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -289,12 +289,30 @@
                   <div class="control"><input id="patEntradaFinanciamento" type="number" value="20" step="0.1" min="0" max="100"><span>% do imóvel</span></div>
                 </div>
                 <div class="field">
-                  <label for="patTaxaFinanciamento">Taxa anual do financiamento</label>
-                  <div class="control"><input id="patTaxaFinanciamento" type="number" value="12" step="0.1" min="0"><span>% a.a.</span></div>
+                  <label for="patSistemaFinanciamento">Sistema de amortização</label>
+                  <div class="control select-control">
+                    <select id="patSistemaFinanciamento">
+                      <option value="sac" selected>SAC</option>
+                      <option value="price">Price</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="patTaxaFinanciamento">Taxa efetiva anual</label>
+                  <div class="control"><input id="patTaxaFinanciamento" type="number" value="11.50" step="0.01" min="0"><span>% a.a.</span></div>
+                </div>
+                <div class="field">
+                  <label for="patTRFinanciamento">TR mensal estimada</label>
+                  <div class="control"><input id="patTRFinanciamento" type="number" value="0.17" step="0.01" min="0"><span>% a.m.</span></div>
                 </div>
                 <div class="field">
                   <label for="patPrazoFinanciamento">Prazo do financiamento</label>
                   <div class="control"><input id="patPrazoFinanciamento" type="number" value="360" min="1" max="500"><span>meses</span></div>
+                </div>
+                <div class="field">
+                  <label for="patCustosFinanciamento">Seguros e tarifas mensais</label>
+                  <div class="control money-control"><span>R$</span><input id="patCustosFinanciamento" type="text" inputmode="numeric" value="0" autocomplete="off"></div>
+                  <small>Campo opcional para aproximar MIP, DFI e tarifa administrativa.</small>
                 </div>
               </div>
             </div>
@@ -313,7 +331,7 @@
               </div>
             </div>
             <div class="assumption-footer">
-              <span>O financiamento é estimado pelo <b>sistema Price</b>. Todos os valores e taxas podem ser alterados.</span>
+              <span>Referência inicial editável: <b>SAC</b>, taxa efetiva de <b>11,50% a.a.</b> e TR projetada de <b>0,17% a.m.</b>. Para maior precisão, use os dados da proposta bancária.</span>
             </div>
           </details>
 
@@ -328,17 +346,6 @@
                 <div class="eyebrow">Comparativo principal</div>
                 <h2>Consórcio x financiamento</h2>
                 <p class="lead comparison-lead">Compare a parcela mensal, o valor do aluguel e o total estimado pago no final de cada operação.</p>
-              </div>
-            </div>
-
-            <div class="difference-strip patrimony-differences result-differences">
-              <div class="difference-item featured-difference">
-                <span>Diferença no total estimado pago</span>
-                <strong id="patResDiferencaCusto">R$ 0,00</strong>
-              </div>
-              <div class="difference-item">
-                <span>Diferença mensal depois do aluguel</span>
-                <strong id="patResDiferencaMensal">R$ 0,00</strong>
               </div>
             </div>
 
@@ -358,6 +365,7 @@
                 <div class="scenario-title"><span>Financiamento</span><b id="patFinPrazoBadge">0 meses</b></div>
                 <div class="metric-list">
                   <div><span>Parcela inicial estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
+                  <div><span>Parcela final estimada</span><strong id="patFinParcelaFinal">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patFinAluguel">R$ 0,00</strong></div>
                   <div class="metric-emphasis"><span id="patFinSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patFinSaldo">R$ 0,00</strong></div>
                   <div class="metric-total"><span>Total estimado pago no final</span><strong id="patFinTotal">R$ 0,00</strong></div>
@@ -395,8 +403,10 @@
                     <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
                     <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
                     <div><span>Prazo contratado</span><strong id="patFinPrazoDetalhe">0 meses</strong></div>
-                    <div><span>Taxa anual informada</span><strong id="patFinTaxaDetalhe">0,00% a.a.</strong></div>
-                    <div><span>Sistema de cálculo</span><strong>Price</strong></div>
+                    <div><span>Taxa efetiva anual</span><strong id="patFinTaxaDetalhe">0,00% a.a.</strong></div>
+                    <div><span>TR mensal projetada</span><strong id="patFinTRDetalhe">0,00% a.m.</strong></div>
+                    <div><span>Sistema de amortização</span><strong id="patFinSistemaDetalhe">SAC</strong></div>
+                    <div><span>Seguros e tarifas mensais</span><strong id="patFinCustosDetalhe">R$ 0,00</strong></div>
                   </div>
                 </section>
               </div>
@@ -404,7 +414,7 @@
 
             <details class="calculation-note">
               <summary>Como esta versão calcula?</summary>
-              <p>No consórcio, o total estimado considera as parcelas, o lance próprio e eventual complemento para adquirir o mesmo imóvel. O lance embutido reduz o crédito liberado. No financiamento, o total considera a entrada e as parcelas estimadas pelo sistema Price. O aluguel aparece somente como renda mensal para mostrar quanto ainda precisa sair do bolso.</p>
+              <p>No consórcio, o total estimado considera as parcelas, o lance próprio e eventual complemento para adquirir o mesmo imóvel. O lance embutido reduz o crédito liberado. No financiamento, o cálculo usa o sistema SAC ou Price escolhido, a taxa efetiva anual, a TR mensal projetada e os custos mensais informados. O aluguel aparece somente como renda mensal para mostrar quanto ainda precisa sair do bolso.</p>
             </details>
           </article>
 
@@ -478,11 +488,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=224" defer></script>
-  <script src="./graficos.js?v=224" defer></script>
-  <script src="./configuracoes.js?v=224" defer></script>
-  <script src="./pdf.js?v=224" defer></script>
-  <script src="./app.js?v=224" defer></script>
-  <script src="./alavancagem.js?v=224" defer></script>
+  <script src="./calculos.js?v=225" defer></script>
+  <script src="./graficos.js?v=225" defer></script>
+  <script src="./configuracoes.js?v=225" defer></script>
+  <script src="./pdf.js?v=225" defer></script>
+  <script src="./app.js?v=225" defer></script>
+  <script src="./alavancagem.js?v=225" defer></script>
 </body>
 </html>

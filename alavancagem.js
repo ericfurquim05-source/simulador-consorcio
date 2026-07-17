@@ -89,8 +89,11 @@
       reducedPaymentRate: number(valueOf('patParcelaReduzida', '50')) / 100,
       contemplationMonth: Math.round(number(valueOf('patMesContemplacao', '24'))),
       financingEntryRate: number(valueOf('patEntradaFinanciamento', '20')) / 100,
-      financingAnnualRate: number(valueOf('patTaxaFinanciamento', '12')) / 100,
+      financingSystem: String(valueOf('patSistemaFinanciamento', 'sac')).toLowerCase(),
+      financingAnnualRate: number(valueOf('patTaxaFinanciamento', '11.50')) / 100,
+      financingTRMonthly: number(valueOf('patTRFinanciamento', '0.17')) / 100,
       financingTerm: Math.round(number(valueOf('patPrazoFinanciamento', '360'))),
+      financingMonthlyCosts: moneyFromText(valueOf('patCustosFinanciamento', '0')),
       appreciation: number(valueOf('patValorizacao', '5')) / 100,
       rentAdjustment: number(valueOf('patReajusteAluguel', '5')) / 100
     };
@@ -104,6 +107,8 @@
     if(input.consortiumTerm <= 0 || input.financingTerm <= 0) throw new Error('Revise os prazos informados.');
     if(input.reducedPaymentRate <= 0 || input.reducedPaymentRate > 1) throw new Error('Revise o percentual da parcela antes da contemplação.');
     if(input.financingEntryRate < 0 || input.financingEntryRate >= 1) throw new Error('A entrada do financiamento deve ficar abaixo de 100%.');
+    if(!['sac','price'].includes(input.financingSystem)) throw new Error('Revise o sistema de amortização do financiamento.');
+    if(input.financingAnnualRate < 0 || input.financingTRMonthly < 0 || input.financingMonthlyCosts < 0) throw new Error('Revise as taxas e custos do financiamento.');
     if(input.contemplationMonth <= 0 || input.contemplationMonth > input.consortiumTerm) throw new Error('Revise o mês estimado da contemplação.');
   }
 
@@ -202,13 +207,56 @@
   function simulateFinancing(input){
     const entry = input.propertyValue * input.financingEntryRate;
     const financedAmount = Math.max(0, input.propertyValue - entry);
-    const monthlyRate = annualToMonthly(input.financingAnnualRate);
-    const payment = pricePayment(financedAmount, monthlyRate, input.financingTerm);
+    const interestMonthly = annualToMonthly(input.financingAnnualRate);
     const monthlyRent = input.propertyValue * input.rentalYield;
-    const totalPaid = entry + payment * input.financingTerm;
+    const monthlyCosts = input.financingMonthlyCosts;
+
+    let balance = financedAmount;
+    let initialPayment = 0;
+    let finalPayment = 0;
+    let totalInstallments = 0;
+
+    for(let month = 1; month <= input.financingTerm; month += 1){
+      const remainingMonths = input.financingTerm - month + 1;
+
+      // A TR projetada corrige o saldo devedor antes do cálculo mensal.
+      balance *= 1 + input.financingTRMonthly;
+
+      let amortization = 0;
+      let basePayment = 0;
+
+      if(input.financingSystem === 'sac'){
+        amortization = remainingMonths > 0 ? balance / remainingMonths : balance;
+        const interest = balance * interestMonthly;
+        basePayment = amortization + interest;
+      }else{
+        basePayment = pricePayment(balance, interestMonthly, remainingMonths);
+        const interest = balance * interestMonthly;
+        amortization = Math.max(0, basePayment - interest);
+      }
+
+      const payment = basePayment + monthlyCosts;
+      if(month === 1) initialPayment = payment;
+      finalPayment = payment;
+      totalInstallments += payment;
+      balance = Math.max(0, balance - amortization);
+    }
+
+    const totalPaid = entry + totalInstallments;
     const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.financingTerm);
 
-    return { entry, financedAmount, payment, monthlyRent, totalPaid, propertyValueAtEnd };
+    return {
+      entry,
+      financedAmount,
+      payment: initialPayment,
+      finalPayment,
+      monthlyRent,
+      totalPaid,
+      propertyValueAtEnd,
+      interestMonthly,
+      monthlyCosts,
+      system: input.financingSystem
+    };
   }
 
   function setMonthlyResult(labelId, valueId, income, payment){
@@ -267,29 +315,17 @@
     setText('patFinPrazoBadge', `${input.financingTerm} meses`);
     setText('patFinPrazoDetalhe', `${input.financingTerm} meses`);
     setText('patFinTaxaDetalhe', `${(input.financingAnnualRate * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.a.`);
+    setText('patFinTRDetalhe', `${(input.financingTRMonthly * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.m.`);
+    setText('patFinSistemaDetalhe', input.financingSystem === 'sac' ? 'SAC' : 'Price');
+    setText('patFinCustosDetalhe', brl(input.financingMonthlyCosts));
     setText('patFinEntrada', brl(financing.entry));
     setText('patFinValor', brl(financing.financedAmount));
     setText('patFinParcela', brl(financing.payment));
+    setText('patFinParcelaFinal', brl(financing.finalPayment));
     setText('patFinAluguel', brl(financing.monthlyRent));
     const financingPocket = setMonthlyResult('patFinSaldoLabel', 'patFinSaldo', financing.monthlyRent, financing.payment);
     setText('patFinTotal', brl(financing.totalPaid));
     setText('patFinImovelFinal', brl(financing.propertyValueAtEnd));
-
-    const totalDifference = financing.totalPaid - consortium.totalPaid;
-    setText(
-      'patResDiferencaCusto',
-      totalDifference >= 0
-        ? `${brl(totalDifference)} a mais no financiamento`
-        : `${brl(Math.abs(totalDifference))} a mais no consórcio`
-    );
-
-    const monthlyDifference = financingPocket - consortiumPocket;
-    setText(
-      'patResDiferencaMensal',
-      monthlyDifference >= 0
-        ? `${brl(monthlyDifference)} a menos do bolso no consórcio`
-        : `${brl(Math.abs(monthlyDifference))} a menos do bolso no financiamento`
-    );
 
     if(resultSection){
       setTimeout(() => resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
@@ -311,7 +347,7 @@
   }
 
   function bind(){
-    ['patValorImovel','patCredito','patCapital','patLance'].forEach(id => {
+    ['patValorImovel','patCredito','patCapital','patLance','patCustosFinanciamento'].forEach(id => {
       const element = get(id);
       if(!element) return;
       element.addEventListener('input', () => formatMoneyInput(element));
