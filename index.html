@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.7 BETA</title>
-  <link rel="manifest" href="./manifest.json?v=227">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=227">
-  <link rel="stylesheet" href="./estilos.css?v=227">
+  <title>Simulador de Consórcio — v2.2.9 BETA</title>
+  <link rel="manifest" href="./manifest.json?v=229">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=229">
+  <link rel="stylesheet" href="./estilos.css?v=229">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.7 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.9 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -170,7 +170,7 @@
             <div class="table-wrap">
               <table class="comparison-table">
                 <thead>
-                  <tr><th>Opção</th><th>Você colocou</th><th>Ganho estimado</th><th>Rentabilidade sobre o valor investido</th><th>Total estimado ao final</th><th>Retorno para cada R$ 1.000 investidos</th></tr>
+                  <tr><th>Opção</th><th>Você colocou</th><th>Ganho estimado</th><th>Rentabilidade sobre o valor investido</th><th>Total estimado ao final</th><th>Retorno a cada R$ 1.000 investidos</th></tr>
                 </thead>
                 <tbody id="comparisonTableBody"></tbody>
               </table>
@@ -222,17 +222,13 @@
           <div class="form-grid patrimony-form">
             <div class="field">
               <label for="patValorImovel">Valor do imóvel</label>
-              <div class="control money-control"><span>R$</span><input id="patValorImovel" type="text" inputmode="numeric" value="100.000" autocomplete="off"></div>
+              <div class="control money-control"><span>R$</span><input id="patValorImovel" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
             </div>
             <div class="field">
               <label for="patCredito">Valor da carta</label>
-              <div class="control money-control"><span>R$</span><input id="patCredito" type="text" inputmode="numeric" value="100.000" autocomplete="off"></div>
+              <div class="control money-control"><span>R$</span><input id="patCredito" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
             </div>
-            <div class="field">
-              <label for="patCapital">Capital próprio disponível</label>
-              <div class="control money-control"><span>R$</span><input id="patCapital" type="text" inputmode="numeric" value="50.000" autocomplete="off"></div>
-            </div>
-            <div class="field">
+            <div class="field full">
               <label for="patRentabilidadeAluguel">Aluguel mensal estimado</label>
               <div class="control"><input id="patRentabilidadeAluguel" type="number" value="0.50" step="0.01" min="0"><span>% do imóvel</span></div>
             </div>
@@ -284,6 +280,11 @@
                   <div class="control"><input id="patPercentualEmbutidoLance" type="number" value="100" step="1" min="0" max="100"><span>% do lance</span></div>
                   <small>O restante do lance será considerado como recurso próprio.</small>
                 </div>
+                <div class="field" id="patRecursoProprioPrevistoField" hidden>
+                  <label>Recursos próprios previstos no lance</label>
+                  <div class="control output-control"><output id="patRecursoProprioPrevisto">R$ 0,00</output></div>
+                  <small>Calculado automaticamente conforme a carta, o reajuste, as parcelas ofertadas e a parte embutida.</small>
+                </div>
                 <div class="field">
                   <label for="patRentabilidadeAplicacao">Rendimento do capital aplicado</label>
                   <div class="control"><input id="patRentabilidadeAplicacao" type="number" value="1.00" step="0.01" min="0"><span>% a.m.</span></div>
@@ -305,8 +306,17 @@
                   <label for="patSistemaFinanciamento">Sistema de amortização</label>
                   <div class="control select-control">
                     <select id="patSistemaFinanciamento">
-                      <option value="sac" selected>SAC</option>
-                      <option value="price">Price</option>
+                      <option value="price" selected>Price</option>
+                      <option value="sac">SAC</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="patIndexadorFinanciamento">Modalidade da taxa</label>
+                  <div class="control select-control">
+                    <select id="patIndexadorFinanciamento">
+                      <option value="prefixada" selected>Prefixada</option>
+                      <option value="tr">Taxa + TR</option>
                     </select>
                   </div>
                 </div>
@@ -314,7 +324,7 @@
                   <label for="patTaxaFinanciamento">Taxa efetiva anual</label>
                   <div class="control"><input id="patTaxaFinanciamento" type="number" value="11.50" step="0.01" min="0"><span>% a.a.</span></div>
                 </div>
-                <div class="field">
+                <div class="field" id="patTRFinanciamentoField" hidden>
                   <label for="patTRFinanciamento">TR mensal estimada</label>
                   <div class="control"><input id="patTRFinanciamento" type="number" value="0.17" step="0.01" min="0"><span>% a.m.</span></div>
                 </div>
@@ -344,7 +354,7 @@
               </div>
             </div>
             <div class="assumption-footer">
-              <span>Referência inicial editável: <b>SAC</b>, taxa efetiva de <b>11,50% a.a.</b> e TR projetada de <b>0,17% a.m.</b>. Para maior precisão, use os dados da proposta bancária.</span>
+              <span>Referência inicial editável: <b>Price</b>, taxa <b>prefixada</b> de <b>11,50% a.a.</b> e prazo de <b>360 meses</b>. Também é possível selecionar SAC ou taxa acrescida de TR.</span>
             </div>
           </details>
 
@@ -420,9 +430,10 @@
                     <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
                     <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
                     <div><span>Prazo contratado</span><strong id="patFinPrazoDetalhe">0 meses</strong></div>
+                    <div><span>Modalidade da taxa</span><strong id="patFinIndexadorDetalhe">Prefixada</strong></div>
                     <div><span>Taxa efetiva anual</span><strong id="patFinTaxaDetalhe">0,00% a.a.</strong></div>
-                    <div><span>TR mensal projetada</span><strong id="patFinTRDetalhe">0,00% a.m.</strong></div>
-                    <div><span>Sistema de amortização</span><strong id="patFinSistemaDetalhe">SAC</strong></div>
+                    <div><span>TR mensal projetada</span><strong id="patFinTRDetalhe">Não se aplica</strong></div>
+                    <div><span>Sistema de amortização</span><strong id="patFinSistemaDetalhe">Price</strong></div>
                     <div><span>Seguros e tarifas mensais</span><strong id="patFinCustosDetalhe">R$ 0,00</strong></div>
                   </div>
                 </section>
@@ -431,7 +442,7 @@
 
             <details class="calculation-note">
               <summary>Como esta versão calcula?</summary>
-              <p>No consórcio, o lance é calculado pela parcela linear do grupo: carta vigente somada à taxa administrativa, dividida pelo prazo original e multiplicada pelas parcelas ofertadas. A parte embutida reduz o crédito liberado; a parte própria utiliza o capital do cliente. No financiamento, o cálculo usa SAC ou Price, taxa efetiva anual, TR projetada e custos mensais informados.</p>
+              <p>No consórcio, o lance é calculado pela parcela linear do grupo: carta vigente somada à taxa administrativa, dividida pelo prazo original e multiplicada pelas parcelas ofertadas. A parte embutida reduz o crédito liberado; a parte própria utiliza o capital do cliente. No financiamento, o cálculo usa Price ou SAC. A taxa pode ser prefixada ou acrescida da TR, conforme a configuração informada.</p>
             </details>
           </article>
 
@@ -505,11 +516,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=227" defer></script>
-  <script src="./graficos.js?v=227" defer></script>
-  <script src="./configuracoes.js?v=227" defer></script>
-  <script src="./pdf.js?v=227" defer></script>
-  <script src="./app.js?v=227" defer></script>
-  <script src="./alavancagem.js?v=227" defer></script>
+  <script src="./calculos.js?v=229" defer></script>
+  <script src="./graficos.js?v=229" defer></script>
+  <script src="./configuracoes.js?v=229" defer></script>
+  <script src="./pdf.js?v=229" defer></script>
+  <script src="./app.js?v=229" defer></script>
+  <script src="./alavancagem.js?v=229" defer></script>
 </body>
 </html>

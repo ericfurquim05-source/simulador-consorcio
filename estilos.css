@@ -72,7 +72,11 @@ button{cursor:pointer}
   .comparison-table tr{display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;background:#0b1219;border:1px solid var(--line);border-radius:13px;overflow:hidden}
   .comparison-table td{display:flex;flex-direction:column;justify-content:center;min-width:0;background:transparent;border:0!important;border-radius:0!important;padding:11px 10px;text-align:left!important;font-size:12px;overflow-wrap:anywhere}
   .comparison-table td:first-child{grid-column:1/-1;border-bottom:1px solid var(--line)!important;font-size:13px}
+  .comparison-table td:nth-child(2)::before{content:'Você colocou'}
+  .comparison-table td:nth-child(3)::before{content:'Ganho estimado'}
+  .comparison-table td:nth-child(4)::before{content:'Rentabilidade sobre o valor investido'}
   .comparison-table td:nth-child(5)::before{content:'Total estimado ao final'}
+  .comparison-table td:nth-child(6)::before{content:'Retorno a cada R$ 1.000 investidos'}
   .comparison-table td:not(:first-child)::before{display:block;margin-bottom:5px;color:var(--muted);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
   .best-badge{margin:5px 0 0;width:max-content}
   .credit-growth strong{font-size:15px;overflow-wrap:anywhere}
@@ -185,3 +189,4 @@ button{cursor:pointer}
   .vertical-chart-label b{font-size:9px}
   .comparison-table td:nth-child(5){font-size:16px}
 }
+.output-control output{display:block;width:100%;padding:13px 6px;color:#fff;font-size:18px;font-weight:850;line-height:1.2}

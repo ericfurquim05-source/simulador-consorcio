@@ -10,17 +10,42 @@
 
   function chartRows(result){
     const calc = S.Calculos;
-    const max = Math.max(...result.options.map(option => Math.max(0, option.gain)), 1);
+    const values = result.options.map(option => Math.max(0, Number(option.gain) || 0));
+    const max = Math.max(...values, 1);
+    const palette = {
+      consorcio: '#ff8a00',
+      renda: '#398fd5',
+      poupanca: '#d6a72d'
+    };
+
     return `<div class="pdf-column-chart">${result.options.map(option => {
-      const height = option.gain > 0
-        ? Math.max(8, Math.min(100, Math.max(0, option.gain) / max * 100))
-        : 2;
-      const cls = option.key === 'consorcio' ? 'consorcio' : option.key === 'renda' ? 'renda' : 'poupanca';
-      return `<div class="pdf-column-item">
-        <b>${calc.brl(option.gain)}</b>
-        <div class="pdf-column-track"><div class="${cls}" style="height:${height}%"></div></div>
-        <span>${escapeHtml(option.name)}</span>
+      const value = Math.max(0, Number(option.gain) || 0);
+      const height = value > 0 ? Math.max(12, Math.round(value / max * 78)) : 2;
+      const color = palette[option.key] || palette.poupanca;
+      return `<div class="pdf-chart-item">
+        <b>${escapeHtml(calc.brl(value))}</b>
+        <div class="pdf-chart-stage"><span class="pdf-chart-bar" style="height:${height}px;border-left-color:${color}"></span></div>
+        <strong>${escapeHtml(option.name)}</strong>
       </div>`;
+    }).join('')}</div>`;
+  }
+
+  function comparisonCards(result){
+    const calc = S.Calculos;
+    return `<div class="pdf-comparison-grid">${result.options.map(option => {
+      const profitability = option.invested ? option.gain / option.invested * 100 : 0;
+      const capitalEfficiency = option.invested ? option.total / option.invested * 1000 : 0;
+      const best = option.key === result.best.key ? '<span class="pdf-best">Maior resultado</span>' : '';
+      return `<article class="pdf-option-card ${option.key}">
+        <div class="pdf-option-head"><h3>${escapeHtml(option.name)}</h3>${best}</div>
+        <div class="pdf-option-grid">
+          <div><span>Você colocou</span><b>${calc.brl(option.invested)}</b></div>
+          <div><span>Ganho estimado</span><b class="gain-value">${calc.brl(option.gain)}</b></div>
+          <div><span>Rentabilidade sobre o valor investido</span><b>${calc.percent(profitability, 1)}</b></div>
+          <div><span>Retorno a cada R$ 1.000 investidos</span><b>${calc.brl(capitalEfficiency)}</b></div>
+        </div>
+        <div class="pdf-option-total"><span>Total estimado ao final</span><strong>${calc.brl(option.total)}</strong></div>
+      </article>`;
     }).join('')}</div>`;
   }
 
@@ -45,7 +70,7 @@
       <title>Relatório de Simulação</title>
       <style>
         @page{size:A4 portrait;margin:7mm}
-        *{box-sizing:border-box}
+        *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
         html,body{margin:0;padding:0}
         body{color:#17202a;font-family:Arial,Helvetica,sans-serif;background:#eef1f4}
         .report{width:196mm;margin:14px auto;background:#fff;padding:9mm;box-shadow:0 10px 40px rgba(0,0,0,.15)}
@@ -80,18 +105,26 @@
         .growth b{display:block;margin-top:4px;font-size:16px}
         .arrow{color:#ff9a22;font-size:18px;flex:0 0 auto!important}
         .chart-help{font-size:11.5px;line-height:1.4;color:#66727d;margin:-1px 0 7px}
-        .pdf-column-chart{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:end;border:1px solid #e0e5e9;border-radius:9px;background:#f8fafb;padding:9px 12px 8px}
-        .pdf-column-item{text-align:center;display:grid;grid-template-rows:auto 78px auto;gap:4px;align-items:end}
-        .pdf-column-item>b{font-size:11px;color:#26313b}
-        .pdf-column-item>span{font-size:10px;font-weight:bold;color:#3d4852}
-        .pdf-column-track{position:relative;width:48px;height:78px;margin:0 auto;background:#edf0f2;border-radius:7px 7px 4px 4px;overflow:hidden}
-        .pdf-column-track>div{position:absolute;left:0;right:0;bottom:0;border-radius:6px 6px 3px 3px}
-        .pdf-column-track .consorcio{background:#ff8a00}.pdf-column-track .renda{background:#398fd5}.pdf-column-track .poupanca{background:#d6a72d}
-        .table{width:100%;border-collapse:collapse;font-size:11px}
-        .table th{background:#17212b;color:#fff;padding:7px 8px;text-align:right}
-        .table th:first-child{text-align:left}
-        .table td{border-bottom:1px solid #e2e6e9;padding:7px 8px;text-align:right}
-        .table td:first-child{text-align:left;font-weight:bold}
+        .pdf-column-chart{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #dfe5ea;border-radius:11px;padding:9px 12px 7px;background:#fff}
+        .pdf-chart-item{text-align:center;min-width:0}
+        .pdf-chart-item>b{display:block;min-height:15px;font-size:10px;color:#26313b;white-space:nowrap}
+        .pdf-chart-stage{height:84px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid #cfd7dd;margin-top:3px}
+        .pdf-chart-bar{display:block;width:0;border-left:30px solid #ff8a00}
+        .pdf-chart-item>strong{display:block;margin-top:6px;font-size:10px;color:#3d4852}
+        .pdf-comparison-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+        .pdf-option-card{position:relative;border:1px solid #dfe5ea;border-top:4px solid #8b98a4;border-radius:10px;background:#fff;overflow:hidden}
+        .pdf-option-card.consorcio{border-top-color:#ff8a00}.pdf-option-card.renda{border-top-color:#398fd5}.pdf-option-card.poupanca{border-top-color:#d6a72d}
+        .pdf-option-head{display:flex;justify-content:space-between;align-items:center;gap:5px;padding:7px 8px;border-bottom:1px solid #e5e9ec;background:#f8fafb}
+        .pdf-option-head h3{font-size:13px;margin:0;color:#1d2730}
+        .pdf-best{display:inline-block;border-radius:999px;background:#ff8a00;color:#fff;padding:3px 5px;font-size:6.5px;font-weight:900;text-transform:uppercase;white-space:nowrap}
+        .pdf-option-grid{display:grid;grid-template-columns:1fr 1fr}
+        .pdf-option-grid>div{min-height:47px;padding:7px 8px;border-bottom:1px solid #e8ecef}
+        .pdf-option-grid>div:nth-child(odd){border-right:1px solid #e8ecef}
+        .pdf-option-grid span,.pdf-option-total span{display:block;font-size:7.1px;line-height:1.2;color:#6e7984;text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+        .pdf-option-grid b{display:block;margin-top:4px;font-size:10.3px;line-height:1.2;color:#24303a}
+        .pdf-option-grid .gain-value{color:#248a42}
+        .pdf-option-total{padding:7px 8px 8px;background:#f8fafb}
+        .pdf-option-total strong{display:block;margin-top:3px;font-size:15px;line-height:1.1;color:#17202a}
         .fine{font-size:9.5px;color:#5f6b76;line-height:1.42;margin-top:13px;border-top:1px solid #dfe4e8;padding-top:9px}
         .printbar{position:fixed;right:18px;bottom:18px;display:flex;gap:8px}
         .printbar button{border:0;border-radius:10px;padding:12px 15px;font-weight:800;cursor:pointer}
@@ -104,7 +137,7 @@
           html,body{width:100%;height:auto;background:#fff}
           .report{width:auto;margin:0;padding:0;box-shadow:none}
           .printbar{display:none}
-          .top,.identity,.metrics,.growth,.chart-row,.table,.fine{break-inside:avoid;page-break-inside:avoid}
+          .top,.identity,.metrics,.growth,.pdf-column-chart,.pdf-comparison-grid,.fine{break-inside:avoid;page-break-inside:avoid}
         }
       </style></head><body><div class="report">
         <div class="top">
@@ -128,7 +161,7 @@
             <div class="metric"><span>Parcela inicial</span><b>${calc.brl(result.basePayment)}</b></div>
             <div class="metric"><span>Total pago no período</span><b>${calc.brl(result.totalPaid)}</b></div>
             <div class="metric main"><span>Valor estimado recebido</span><b>${calc.brl(result.received)}</b></div>
-            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade sobre o valor investido</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Retorno para cada R$ 1.000 investidos</span><strong>${calc.brl(result.consortiumCapitalEfficiency * 1000)}</strong></div></div></div>
+            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b></div>
           </div>
           <div class="growth"><div><span>Carta inicial</span><b>${calc.brl(result.input.credit)}</b></div><div class="arrow">→</div><div><span>Carta corrigida</span><b>${calc.brl(result.correctedCredit)}</b></div></div>
         </div>
@@ -140,8 +173,8 @@
         </div>
 
         <div class="section">
-          <h2>Comparação completa</h2>
-          <table class="table"><thead><tr><th>Opção</th><th>Valor colocado</th><th>Ganho estimado</th><th>Rentabilidade sobre o valor investido</th></tr></thead><tbody>${result.options.map(option => { const profitability = option.invested ? option.gain / option.invested * 100 : 0; return `<tr><td>${escapeHtml(option.name)}</td><td>${calc.brl(option.invested)}</td><td>${calc.brl(option.gain)}</td><td>${calc.percent(profitability, 1)}</td></tr>`; }).join('')}</tbody></table>
+          <h2>Comparação financeira</h2>
+          ${comparisonCards(result)}
         </div>
 
         <div class="fine"><b>Premissas:</b> INCC ${calc.percent(result.input.incc * 100)} a.a.; venda estimada em ${calc.percent(result.input.saleRate * 100)} do crédito disponível; renda fixa de ${calc.percent(result.input.fixedAnnual * 100)} a.a.; poupança de ${calc.percent(result.input.savingsMonthly * 100, 4)} a.m.; referência: ${escapeHtml(result.input.reference || 'não informada')}.<br><b>Aviso:</b> projeção matemática sem garantia de contemplação, prazo, valor de venda ou rentabilidade. Relatório emitido por ${company}.</div>

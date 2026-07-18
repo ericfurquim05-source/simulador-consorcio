@@ -81,6 +81,45 @@
     if(yieldInput) yieldInput.value = type === 'comercial' ? '0.70' : '0.50';
   }
 
+  function toggleFinancingRateType(type){
+    const normalized = type === 'tr' ? 'tr' : 'prefixada';
+    const field = get('patTRFinanciamentoField');
+    const input = get('patTRFinanciamento');
+    if(field) field.hidden = normalized !== 'tr';
+    if(input) input.disabled = normalized !== 'tr';
+  }
+
+  function bidPreviewFromForm(){
+    const mode = String(valueOf('patModalidadeLance', 'sem')).toLowerCase();
+    const credit = moneyFromText(valueOf('patCredito'));
+    const term = Math.max(1, Math.round(number(valueOf('patPrazoConsorcio', '220'))));
+    const adminRate = number(valueOf('patTaxaAdmin', '24.2')) / 100;
+    const annualAdjustment = number(valueOf('patReajusteConsorcio', '5.5')) / 100;
+    const contemplationMonth = Math.max(1, Math.round(number(valueOf('patMesContemplacao', '24'))));
+    const completedYears = Math.floor((contemplationMonth - 1) / 12);
+    const adjustedCredit = credit * Math.pow(1 + annualAdjustment, completedYears);
+    const linearInstallment = term > 0 ? adjustedCredit * (1 + adminRate) / term : 0;
+    let installments = 0;
+    let embeddedShare = 0;
+    if(mode === 'fixo'){
+      installments = 44;
+      embeddedShare = 1;
+    }else if(mode === 'limitado' || mode === 'livre'){
+      installments = Math.max(0, Math.round(number(valueOf('patParcelasLance', '0'))));
+      embeddedShare = Math.min(0.5, Math.max(0, number(valueOf('patPercentualEmbutidoLance', '0')) / 100));
+    }
+    const totalBid = linearInstallment * installments;
+    return { totalBid, ownBid: Math.max(0, totalBid * (1 - embeddedShare)) };
+  }
+
+  function updateOwnResourcePreview(){
+    const field = get('patRecursoProprioPrevistoField');
+    const output = get('patRecursoProprioPrevisto');
+    const mode = String(valueOf('patModalidadeLance', 'sem')).toLowerCase();
+    if(field) field.hidden = mode === 'sem';
+    if(output) output.textContent = brl(bidPreviewFromForm().ownBid);
+  }
+
   function updateBidControls(mode){
     state.bidMode = BID_LABELS[mode] ? mode : 'sem';
 
@@ -100,6 +139,7 @@
       if(installmentsInput){ installmentsInput.value = '0'; installmentsInput.disabled = true; }
       if(embeddedInput){ embeddedInput.value = '0'; embeddedInput.disabled = true; }
       if(ruleText) ruleText.textContent = 'A contemplação é simulada sem oferta de lance.';
+      updateOwnResourcePreview();
       return;
     }
 
@@ -120,6 +160,7 @@
         embeddedInput.disabled = true;
       }
       if(ruleText) ruleText.textContent = 'Oferta fixa de 44 parcelas. Nesta regra, o lance pode ser integralmente embutido.';
+      updateOwnResourcePreview();
       return;
     }
 
@@ -146,13 +187,13 @@
         ? 'De 1 a 88 parcelas. Até 50% do lance ofertado pode ser embutido; o restante usa recursos próprios.'
         : 'Quantidade de parcelas editável. Até 50% do lance ofertado pode ser embutido; o restante usa recursos próprios.';
     }
+    updateOwnResourcePreview();
   }
 
   function readInput(){
     return {
       propertyValue: moneyFromText(valueOf('patValorImovel')),
       credit: moneyFromText(valueOf('patCredito')),
-      ownCapital: moneyFromText(valueOf('patCapital')),
       bidMode: String(valueOf('patModalidadeLance', 'sem')).toLowerCase(),
       bidInstallments: Math.round(number(valueOf('patParcelasLance', '0'))),
       embeddedBidShare: number(valueOf('patPercentualEmbutidoLance', '0')) / 100,
@@ -164,9 +205,12 @@
       reducedPaymentRate: number(valueOf('patParcelaReduzida', '50')) / 100,
       contemplationMonth: Math.round(number(valueOf('patMesContemplacao', '24'))),
       financingEntryRate: number(valueOf('patEntradaFinanciamento', '20')) / 100,
-      financingSystem: String(valueOf('patSistemaFinanciamento', 'sac')).toLowerCase(),
+      financingSystem: String(valueOf('patSistemaFinanciamento', 'price')).toLowerCase(),
+      financingRateType: String(valueOf('patIndexadorFinanciamento', 'prefixada')).toLowerCase(),
       financingAnnualRate: number(valueOf('patTaxaFinanciamento', '11.50')) / 100,
-      financingTRMonthly: number(valueOf('patTRFinanciamento', '0.17')) / 100,
+      financingTRMonthly: String(valueOf('patIndexadorFinanciamento', 'prefixada')).toLowerCase() === 'tr'
+        ? number(valueOf('patTRFinanciamento', '0.17')) / 100
+        : 0,
       financingTerm: Math.round(number(valueOf('patPrazoFinanciamento', '360'))),
       financingMonthlyCosts: moneyFromText(valueOf('patCustosFinanciamento', '0')),
       appreciation: number(valueOf('patValorizacao', '5')) / 100,
@@ -189,11 +233,11 @@
   function validate(input){
     if(input.propertyValue <= 0) throw new Error('Informe o valor do imóvel.');
     if(input.credit <= 0) throw new Error('Informe o valor da carta.');
-    if(input.ownCapital < 0) throw new Error('Revise o capital próprio disponível.');
     if(input.consortiumTerm <= 0 || input.financingTerm <= 0) throw new Error('Revise os prazos informados.');
     if(input.reducedPaymentRate <= 0 || input.reducedPaymentRate > 1) throw new Error('Revise o percentual da parcela antes da contemplação.');
     if(input.financingEntryRate < 0 || input.financingEntryRate >= 1) throw new Error('A entrada do financiamento deve ficar abaixo de 100%.');
     if(!['sac','price'].includes(input.financingSystem)) throw new Error('Revise o sistema de amortização do financiamento.');
+    if(!['prefixada','tr'].includes(input.financingRateType)) throw new Error('Revise a modalidade da taxa do financiamento.');
     if(input.financingAnnualRate < 0 || input.financingTRMonthly < 0 || input.financingMonthlyCosts < 0) throw new Error('Revise as taxas e custos do financiamento.');
     if(input.contemplationMonth <= 0 || input.contemplationMonth > input.consortiumTerm) throw new Error('Revise o mês estimado da contemplação.');
 
@@ -204,8 +248,8 @@
     if(['limitado','livre'].includes(bid.mode) && (bid.embeddedShare < 0 || bid.embeddedShare > 0.5)) throw new Error('No lance limitado ou livre, a parte embutida pode representar no máximo 50% do lance ofertado.');
   }
 
-  function simulateCapitalUntilContemplation(input, initialFullPayment){
-    let capital = input.ownCapital;
+  function simulateCapitalUntilContemplation(input, initialFullPayment, initialCapital){
+    let capital = Math.max(0, initialCapital);
     let currentFullPayment = initialFullPayment;
 
     for(let month = 1; month < input.contemplationMonth; month += 1){
@@ -225,12 +269,13 @@
     let currentFullPayment = balance / input.consortiumTerm;
     const initialFullPayment = currentFullPayment;
     const initialReducedPayment = initialFullPayment * input.reducedPaymentRate;
-    const capitalAtContemplation = simulateCapitalUntilContemplation(input, initialFullPayment);
 
     const completedYears = Math.floor((input.contemplationMonth - 1) / 12);
     const adjustedCredit = input.credit * Math.pow(1 + input.consortiumAdjustment, completedYears);
     const linearBidInstallment = adjustedCredit * (1 + input.adminRate) / input.consortiumTerm;
     const requestedTotalBid = linearBidInstallment * bid.installments;
+    const capitalInitiallyReserved = Math.max(0, requestedTotalBid * (1 - bid.embeddedShare));
+    const capitalAtContemplation = simulateCapitalUntilContemplation(input, initialFullPayment, capitalInitiallyReserved);
     const propertyAtContemplation = futureValue(input.propertyValue, input.appreciation, input.contemplationMonth - 1);
 
     let totalInstallmentsPaid = 0;
@@ -276,7 +321,7 @@
     const capitalRequired = ownBidUsed + purchaseComplement;
     const capitalGap = Math.max(0, capitalRequired - capitalAtContemplation);
     const capitalRemaining = Math.max(0, capitalAtContemplation - capitalRequired);
-    const initialInvestmentIncome = input.ownCapital * input.investmentYield;
+    const initialInvestmentIncome = capitalInitiallyReserved * input.investmentYield;
     const rentAtContemplation = input.propertyValue * input.rentalYield * Math.pow(1 + input.rentAdjustment, completedYears);
     const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.consortiumTerm);
 
@@ -292,6 +337,7 @@
       propertyAtContemplation,
       purchaseComplement,
       ownBid: ownBidUsed,
+      capitalInitiallyReserved,
       capitalAtContemplation,
       capitalRequired,
       capitalGap,
@@ -418,7 +464,10 @@
     setText('patFinPrazoBadge', `${input.financingTerm} meses`);
     setText('patFinPrazoDetalhe', `${input.financingTerm} meses`);
     setText('patFinTaxaDetalhe', `${(input.financingAnnualRate * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.a.`);
-    setText('patFinTRDetalhe', `${(input.financingTRMonthly * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.m.`);
+    setText('patFinIndexadorDetalhe', input.financingRateType === 'tr' ? 'Taxa + TR' : 'Prefixada');
+    setText('patFinTRDetalhe', input.financingRateType === 'tr'
+      ? `${(input.financingTRMonthly * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.m.`
+      : 'Não se aplica');
     setText('patFinSistemaDetalhe', input.financingSystem === 'sac' ? 'SAC' : 'Price');
     setText('patFinCustosDetalhe', brl(input.financingMonthlyCosts));
     setText('patFinEntrada', brl(financing.entry));
@@ -450,7 +499,7 @@
   }
 
   function bind(){
-    ['patValorImovel','patCredito','patCapital','patCustosFinanciamento'].forEach(id => {
+    ['patValorImovel','patCredito','patCustosFinanciamento'].forEach(id => {
       const element = get(id);
       if(!element) return;
       element.addEventListener('input', () => formatMoneyInput(element));
@@ -467,7 +516,16 @@
     const consortiumTerm = get('patPrazoConsorcio');
     if(consortiumTerm) consortiumTerm.addEventListener('input', () => {
       if(state.bidMode === 'livre') updateBidControls('livre');
+      updateOwnResourcePreview();
     });
+
+    ['patCredito','patTaxaAdmin','patReajusteConsorcio','patMesContemplacao','patParcelasLance','patPercentualEmbutidoLance'].forEach(id => {
+      const element = get(id);
+      if(element) element.addEventListener('input', updateOwnResourcePreview);
+    });
+
+    const rateType = get('patIndexadorFinanciamento');
+    if(rateType) rateType.addEventListener('change', event => toggleFinancingRateType(event.target.value));
 
     const calculateButton = get('patCalcularBtn');
     if(calculateButton) calculateButton.addEventListener('click', calculate);
@@ -478,6 +536,8 @@
     bind();
     setPropertyType(state.propertyType);
     updateBidControls(valueOf('patModalidadeLance', 'sem'));
+    toggleFinancingRateType(valueOf('patIndexadorFinanciamento', 'prefixada'));
+    updateOwnResourcePreview();
   }
 
   document.addEventListener('DOMContentLoaded', init);

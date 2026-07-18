@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.7-comparativo-total-grafico-colunas';
+const VERSION = 'simulador-consorcio-v2.2.9-pdf-patrimonio-price';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
