@@ -28,12 +28,13 @@
         if ('caches' in window) {
           const names = await caches.keys();
           await Promise.all(names.map(name => caches.delete(name)));
+          try { sessionStorage.clear(); } catch (_) {}
         }
-        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.1.6…';
+        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.2.13…';
       } catch (e) {
         document.getElementById('status').textContent = 'Abrindo a versão atualizada…';
       }
-      setTimeout(() => location.replace('./index.html?v=216&t=' + Date.now()), 800);
+      setTimeout(() => location.replace('./index.html?v=2213&t=' + Date.now()), 800);
     })();
   </script>
 </body>

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.12 BETA</title>
+  <title>Simulador de Consórcio — v2.2.13 BETA</title>
   <link rel="manifest" href="./manifest.json?v=2212">
   <link rel="apple-touch-icon" href="./icon-192.png?v=2212">
   <link rel="stylesheet" href="./estilos.css?v=2212">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.12 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.13 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -395,11 +395,43 @@
               </div>
             </div>
 
+            <div id="patResultLanceResumo" class="bid-summary-card result-bid-summary" hidden>
+              <div class="bid-summary-head">
+                <div>
+                  <span>Estratégia de lance</span>
+                  <small id="patResultLanceParcelas">0 parcelas de 0</small>
+                </div>
+                <strong id="patResultLancePercentual">0,0% da carta</strong>
+              </div>
+              <div class="bid-summary-grid">
+                <div>
+                  <span>Carta na contemplação</span>
+                  <strong id="patResultLanceCarta">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Lance total</span>
+                  <strong id="patResultLanceTotal">R$ 0,00</strong>
+                  <small id="patResultLanceTotalPct">0,0% da carta</small>
+                </div>
+                <div>
+                  <span>Lance embutido</span>
+                  <strong id="patResultLanceEmbutido">R$ 0,00</strong>
+                  <small id="patResultLanceEmbutidoPct">0,0% da carta</small>
+                </div>
+                <div>
+                  <span>Recursos próprios</span>
+                  <strong id="patResultLanceProprio">R$ 0,00</strong>
+                  <small id="patResultLanceProprioPct">0,0% da carta</small>
+                </div>
+              </div>
+              <p id="patResultLanceTexto" class="bid-summary-text"></p>
+            </div>
+
             <div class="scenario-grid professional-scenario-grid">
               <div class="scenario-card consorcio-scenario">
                 <div class="scenario-title"><span>Consórcio</span><b id="patConsPrazoBadge">0 meses</b></div>
                 <div class="metric-list compact-comparison-list">
-                  <div><span>Parcela inicial estimada</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
+                  <div><span>Parcela cheia inicial</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
                 </div>
               </div>

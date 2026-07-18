@@ -234,6 +234,24 @@
     updateBidPreview();
   }
 
+  function applyVersionDefaults(){
+    const key = 'patrimonio-defaults-v2.2.13';
+    try{
+      if(sessionStorage.getItem(key)) return;
+      const property = get('patValorImovel');
+      const credit = get('patCredito');
+      const rent = get('patRentabilidadeAluguel');
+      const system = get('patSistemaFinanciamento');
+      if(property) property.value = '250.000';
+      if(credit) credit.value = '250.000';
+      if(rent) rent.value = '0.50';
+      if(system) system.value = 'price';
+      sessionStorage.setItem(key, '1');
+    }catch(_error){
+      // Mantém os valores declarados no HTML quando o armazenamento não estiver disponível.
+    }
+  }
+
   function readInput(){
     return {
       propertyValue: moneyFromText(valueOf('patValorImovel')),
@@ -445,6 +463,23 @@
     setText('patResLanceEmbutidoPercentual', pct(consortium.embeddedBidRate));
     setText('patResComplemento', brl(consortium.purchaseComplement));
 
+    const resultBidSummary = get('patResultLanceResumo');
+    const hasBid = consortium.bidMode !== 'sem' && consortium.bidInstallments > 0;
+    if(resultBidSummary) resultBidSummary.hidden = !hasBid;
+    if(hasBid){
+      const installmentsRate = input.consortiumTerm > 0 ? consortium.bidInstallments / input.consortiumTerm : 0;
+      setText('patResultLanceParcelas', `${consortium.bidInstallments} parcelas de ${input.consortiumTerm} (${pct(installmentsRate)} do prazo)`);
+      setText('patResultLancePercentual', `${pct(consortium.totalBidRate)} da carta`);
+      setText('patResultLanceCarta', brl(consortium.adjustedCredit));
+      setText('patResultLanceTotal', brl(consortium.totalBid));
+      setText('patResultLanceTotalPct', `${pct(consortium.totalBidRate)} da carta`);
+      setText('patResultLanceEmbutido', brl(consortium.embeddedBid));
+      setText('patResultLanceEmbutidoPct', `${pct(consortium.embeddedBidRate)} da carta`);
+      setText('patResultLanceProprio', brl(consortium.ownBid));
+      setText('patResultLanceProprioPct', `${pct(consortium.ownBidRate)} da carta`);
+      setText('patResultLanceTexto', `${consortium.bidInstallments} parcelas representam ${pct(installmentsRate)} do prazo do grupo. O lance de ${brl(consortium.totalBid)} equivale a ${pct(consortium.totalBidRate)} da carta estimada na contemplação.`);
+    }
+
     const sharedMonthlyRent = input.propertyValue * input.rentalYield;
     setText('patConsAluguel', brl(sharedMonthlyRent));
     setText('patFinAluguel', brl(sharedMonthlyRent));
@@ -486,6 +521,7 @@
   }
 
   function bind(){
+    applyVersionDefaults();
     ['patValorImovel','patCredito','patCustosFinanciamento'].forEach(id => {
       const element = get(id);
       if(!element) return;

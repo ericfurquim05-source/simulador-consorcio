@@ -213,3 +213,5 @@ button{cursor:pointer}
 .shared-rent-summary strong{white-space:nowrap;font-size:18px;color:var(--green)}
 .compact-comparison-list>div{min-height:64px}
 @media(max-width:680px){.shared-rent-summary{align-items:flex-start}.shared-rent-summary strong{font-size:17px}}
+
+.result-bid-summary{margin:15px 0 4px}.result-bid-summary[hidden]{display:none!important}
