@@ -436,10 +436,10 @@
     setText('patResLanceEmbutidoPercentual', pct(consortium.embeddedBidRate));
     setText('patResComplemento', brl(consortium.purchaseComplement));
 
+    const sharedMonthlyRent = input.propertyValue * input.rentalYield;
+    setText('patAluguelComum', brl(sharedMonthlyRent));
     setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
     setText('patConsParcelaInicial', brl(consortium.initialFullPayment));
-    setText('patConsParcela', brl(consortium.paymentAtContemplation));
-    setText('patConsAluguel', brl(consortium.rentAtContemplation));
     setText('patConsTotal', brl(consortium.totalPaid));
     setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
 
@@ -455,8 +455,6 @@
     setText('patFinEntrada', brl(financing.entry));
     setText('patFinValor', brl(financing.financedAmount));
     setText('patFinParcela', brl(financing.payment));
-    setText('patFinParcelaFinal', brl(financing.finalPayment));
-    setText('patFinAluguel', brl(financing.monthlyRent));
     setText('patFinTotal', brl(financing.totalPaid));
     setText('patFinImovelFinal', brl(financing.propertyValueAtEnd));
 
