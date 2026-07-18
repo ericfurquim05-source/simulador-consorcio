@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.5-financiamento-corrigido';
+const VERSION = 'simulador-consorcio-v2.2.6-regras-lance-parcelas';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
