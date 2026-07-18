@@ -52,6 +52,14 @@
     element.value = digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '';
   }
 
+  function updateRentPreview(){
+    const propertyValue = moneyFromText(valueOf('patValorImovel', '250.000'));
+    const rentalYield = number(valueOf('patRentabilidadeAluguel', '0.50')) / 100;
+    const monthlyRent = Math.max(0, propertyValue * rentalYield);
+    setText('patAluguelPreview', `Estimativa atual: ${brl(monthlyRent)} por mês.`);
+    return monthlyRent;
+  }
+
   function annualToMonthly(annualRate){
     return Math.pow(1 + annualRate, 1 / 12) - 1;
   }
@@ -86,6 +94,7 @@
     });
     const yieldInput = get('patRentabilidadeAluguel');
     if(yieldInput) yieldInput.value = type === 'comercial' ? '0.70' : '0.50';
+    updateRentPreview();
   }
 
   function toggleFinancingRateType(type){
@@ -437,10 +446,10 @@
     setText('patResComplemento', brl(consortium.purchaseComplement));
 
     const sharedMonthlyRent = input.propertyValue * input.rentalYield;
-    setText('patAluguelComum', brl(sharedMonthlyRent));
+    setText('patConsAluguel', brl(sharedMonthlyRent));
+    setText('patFinAluguel', brl(sharedMonthlyRent));
     setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
     setText('patConsParcelaInicial', brl(consortium.initialFullPayment));
-    setText('patConsTotal', brl(consortium.totalPaid));
     setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
 
     setText('patFinPrazoBadge', `${input.financingTerm} meses`);
@@ -455,7 +464,6 @@
     setText('patFinEntrada', brl(financing.entry));
     setText('patFinValor', brl(financing.financedAmount));
     setText('patFinParcela', brl(financing.payment));
-    setText('patFinTotal', brl(financing.totalPaid));
     setText('patFinImovelFinal', brl(financing.propertyValueAtEnd));
 
     if(resultSection){
@@ -481,13 +489,19 @@
     ['patValorImovel','patCredito','patCustosFinanciamento'].forEach(id => {
       const element = get(id);
       if(!element) return;
-      element.addEventListener('input', () => formatMoneyInput(element));
+      element.addEventListener('input', () => {
+        formatMoneyInput(element);
+        if(id === 'patValorImovel') updateRentPreview();
+      });
       element.addEventListener('focus', event => event.target.select());
     });
 
     document.querySelectorAll('[data-property-type]').forEach(button => {
       button.addEventListener('click', () => setPropertyType(button.dataset.propertyType));
     });
+
+    const rentalYieldInput = get('patRentabilidadeAluguel');
+    if(rentalYieldInput) rentalYieldInput.addEventListener('input', updateRentPreview);
 
     const bidMode = get('patModalidadeLance');
     if(bidMode) bidMode.addEventListener('change', event => updateBidControls(event.target.value));
@@ -516,6 +530,7 @@
     setPropertyType(state.propertyType);
     updateBidControls(valueOf('patModalidadeLance', 'sem'));
     toggleFinancingRateType(valueOf('patIndexadorFinanciamento', 'prefixada'));
+    updateRentPreview();
     updateBidPreview();
   }
 

@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.11 BETA</title>
-  <link rel="manifest" href="./manifest.json?v=2211">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=2211">
-  <link rel="stylesheet" href="./estilos.css?v=2211">
+  <title>Simulador de Consórcio — v2.2.12 BETA</title>
+  <link rel="manifest" href="./manifest.json?v=2212">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=2212">
+  <link rel="stylesheet" href="./estilos.css?v=2212">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.11 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.12 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -208,7 +208,7 @@
             </div>
             <span class="pill beta-pill">BETA</span>
           </div>
-          <p class="lead">Compare a compra do mesmo imóvel por consórcio e financiamento: valor da parcela, aluguel mensal, complemento do bolso e total pago no final.</p>
+          <p class="lead">Compare a compra do mesmo imóvel por consórcio e financiamento usando apenas os dois números principais: parcela inicial e aluguel mensal estimado.</p>
 
           <div class="field full">
             <label>Tipo de imóvel</label>
@@ -229,8 +229,9 @@
               <div class="control money-control"><span>R$</span><input id="patCredito" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
             </div>
             <div class="field full">
-              <label for="patRentabilidadeAluguel">Aluguel mensal estimado</label>
+              <label for="patRentabilidadeAluguel">Estimativa de aluguel mensal</label>
               <div class="control"><input id="patRentabilidadeAluguel" type="number" value="0.50" step="0.01" min="0"><span>% do imóvel</span></div>
+              <small id="patAluguelPreview">Estimativa atual: R$ 1.250,00 por mês.</small>
             </div>
           </div>
 
@@ -390,32 +391,24 @@
               <div>
                 <div class="eyebrow">Comparativo principal</div>
                 <h2>Consórcio x financiamento</h2>
-                <p class="lead comparison-lead">Compare a parcela mensal e o total estimado pago no final de cada operação.</p>
+                <p class="lead comparison-lead">Compare a parcela inicial com o aluguel mensal estimado do mesmo imóvel.</p>
               </div>
-            </div>
-
-            <div class="shared-rent-summary">
-              <div>
-                <span>Aluguel mensal estimado do imóvel</span>
-                <small>O mesmo valor é considerado nos dois cenários.</small>
-              </div>
-              <strong id="patAluguelComum">R$ 0,00</strong>
             </div>
 
             <div class="scenario-grid professional-scenario-grid">
               <div class="scenario-card consorcio-scenario">
                 <div class="scenario-title"><span>Consórcio</span><b id="patConsPrazoBadge">0 meses</b></div>
                 <div class="metric-list compact-comparison-list">
-                  <div><span>Parcela mensal estimada</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
-                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patConsTotal">R$ 0,00</strong></div>
+                  <div><span>Parcela inicial estimada</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
+                  <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
                 </div>
               </div>
 
               <div class="scenario-card financing-scenario">
                 <div class="scenario-title"><span>Financiamento</span><b id="patFinPrazoBadge">0 meses</b></div>
                 <div class="metric-list compact-comparison-list">
-                  <div><span>Parcela mensal estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
-                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patFinTotal">R$ 0,00</strong></div>
+                  <div><span>Parcela inicial estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
+                  <div><span>Aluguel mensal estimado</span><strong id="patFinAluguel">R$ 0,00</strong></div>
                 </div>
               </div>
             </div>
@@ -533,11 +526,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=2211" defer></script>
-  <script src="./graficos.js?v=2211" defer></script>
-  <script src="./configuracoes.js?v=2211" defer></script>
-  <script src="./pdf.js?v=2211" defer></script>
-  <script src="./app.js?v=2211" defer></script>
-  <script src="./alavancagem.js?v=2211" defer></script>
+  <script src="./calculos.js?v=2212" defer></script>
+  <script src="./graficos.js?v=2212" defer></script>
+  <script src="./configuracoes.js?v=2212" defer></script>
+  <script src="./pdf.js?v=2212" defer></script>
+  <script src="./app.js?v=2212" defer></script>
+  <script src="./alavancagem.js?v=2212" defer></script>
 </body>
 </html>

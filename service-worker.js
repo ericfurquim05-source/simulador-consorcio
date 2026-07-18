@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.11-comparativo-simplificado';
+const VERSION = 'simulador-consorcio-v2.2.12-parcela-e-aluguel';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
