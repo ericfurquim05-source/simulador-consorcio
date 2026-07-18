@@ -281,6 +281,16 @@
                   <div class="control"><input id="patPercentualEmbutidoLance" type="number" value="100" step="1" min="0" max="100"><span>% do lance</span></div>
                   <small>O restante do lance será considerado como recurso próprio.</small>
                 </div>
+                <div class="field" id="patAplicacaoLanceField" hidden>
+                  <label for="patAplicacaoLance">Aplicação do lance</label>
+                  <div class="control select-control">
+                    <select id="patAplicacaoLance">
+                      <option value="parcela" selected>Reduzir o valor das parcelas</option>
+                      <option value="prazo">Reduzir o prazo</option>
+                    </select>
+                  </div>
+                  <small>Define como o lance vencedor amortiza o saldo devedor nesta simulação.</small>
+                </div>
                 <div id="patLanceResumo" class="bid-summary-card" hidden>
                   <div class="bid-summary-head">
                     <div>
@@ -431,7 +441,7 @@
               <div class="scenario-card consorcio-scenario">
                 <div class="scenario-title"><span>Consórcio</span><b id="patConsPrazoBadge">0 meses</b></div>
                 <div class="metric-list compact-comparison-list">
-                  <div><span>Parcela cheia inicial</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
+                  <div><span id="patConsParcelaLabel">Parcela estimada após contemplação</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
                   <div class="metric-total"><span>Total estimado pago no final</span><strong id="patConsTotalPago">R$ 0,00</strong></div>
                 </div>
@@ -464,6 +474,8 @@
                     <div><span>Lance embutido sobre a carta</span><strong id="patResLanceEmbutidoPercentual">0,0%</strong></div>
                     <div><span>Carta estimada na contemplação</span><strong id="patResCartaContemplacao">R$ 0,00</strong></div>
                     <div><span>Crédito líquido liberado</span><strong id="patResCreditoLiquido">R$ 0,00</strong></div>
+                    <div><span>Saldo devedor após o lance</span><strong id="patResSaldoAposLance">R$ 0,00</strong></div>
+                    <div><span>Aplicação do lance</span><strong id="patResAplicacaoLance">Reduzir parcelas</strong></div>
                     <div><span>Complemento para adquirir o imóvel</span><strong id="patResComplemento">R$ 0,00</strong></div>
                   </div>
                 </section>
@@ -486,7 +498,7 @@
 
             <details class="calculation-note">
               <summary>Como esta versão calcula?</summary>
-              <p>No consórcio, o lance é calculado pela parcela linear do grupo: carta vigente somada à taxa administrativa, dividida pelo prazo original e multiplicada pelas parcelas ofertadas. A parte embutida reduz o crédito liberado; a parte própria utiliza o capital do cliente. No financiamento, o cálculo usa Price ou SAC. A taxa pode ser prefixada ou acrescida da TR, conforme a configuração informada.</p>
+              <p>No consórcio, o lance é calculado pela parcela linear do grupo: carta vigente somada à taxa administrativa, dividida pelo prazo original e multiplicada pelas parcelas ofertadas. O lance total amortiza o saldo devedor; somente a parte embutida reduz o crédito disponível para comprar o imóvel. Quando selecionado “Reduzir o valor das parcelas”, o saldo restante é diluído nas parcelas vincendas. As taxas permanecem referenciadas no crédito integral contratado. No financiamento, o cálculo usa Price ou SAC.</p>
             </details>
           </article>
 

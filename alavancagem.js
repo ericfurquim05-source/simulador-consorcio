@@ -170,6 +170,7 @@
     const modeSelect = get('patModalidadeLance');
     const installmentsField = get('patParcelasLanceField');
     const embeddedField = get('patEmbutidoLanceField');
+    const applicationField = get('patAplicacaoLanceField');
     const installmentsInput = get('patParcelasLance');
     const embeddedInput = get('patPercentualEmbutidoLance');
     const ruleText = get('patLanceRegraTexto');
@@ -180,6 +181,7 @@
     if(state.bidMode === 'sem'){
       if(installmentsField) installmentsField.hidden = true;
       if(embeddedField) embeddedField.hidden = true;
+      if(applicationField) applicationField.hidden = true;
       if(installmentsInput){ installmentsInput.value = '0'; installmentsInput.disabled = true; }
       if(embeddedInput){ embeddedInput.value = '0'; embeddedInput.disabled = true; }
       if(ruleText) ruleText.textContent = 'A contemplação é simulada sem oferta de lance.';
@@ -189,6 +191,7 @@
 
     if(installmentsField) installmentsField.hidden = false;
     if(embeddedField) embeddedField.hidden = false;
+    if(applicationField) applicationField.hidden = false;
 
     if(state.bidMode === 'fixo'){
       if(installmentsInput){
@@ -235,7 +238,7 @@
   }
 
   function applyVersionDefaults(){
-    const key = 'patrimonio-defaults-v2.2.13';
+    const key = 'patrimonio-defaults-v2.2.15';
     try{
       if(sessionStorage.getItem(key)) return;
       const property = get('patValorImovel');
@@ -259,6 +262,7 @@
       bidMode: String(valueOf('patModalidadeLance', 'sem')).toLowerCase(),
       bidInstallments: Math.round(number(valueOf('patParcelasLance', '0'))),
       embeddedBidShare: number(valueOf('patPercentualEmbutidoLance', '0')) / 100,
+      bidApplication: String(valueOf('patAplicacaoLance', 'parcela')).toLowerCase(),
       rentalYield: number(valueOf('patRentabilidadeAluguel', '0.50')) / 100,
       consortiumTerm: Math.round(number(valueOf('patPrazoConsorcio', '220'))),
       adminRate: number(valueOf('patTaxaAdmin', '24.2')) / 100,
@@ -307,6 +311,7 @@
     if(bid.mode === 'limitado' && (bid.installments < 1 || bid.installments > 88)) throw new Error('No lance limitado, informe de 1 a 88 parcelas.');
     if(bid.mode === 'livre' && (bid.installments < 1 || bid.installments > input.consortiumTerm)) throw new Error('No lance livre, informe uma quantidade válida de parcelas.');
     if(['limitado','livre'].includes(bid.mode) && (bid.embeddedShare < 0 || bid.embeddedShare > 0.5)) throw new Error('No lance limitado ou livre, a parte embutida pode representar no máximo 50% do lance ofertado.');
+    if(!['parcela','prazo'].includes(input.bidApplication)) throw new Error('Revise a forma de aplicação do lance.');
   }
 
   function simulateConsortium(input){
@@ -327,6 +332,7 @@
     let ownBidUsed = 0;
     let embeddedBidUsed = 0;
     let paymentAtContemplation = initialFullPayment;
+    let balanceAfterBid = balance;
 
     for(let month = 1; month <= input.consortiumTerm; month += 1){
       if(month > 1 && (month - 1) % 12 === 0){
@@ -348,9 +354,12 @@
         embeddedBidUsed = Math.min(maxEmbeddedByRule, maxEmbeddedByCredit, adjustedCredit);
         ownBidUsed = Math.max(0, totalBidUsed - embeddedBidUsed);
         balance = Math.max(0, balance - totalBidUsed);
+        balanceAfterBid = balance;
 
         const remainingMonths = input.consortiumTerm - month + 1;
-        currentFullPayment = remainingMonths > 0 ? balance / remainingMonths : 0;
+        if(input.bidApplication === 'parcela'){
+          currentFullPayment = remainingMonths > 0 ? balance / remainingMonths : 0;
+        }
         paymentAtContemplation = currentFullPayment;
       }
 
@@ -381,6 +390,8 @@
       adjustedCredit,
       embeddedBid: embeddedBidUsed,
       netCredit,
+      balanceAfterBid,
+      bidApplication: input.bidApplication,
       propertyAtContemplation,
       purchaseComplement,
       ownBid: ownBidUsed,
@@ -457,6 +468,8 @@
     setText('patResLancePercentual', pct(consortium.totalBidRate));
     setText('patResCartaContemplacao', brl(consortium.adjustedCredit));
     setText('patResCreditoLiquido', brl(consortium.netCredit));
+    setText('patResSaldoAposLance', brl(consortium.balanceAfterBid));
+    setText('patResAplicacaoLance', consortium.bidApplication === 'prazo' ? 'Reduzir prazo' : 'Reduzir parcelas');
     setText('patResLanceProprio', brl(consortium.ownBid));
     setText('patResLanceProprioPercentual', pct(consortium.ownBidRate));
     setText('patResLanceEmbutido', brl(consortium.embeddedBid));
@@ -486,7 +499,8 @@
     setText('patFinAluguel', brl(sharedMonthlyRent));
     setText('patFinTotalPago', brl(financing.totalPaid));
     setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
-    setText('patConsParcelaInicial', brl(consortium.initialFullPayment));
+    setText('patConsParcelaLabel', consortium.bidMode === 'sem' ? 'Parcela cheia estimada' : 'Parcela estimada após contemplação');
+    setText('patConsParcelaInicial', brl(consortium.paymentAtContemplation));
     setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
 
     setText('patFinPrazoBadge', `${input.financingTerm} meses`);
