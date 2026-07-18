@@ -5,32 +5,23 @@
 
   function render(container,result,metric='gain'){
     const calc = S.Calculos;
-    const values = result.options.map(o=>Math.max(0,o[metric]));
-    const max = Math.max(...values,1);
-    container.innerHTML = result.options.map(option=>{
-      const value = option[metric];
-      const width = Math.max(2,Math.min(100,(Math.max(0,value)/max)*100));
-      const subtitle = metric==='gain'?'Ganho estimado':'Total final';
-      return `<div class="chart-row">
-        <div class="chart-label"><div><b>${option.name}</b><span>${subtitle}</span></div><span class="chart-exact">${calc.brl(value)}</span></div>
-        <div class="bar-track" aria-label="${option.name}: ${calc.brl(value)}">
-          <div class="bar-fill ${colors[option.key]}" style="width:${width}%"><span class="bar-value">${calc.brl(value)}</span></div>
+    const values = result.options.map(option => Math.max(0, Number(option[metric]) || 0));
+    const max = Math.max(...values, 1);
+    const subtitle = metric === 'gain' ? 'Ganho estimado' : 'Total estimado';
+
+    container.innerHTML = `<div class="vertical-chart">${result.options.map(option => {
+      const value = Number(option[metric]) || 0;
+      const ratio = Math.max(0, value) / max;
+      const height = value > 0 ? Math.max(8, Math.min(100, ratio * 100)) : 2;
+      return `<div class="vertical-chart-item">
+        <div class="vertical-chart-value">${calc.brl(value)}</div>
+        <div class="vertical-chart-track" aria-label="${option.name}: ${calc.brl(value)}">
+          <div class="vertical-chart-fill ${colors[option.key]}" style="height:${height}%"></div>
         </div>
+        <div class="vertical-chart-label"><b>${option.name}</b><span>${subtitle}</span></div>
       </div>`;
-    }).join('');
+    }).join('')}</div>`;
   }
 
-  function difference(container,result){
-    const calc = S.Calculos;
-    const dFixed = result.consortiumGain-result.fixedGain;
-    const dSavings = result.consortiumGain-result.savingsGain;
-    function item(label,value){
-      const cls=value>=0?'positive':'negative';
-      const prefix=value>=0?'+':'';
-      return `<div class="difference-item"><span>${label}</span><strong class="${cls}">${prefix}${calc.brl(value)}</strong></div>`;
-    }
-    container.innerHTML = item('Consórcio x renda fixa',dFixed)+item('Consórcio x poupança',dSavings);
-  }
-
-  S.Graficos = {render,difference};
+  S.Graficos = {render};
 })(window);

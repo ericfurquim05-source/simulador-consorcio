@@ -72,13 +72,7 @@ button{cursor:pointer}
   .comparison-table tr{display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;background:#0b1219;border:1px solid var(--line);border-radius:13px;overflow:hidden}
   .comparison-table td{display:flex;flex-direction:column;justify-content:center;min-width:0;background:transparent;border:0!important;border-radius:0!important;padding:11px 10px;text-align:left!important;font-size:12px;overflow-wrap:anywhere}
   .comparison-table td:first-child{grid-column:1/-1;border-bottom:1px solid var(--line)!important;font-size:13px}
-  .comparison-table td:nth-child(2),.comparison-table td:nth-child(3),.comparison-table td:nth-child(4),.comparison-table td:nth-child(5){border-bottom:1px solid var(--line)!important}
-  .comparison-table td:nth-child(2),.comparison-table td:nth-child(4){border-right:1px solid var(--line)!important}
-  .comparison-table td:nth-child(5){grid-column:1/-1}
-  .comparison-table td:nth-child(2)::before{content:'Você colocou'}
-  .comparison-table td:nth-child(3)::before{content:'Ganho estimado'}
-  .comparison-table td:nth-child(4)::before{content:'Rentabilidade sobre o valor investido'}
-  .comparison-table td:nth-child(5)::before{content:'Retorno para cada R$ 1 investido'}
+  .comparison-table td:nth-child(5)::before{content:'Total estimado ao final'}
   .comparison-table td:not(:first-child)::before{display:block;margin-bottom:5px;color:var(--muted);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
   .best-badge{margin:5px 0 0;width:max-content}
   .credit-growth strong{font-size:15px;overflow-wrap:anywhere}
@@ -161,3 +155,33 @@ button{cursor:pointer}
 .control select{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#fff;padding:13px 6px;font-size:16px;appearance:auto}
 .control select option{background:#0d141d;color:#fff}
 .select-control{padding-right:10px}
+
+
+/* Ajustes v2.2.7 — comparativo financeiro e novo gráfico */
+.vertical-chart{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:12px;min-height:250px;margin-top:18px;padding:14px 10px 8px;background:#0b1219;border:1px solid var(--line);border-radius:17px}
+.vertical-chart-item{display:grid;grid-template-rows:auto 150px auto;gap:8px;min-width:0;height:100%;align-items:end}
+.vertical-chart-value{text-align:center;font-size:11px;line-height:1.25;font-weight:950;color:#fff;overflow-wrap:anywhere}
+.vertical-chart-track{position:relative;width:min(72px,78%);height:150px;margin:0 auto;border-radius:13px 13px 8px 8px;background:linear-gradient(180deg,#111c27,#0a1118);border:1px solid var(--line);overflow:hidden}
+.vertical-chart-fill{position:absolute;left:0;right:0;bottom:0;border-radius:11px 11px 6px 6px;transition:height .7s cubic-bezier(.2,.7,.2,1)}
+.vertical-chart-fill.consorcio{background:linear-gradient(180deg,#ffad38,#ff7900)}
+.vertical-chart-fill.renda{background:linear-gradient(180deg,#5aaeff,#287bc1)}
+.vertical-chart-fill.poupanca{background:linear-gradient(180deg,#ffd05c,#b38c21)}
+.vertical-chart-label{text-align:center;min-width:0}
+.vertical-chart-label b{display:block;font-size:11px;line-height:1.25;overflow-wrap:anywhere}
+.vertical-chart-label span{display:block;margin-top:3px;font-size:8px;line-height:1.3;color:var(--muted)}
+.comparison-table td.total-estimated{font-weight:950;color:#fff}
+@media(max-width:680px){
+  .comparison-chart{margin-top:14px}
+  .vertical-chart{gap:7px;min-height:220px;padding:12px 6px 7px}
+  .vertical-chart-item{grid-template-rows:auto 122px auto;gap:6px}
+  .vertical-chart-track{height:122px;width:min(58px,82%)}
+  .vertical-chart-value{font-size:9px}
+  .vertical-chart-label b{font-size:10px}
+  .comparison-table td:nth-child(5){font-size:18px;line-height:1.15}
+}
+@media(max-width:390px){
+  .vertical-chart{gap:5px}
+  .vertical-chart-value{font-size:8.5px}
+  .vertical-chart-label b{font-size:9px}
+  .comparison-table td:nth-child(5){font-size:16px}
+}

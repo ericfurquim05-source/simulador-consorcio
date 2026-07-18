@@ -87,7 +87,8 @@
         <td>${S.Calculos.brl(option.invested)}</td>
         <td class="${gainClass}">${S.Calculos.brl(option.gain)}</td>
         <td class="${gainClass}">${S.Calculos.percent(profitability, 1)}</td>
-        <td>${S.Calculos.brl(capitalEfficiency)}</td>
+        <td class="total-estimated">${S.Calculos.brl(option.total)}</td>
+        <td>${S.Calculos.brl(capitalEfficiency * 1000)}</td>
       </tr>`;
     }).join('');
   }
@@ -122,7 +123,6 @@
       `${S.Calculos.percent(result.input.savingsMonthly * 100, 4)} a.m.`;
 
     S.Graficos.render($('comparisonChart'), result, state.chartMetric);
-    S.Graficos.difference($('differenceStrip'), result);
     renderTable(result);
 
     setTimeout(() => {

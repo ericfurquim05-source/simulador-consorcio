@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.6-regras-lance-parcelas';
+const VERSION = 'simulador-consorcio-v2.2.7-comparativo-total-grafico-colunas';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [

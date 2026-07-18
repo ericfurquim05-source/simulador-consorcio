@@ -11,14 +11,17 @@
   function chartRows(result){
     const calc = S.Calculos;
     const max = Math.max(...result.options.map(option => Math.max(0, option.gain)), 1);
-    return result.options.map(option => {
-      const width = Math.max(2, Math.min(100, Math.max(0, option.gain) / max * 100));
-      const color = option.key === 'consorcio' ? '#ff8a00' : option.key === 'renda' ? '#398fd5' : '#d6a72d';
-      return `<div class="chart-row">
-        <div class="chart-name"><span>${escapeHtml(option.name)}</span><b>${calc.brl(option.gain)}</b></div>
-        <div class="track"><div style="width:${width}%;background:${color}"></div></div>
+    return `<div class="pdf-column-chart">${result.options.map(option => {
+      const height = option.gain > 0
+        ? Math.max(8, Math.min(100, Math.max(0, option.gain) / max * 100))
+        : 2;
+      const cls = option.key === 'consorcio' ? 'consorcio' : option.key === 'renda' ? 'renda' : 'poupanca';
+      return `<div class="pdf-column-item">
+        <b>${calc.brl(option.gain)}</b>
+        <div class="pdf-column-track"><div class="${cls}" style="height:${height}%"></div></div>
+        <span>${escapeHtml(option.name)}</span>
       </div>`;
-    }).join('');
+    }).join('')}</div>`;
   }
 
   function openReport(result, profile){
@@ -77,11 +80,13 @@
         .growth b{display:block;margin-top:4px;font-size:16px}
         .arrow{color:#ff9a22;font-size:18px;flex:0 0 auto!important}
         .chart-help{font-size:11.5px;line-height:1.4;color:#66727d;margin:-1px 0 7px}
-        .chart-row{margin:7px 0}
-        .chart-name{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;margin-bottom:4px}
-        .chart-name b{font-size:12px;white-space:nowrap}
-        .track{height:16px;border-radius:6px;background:#edf0f2;overflow:hidden}
-        .track div{height:100%;border-radius:5px}
+        .pdf-column-chart{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:end;border:1px solid #e0e5e9;border-radius:9px;background:#f8fafb;padding:9px 12px 8px}
+        .pdf-column-item{text-align:center;display:grid;grid-template-rows:auto 78px auto;gap:4px;align-items:end}
+        .pdf-column-item>b{font-size:11px;color:#26313b}
+        .pdf-column-item>span{font-size:10px;font-weight:bold;color:#3d4852}
+        .pdf-column-track{position:relative;width:48px;height:78px;margin:0 auto;background:#edf0f2;border-radius:7px 7px 4px 4px;overflow:hidden}
+        .pdf-column-track>div{position:absolute;left:0;right:0;bottom:0;border-radius:6px 6px 3px 3px}
+        .pdf-column-track .consorcio{background:#ff8a00}.pdf-column-track .renda{background:#398fd5}.pdf-column-track .poupanca{background:#d6a72d}
         .table{width:100%;border-collapse:collapse;font-size:11px}
         .table th{background:#17212b;color:#fff;padding:7px 8px;text-align:right}
         .table th:first-child{text-align:left}
@@ -123,7 +128,7 @@
             <div class="metric"><span>Parcela inicial</span><b>${calc.brl(result.basePayment)}</b></div>
             <div class="metric"><span>Total pago no período</span><b>${calc.brl(result.totalPaid)}</b></div>
             <div class="metric main"><span>Valor estimado recebido</span><b>${calc.brl(result.received)}</b></div>
-            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade sobre o valor investido</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Retorno para cada R$ 1 investido</span><strong>${calc.brl(result.consortiumCapitalEfficiency)}</strong></div></div></div>
+            <div class="metric gain"><span>Possível ganho</span><b>${calc.brl(result.consortiumGain)}</b><div class="metric-insights"><div><span>Rentabilidade sobre o valor investido</span><strong>${calc.percent(result.consortiumRoi, 1)}</strong></div><div><span>Retorno para cada R$ 1.000 investidos</span><strong>${calc.brl(result.consortiumCapitalEfficiency * 1000)}</strong></div></div></div>
           </div>
           <div class="growth"><div><span>Carta inicial</span><b>${calc.brl(result.input.credit)}</b></div><div class="arrow">→</div><div><span>Carta corrigida</span><b>${calc.brl(result.correctedCredit)}</b></div></div>
         </div>
