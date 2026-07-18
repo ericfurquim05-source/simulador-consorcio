@@ -482,7 +482,9 @@
 
     const sharedMonthlyRent = input.propertyValue * input.rentalYield;
     setText('patConsAluguel', brl(sharedMonthlyRent));
+    setText('patConsTotalPago', brl(consortium.totalPaid));
     setText('patFinAluguel', brl(sharedMonthlyRent));
+    setText('patFinTotalPago', brl(financing.totalPaid));
     setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
     setText('patConsParcelaInicial', brl(consortium.initialFullPayment));
     setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));

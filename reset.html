@@ -30,7 +30,7 @@
           await Promise.all(names.map(name => caches.delete(name)));
           try { sessionStorage.clear(); } catch (_) {}
         }
-        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.2.13…';
+        document.getElementById('status').innerHTML = '<span class="ok">Cache limpo.</span> Abrindo a versão 2.2.14…';
       } catch (e) {
         document.getElementById('status').textContent = 'Abrindo a versão atualizada…';
       }
