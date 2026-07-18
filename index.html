@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.9 BETA</title>
-  <link rel="manifest" href="./manifest.json?v=229">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=229">
-  <link rel="stylesheet" href="./estilos.css?v=229">
+  <title>Simulador de Consórcio — v2.2.10 BETA</title>
+  <link rel="manifest" href="./manifest.json?v=2210">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=2210">
+  <link rel="stylesheet" href="./estilos.css?v=2210">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.9 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.2.10 BETA</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -280,14 +280,36 @@
                   <div class="control"><input id="patPercentualEmbutidoLance" type="number" value="100" step="1" min="0" max="100"><span>% do lance</span></div>
                   <small>O restante do lance será considerado como recurso próprio.</small>
                 </div>
-                <div class="field" id="patRecursoProprioPrevistoField" hidden>
-                  <label>Recursos próprios previstos no lance</label>
-                  <div class="control output-control"><output id="patRecursoProprioPrevisto">R$ 0,00</output></div>
-                  <small>Calculado automaticamente conforme a carta, o reajuste, as parcelas ofertadas e a parte embutida.</small>
-                </div>
-                <div class="field">
-                  <label for="patRentabilidadeAplicacao">Rendimento do capital aplicado</label>
-                  <div class="control"><input id="patRentabilidadeAplicacao" type="number" value="1.00" step="0.01" min="0"><span>% a.m.</span></div>
+                <div id="patLanceResumo" class="bid-summary-card" hidden>
+                  <div class="bid-summary-head">
+                    <div>
+                      <span>Resumo do lance</span>
+                      <small>Percentuais calculados sobre a carta estimada na contemplação.</small>
+                    </div>
+                    <strong id="patLancePercentualTotal">0,0%</strong>
+                  </div>
+                  <div class="bid-summary-grid">
+                    <div>
+                      <span>Carta estimada</span>
+                      <strong id="patLanceCartaPreview">R$ 0,00</strong>
+                    </div>
+                    <div>
+                      <span>Lance total</span>
+                      <strong id="patLanceTotalPreview">R$ 0,00</strong>
+                      <small id="patLanceTotalPercentPreview">0,0% da carta</small>
+                    </div>
+                    <div>
+                      <span>Lance embutido</span>
+                      <strong id="patLanceEmbutidoPreview">R$ 0,00</strong>
+                      <small id="patLanceEmbutidoPercentPreview">0,0% da carta</small>
+                    </div>
+                    <div>
+                      <span>Recursos próprios</span>
+                      <strong id="patLanceProprioPreview">R$ 0,00</strong>
+                      <small id="patLanceProprioPercentPreview">0,0% da carta</small>
+                    </div>
+                  </div>
+                  <p id="patLanceResumoTexto" class="bid-summary-text"></p>
                 </div>
               </div>
               <div class="assumption-footer">
@@ -379,7 +401,6 @@
                   <div><span>Parcela cheia inicial</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
                   <div><span>Parcela cheia após a contemplação</span><strong id="patConsParcela">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
-                  <div class="metric-emphasis"><span id="patConsSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patConsSaldo">R$ 0,00</strong></div>
                   <div class="metric-total"><span>Total estimado pago no final</span><strong id="patConsTotal">R$ 0,00</strong></div>
                 </div>
               </div>
@@ -390,7 +411,6 @@
                   <div><span>Parcela inicial estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
                   <div><span>Parcela final estimada</span><strong id="patFinParcelaFinal">R$ 0,00</strong></div>
                   <div><span>Aluguel mensal estimado</span><strong id="patFinAluguel">R$ 0,00</strong></div>
-                  <div class="metric-emphasis"><span id="patFinSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patFinSaldo">R$ 0,00</strong></div>
                   <div class="metric-total"><span>Total estimado pago no final</span><strong id="patFinTotal">R$ 0,00</strong></div>
                 </div>
               </div>
@@ -406,22 +426,15 @@
                     <div><span>Parcelas ofertadas</span><strong id="patResParcelasLance">Não se aplica</strong></div>
                     <div><span>Valor da parcela linear do lance</span><strong id="patResParcelaLinearLance">R$ 0,00</strong></div>
                     <div><span>Valor total do lance</span><strong id="patResLanceTotal">R$ 0,00</strong></div>
+                    <div><span>Lance total sobre a carta</span><strong id="patResLancePercentual">0,0%</strong></div>
                     <div><span>Parte paga com recursos próprios</span><strong id="patResLanceProprio">R$ 0,00</strong></div>
+                    <div><span>Recursos próprios sobre a carta</span><strong id="patResLanceProprioPercentual">0,0%</strong></div>
                     <div><span>Parte embutida no crédito</span><strong id="patResLanceEmbutido">R$ 0,00</strong></div>
+                    <div><span>Lance embutido sobre a carta</span><strong id="patResLanceEmbutidoPercentual">0,0%</strong></div>
                     <div><span>Carta estimada na contemplação</span><strong id="patResCartaContemplacao">R$ 0,00</strong></div>
                     <div><span>Crédito líquido liberado</span><strong id="patResCreditoLiquido">R$ 0,00</strong></div>
                     <div><span>Complemento para adquirir o imóvel</span><strong id="patResComplemento">R$ 0,00</strong></div>
-                    <div><span>Capital estimado disponível na contemplação</span><strong id="patResCapitalContemplacao">R$ 0,00</strong></div>
                   </div>
-                  <div class="before-summary compact-before-summary">
-                    <div class="before-summary-title">Antes da contemplação</div>
-                    <div class="operation-detail-list">
-                      <div><span>Rendimento mensal inicial do capital</span><strong id="patAntesRendimento">R$ 0,00</strong></div>
-                      <div><span>Parcela reduzida inicial</span><strong id="patAntesParcela">R$ 0,00</strong></div>
-                      <div><span id="patAntesSaldoLabel">Valor mensal que ainda sai do bolso</span><strong id="patAntesSaldo">R$ 0,00</strong></div>
-                    </div>
-                  </div>
-                  <div id="patCapitalAlert" class="message warning" hidden></div>
                 </section>
 
                 <section class="operation-detail-card">
@@ -516,11 +529,11 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=229" defer></script>
-  <script src="./graficos.js?v=229" defer></script>
-  <script src="./configuracoes.js?v=229" defer></script>
-  <script src="./pdf.js?v=229" defer></script>
-  <script src="./app.js?v=229" defer></script>
-  <script src="./alavancagem.js?v=229" defer></script>
+  <script src="./calculos.js?v=2210" defer></script>
+  <script src="./graficos.js?v=2210" defer></script>
+  <script src="./configuracoes.js?v=2210" defer></script>
+  <script src="./pdf.js?v=2210" defer></script>
+  <script src="./app.js?v=2210" defer></script>
+  <script src="./alavancagem.js?v=2210" defer></script>
 </body>
 </html>
