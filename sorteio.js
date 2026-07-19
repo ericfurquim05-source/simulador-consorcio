@@ -2,7 +2,8 @@
   'use strict';
 
   const STORAGE_CLIENTS = 'simulador-sorteio-clientes-v1';
-  const STORAGE_DRAWS = 'simulador-sorteio-concursos-v1';
+  const STORAGE_ASSEMBLIES = 'simulador-sorteio-assembleias-v2';
+  const STORAGE_BASE = 'simulador-sorteio-base-contempladas-v2';
 
   const DEFAULT_CLIENTS = [
     { id: 'loreci-3446', nome: 'Loreci', cota: '3446' },
@@ -14,8 +15,9 @@
 
   const state = {
     clients: [],
-    draws: [],
-    lastResult: null
+    assemblies: [],
+    baseline: [],
+    lastAssemblyId: null
   };
 
   const $ = id => document.getElementById(id);
@@ -47,15 +49,13 @@
   }
 
   function quota(value){
-    return String(value ?? '').replace(/\D/g, '').slice(-4).padStart(4, '0');
+    const digits = String(value ?? '').replace(/\D/g, '').slice(-4);
+    return digits ? digits.padStart(4, '0') : '';
   }
 
-  function fullTicket(value){
-    return String(value ?? '').replace(/\D/g, '').slice(-5).padStart(5, '0');
-  }
-
-  function finalFour(value){
-    return fullTicket(value).slice(-4);
+  function extractQuotaList(text){
+    const matches = String(text || '').match(/(^|\D)(\d{1,4})(?=\D|$)/g) || [];
+    return [...new Set(matches.map(item => quota(item)).filter(Boolean))];
   }
 
   function loadJSON(key, fallback){
@@ -71,8 +71,26 @@
     localStorage.setItem(STORAGE_CLIENTS, JSON.stringify(state.clients));
   }
 
-  function saveDraws(){
-    localStorage.setItem(STORAGE_DRAWS, JSON.stringify(state.draws));
+  function saveAssemblies(){
+    localStorage.setItem(STORAGE_ASSEMBLIES, JSON.stringify(state.assemblies));
+  }
+
+  function saveBaseline(){
+    localStorage.setItem(STORAGE_BASE, JSON.stringify(state.baseline));
+  }
+
+  function normalizeAssembly(item){
+    return {
+      id: String(item.id || uid('assembleia')),
+      numero: String(item.numero || '').trim(),
+      data: String(item.data || ''),
+      sorteio: quota(item.sorteio),
+      fixos: Array.isArray(item.fixos) ? item.fixos.map(quota).filter(Boolean).slice(0, 2) : [],
+      limitado: quota(item.limitado),
+      livre: quota(item.livre),
+      extras: Array.isArray(item.extras) ? [...new Set(item.extras.map(quota).filter(Boolean))] : [],
+      createdAt: Number(item.createdAt || Date.now())
+    };
   }
 
   function load(){
@@ -85,18 +103,19 @@
         })).filter(item => item.nome && /^\d{4}$/.test(item.cota))
       : DEFAULT_CLIENTS.map(item => ({...item}));
 
-    state.draws = loadJSON(STORAGE_DRAWS, []);
-    if(!Array.isArray(state.draws)) state.draws = [];
-    state.draws = state.draws.map(draw => ({
-      id: String(draw.id || uid('concurso')),
-      concurso: String(draw.concurso || '').trim(),
-      data: String(draw.data || ''),
-      numeros: Array.isArray(draw.numeros) ? draw.numeros.slice(0, 5).map(fullTicket) : [],
-      createdAt: Number(draw.createdAt || Date.now())
-    })).filter(draw => draw.concurso && draw.numeros.length === 5);
+    const storedAssemblies = loadJSON(STORAGE_ASSEMBLIES, []);
+    state.assemblies = Array.isArray(storedAssemblies)
+      ? storedAssemblies.map(normalizeAssembly).filter(item => item.numero && item.data && item.sorteio)
+      : [];
+
+    const storedBase = loadJSON(STORAGE_BASE, []);
+    state.baseline = Array.isArray(storedBase)
+      ? [...new Set(storedBase.map(quota).filter(Boolean))]
+      : [];
 
     saveClients();
-    saveDraws();
+    saveAssemblies();
+    saveBaseline();
   }
 
   function showMessage(id, text, type = 'success'){
@@ -109,95 +128,152 @@
     element._timer = setTimeout(() => { element.hidden = true; }, 5000);
   }
 
-  function extractTickets(text){
-    const source = String(text || '');
-    const direct = [...source.matchAll(/(^|[^\d])(\d{2}\.?\d{3})(?=[^\d]|$)/g)]
-      .map(match => match[2].replace(/\D/g, ''))
-      .filter(value => value.length === 5)
-      .slice(0, 5)
-      .map(fullTicket);
-    if(direct.length === 5) return direct;
-
-    const byLine = source.split(/\r?\n/)
-      .map(line => line.replace(/\D/g, ''))
-      .filter(value => value.length >= 5)
-      .map(value => value.slice(-5))
-      .slice(0, 5)
-      .map(fullTicket);
-    return byLine;
+  function assemblyNumberValue(value){
+    const numeric = Number(String(value || '').replace(/\D/g, ''));
+    return Number.isFinite(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
   }
 
-  function compareDraw(numbers){
-    const finals = numbers.map(finalFour);
-    return state.clients.map(client => {
-      const clientNumber = Number(client.cota);
-      const comparisons = finals.map((final, index) => ({
-        premio: index + 1,
-        numeroCompleto: numbers[index],
-        final,
-        distancia: Math.abs(clientNumber - Number(final))
-      }));
-      comparisons.sort((a, b) => a.distancia - b.distancia || a.premio - b.premio);
-      return {...client, melhor: comparisons[0], comparacoes: comparisons};
-    }).sort((a, b) => a.melhor.distancia - b.melhor.distancia || a.nome.localeCompare(b.nome, 'pt-BR'));
+  function sortAssembliesAsc(list = state.assemblies){
+    return [...list].sort((a, b) => {
+      if(a.data !== b.data) return a.data.localeCompare(b.data);
+      const numberDiff = assemblyNumberValue(a.numero) - assemblyNumberValue(b.numero);
+      if(numberDiff) return numberDiff;
+      return a.createdAt - b.createdAt;
+    });
   }
 
-  function distanceText(distance){
-    if(distance === 0) return 'Coincidência exata';
-    return `${distance.toLocaleString('pt-BR')} ${distance === 1 ? 'número' : 'números'} de distância`;
+  function sortAssembliesDesc(){
+    return sortAssembliesAsc().reverse();
   }
 
-  function saveOrReplaceDraw(draw){
-    const existingIndex = state.draws.findIndex(item => item.concurso.toLowerCase() === draw.concurso.toLowerCase());
-    if(existingIndex >= 0){
-      draw.id = state.draws[existingIndex].id;
-      state.draws.splice(existingIndex, 1, draw);
-      saveDraws();
-      return 'updated';
+  function winnersDetailed(assembly){
+    const result = [];
+    if(assembly.sorteio) result.push({cota: assembly.sorteio, modalidade: 'Sorteio'});
+    assembly.fixos.forEach((cota, index) => result.push({cota, modalidade: `${index + 1}º lance fixo`}));
+    if(assembly.limitado) result.push({cota: assembly.limitado, modalidade: 'Lance limitado'});
+    if(assembly.livre) result.push({cota: assembly.livre, modalidade: 'Lance livre'});
+    assembly.extras.forEach((cota, index) => result.push({cota, modalidade: `Contemplação adicional ${index + 1}`}));
+    return result;
+  }
+
+  function winnersSet(assembly){
+    return new Set(winnersDetailed(assembly).map(item => item.cota));
+  }
+
+  function priorContext(assembly){
+    const ordered = sortAssembliesAsc();
+    const prior = new Set(state.baseline);
+    for(const item of ordered){
+      if(item.id === assembly.id) break;
+      winnersDetailed(item).forEach(entry => prior.add(entry.cota));
     }
-    state.draws.push(draw);
-    saveDraws();
-    return 'created';
+    return prior;
   }
 
-  function renderLatest(result, draw){
+  function allContemplatedExcept(assemblyId){
+    const set = new Set(state.baseline);
+    state.assemblies.forEach(item => {
+      if(item.id === assemblyId) return;
+      winnersDetailed(item).forEach(entry => set.add(entry.cota));
+    });
+    return set;
+  }
+
+  function countBetween(set, first, second){
+    const a = Number(first);
+    const b = Number(second);
+    const min = Math.min(a, b);
+    const max = Math.max(a, b);
+    let total = 0;
+    set.forEach(value => {
+      const current = Number(value);
+      if(current > min && current < max) total += 1;
+    });
+    return total;
+  }
+
+  function clientAssemblyResult(client, assembly){
+    const prior = priorContext(assembly);
+    const currentWinners = winnersDetailed(assembly);
+    const currentWin = currentWinners.find(item => item.cota === client.cota) || null;
+    const alreadyContemplated = prior.has(client.cota);
+
+    if(alreadyContemplated){
+      return {
+        client,
+        alreadyContemplated: true,
+        currentWin,
+        rawDistance: null,
+        removedBetween: null,
+        adjustedDistance: null,
+        priorCount: prior.size
+      };
+    }
+
+    const rawDistance = Math.abs(Number(client.cota) - Number(assembly.sorteio));
+    const removedBetween = countBetween(prior, client.cota, assembly.sorteio);
+    const adjustedDistance = Math.max(0, rawDistance - removedBetween);
+
+    return {
+      client,
+      alreadyContemplated: false,
+      currentWin,
+      rawDistance,
+      removedBetween,
+      adjustedDistance,
+      priorCount: prior.size
+    };
+  }
+
+  function distanceLabel(value){
+    if(value === null || value === undefined) return 'Não se aplica';
+    if(value === 0) return 'Coincidência exata';
+    return `${value.toLocaleString('pt-BR')} ${value === 1 ? 'número' : 'números'}`;
+  }
+
+  function renderLatest(assembly){
     const section = $('sorteioResultado');
-    const list = $('sorteioRanking');
-    const winner = result[0];
-    const tied = result.filter(item => item.melhor.distancia === winner.melhor.distancia);
+    const prior = priorContext(assembly);
+    const winners = winnersDetailed(assembly);
+    const totalAfter = new Set([...prior, ...winners.map(item => item.cota)]).size;
 
-    $('sorteioResultadoTitulo').textContent = `Concurso ${draw.concurso}`;
-    $('sorteioResultadoData').textContent = dateBR(draw.data);
-    $('sorteioPremiosFinais').innerHTML = draw.numeros.map((number, index) => `
-      <div><span>${index + 1}º prêmio</span><strong>${escapeHTML(number)}</strong><small>final ${finalFour(number)}</small></div>
-    `).join('');
-
+    $('sorteioResultadoTitulo').textContent = `Assembleia ${assembly.numero}`;
+    $('sorteioResultadoData').textContent = dateBR(assembly.data);
     $('sorteioDestaque').innerHTML = `
-      <div>
-        <span>${tied.length > 1 ? 'Clientes mais próximos' : 'Cliente mais próximo'}</span>
-        <strong>${tied.map(item => escapeHTML(item.nome)).join(' · ')}</strong>
-      </div>
-      <div>
-        <span>Menor distância</span>
-        <strong>${distanceText(winner.melhor.distancia)}</strong>
-      </div>
+      <div><span>Referência do sorteio</span><strong>Cota ${assembly.sorteio}</strong></div>
+      <div><span>Já contempladas antes</span><strong>${prior.size.toLocaleString('pt-BR')}</strong></div>
+      <div><span>Contempladas nesta assembleia</span><strong>${winners.length}</strong></div>
+      <div><span>Total acumulado após a assembleia</span><strong>${totalAfter.toLocaleString('pt-BR')}</strong></div>
     `;
 
-    list.innerHTML = result.map((item, index) => `
-      <article class="draw-client-card ${index === 0 ? 'winner' : ''} ${item.melhor.distancia === 0 ? 'exact' : ''}">
-        <div class="draw-rank">${index + 1}º</div>
-        <div class="draw-client-main">
-          <div class="draw-client-title">
-            <div><strong>${escapeHTML(item.nome)}</strong><span>Cota ${item.cota}</span></div>
-            <b>${distanceText(item.melhor.distancia)}</b>
-          </div>
-          <div class="draw-client-detail">
-            <span>Mais próximo do ${item.melhor.premio}º prêmio</span>
-            <strong>${item.melhor.numeroCompleto} · final ${item.melhor.final}</strong>
-          </div>
-        </div>
-      </article>
+    $('sorteioContemplados').innerHTML = winners.map(item => `
+      <div><span>${escapeHTML(item.modalidade)}</span><strong>${item.cota}</strong></div>
     `).join('');
+
+    const results = state.clients.map(client => clientAssemblyResult(client, assembly));
+    $('sorteioClientesResultado').innerHTML = results.map(item => {
+      if(item.alreadyContemplated){
+        return `
+          <article class="assembly-client-card inactive">
+            <div class="assembly-client-head"><div><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div><b>Cota já contemplada</b></div>
+            <p>Esta cota já não participava da referência desta assembleia.</p>
+          </article>
+        `;
+      }
+      return `
+        <article class="assembly-client-card ${item.currentWin ? 'contemplated-now' : ''} ${item.adjustedDistance === 0 ? 'exact' : ''}">
+          <div class="assembly-client-head">
+            <div><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div>
+            <b>${item.currentWin ? `Contemplada por ${escapeHTML(item.currentWin.modalidade.toLowerCase())}` : distanceLabel(item.adjustedDistance)}</b>
+          </div>
+          <div class="assembly-distance-grid">
+            <div><span>Distância numérica</span><strong>${item.rawDistance.toLocaleString('pt-BR')}</strong></div>
+            <div><span>Já contempladas no intervalo</span><strong>${item.removedBetween.toLocaleString('pt-BR')}</strong></div>
+            <div class="adjusted"><span>Distância ajustada</span><strong>${item.adjustedDistance.toLocaleString('pt-BR')}</strong></div>
+          </div>
+        </article>
+      `;
+    }).join('') || '<div class="empty-state">Nenhum cliente cadastrado.</div>';
 
     section.hidden = false;
     section.scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -231,8 +307,8 @@
         const row = button.closest('[data-client-id]');
         const id = row.dataset.clientId;
         const name = row.querySelector('[data-client-name]').value.trim();
-        const number = row.querySelector('[data-client-quota]').value.replace(/\D/g, '');
-        if(!name || number.length !== 4){
+        const number = quota(row.querySelector('[data-client-quota]').value);
+        if(!name || !number){
           showMessage('sorteioClientesMessage', 'Informe o nome e uma cota com quatro dígitos.', 'error');
           return;
         }
@@ -264,103 +340,113 @@
     });
   }
 
-  function sortedDraws(){
-    return [...state.draws].sort((a, b) => {
-      if(a.data && b.data && a.data !== b.data) return b.data.localeCompare(a.data);
-      return b.createdAt - a.createdAt;
-    });
-  }
-
   function renderHistory(){
-    const draws = sortedDraws();
-    $('sorteioHistoryCount').textContent = `${draws.length} ${draws.length === 1 ? 'concurso salvo' : 'concursos salvos'}`;
-    if(!draws.length){
-      $('sorteioHistoryList').innerHTML = '<div class="empty-state">Nenhum concurso salvo ainda.</div>';
+    const assemblies = sortAssembliesDesc();
+    $('sorteioHistoryCount').textContent = `${assemblies.length} ${assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
+    if(!assemblies.length){
+      $('sorteioHistoryList').innerHTML = '<div class="empty-state">Nenhuma assembleia salva ainda.</div>';
       return;
     }
-    $('sorteioHistoryList').innerHTML = draws.map(draw => {
-      const finals = draw.numeros.map(finalFour).join(' · ');
+
+    $('sorteioHistoryList').innerHTML = assemblies.map(assembly => {
+      const winners = winnersDetailed(assembly);
       return `
-        <div class="draw-history-row" data-draw-id="${escapeHTML(draw.id)}">
-          <div><strong>Concurso ${escapeHTML(draw.concurso)}</strong><span>${dateBR(draw.data)} · finais ${finals}</span></div>
+        <div class="draw-history-row" data-assembly-id="${escapeHTML(assembly.id)}">
+          <div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><span>${dateBR(assembly.data)} · sorteio ${assembly.sorteio} · ${winners.length} contempladas</span></div>
           <div class="draw-history-actions">
-            <button type="button" data-open-draw>Ver</button>
-            <button type="button" class="danger-text" data-delete-draw>Excluir</button>
+            <button type="button" data-open-assembly>Ver</button>
+            <button type="button" data-edit-assembly>Editar</button>
+            <button type="button" class="danger-text" data-delete-assembly>Excluir</button>
           </div>
         </div>
       `;
     }).join('');
 
-    $('sorteioHistoryList').querySelectorAll('[data-open-draw]').forEach(button => {
+    $('sorteioHistoryList').querySelectorAll('[data-open-assembly]').forEach(button => {
       button.addEventListener('click', () => {
-        const id = button.closest('[data-draw-id]').dataset.drawId;
-        const draw = state.draws.find(item => item.id === id);
-        if(!draw) return;
-        const result = compareDraw(draw.numeros);
-        state.lastResult = {draw, result};
-        renderLatest(result, draw);
+        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
+        const assembly = state.assemblies.find(item => item.id === id);
+        if(!assembly) return;
+        state.lastAssemblyId = assembly.id;
+        renderLatest(assembly);
       });
     });
 
-    $('sorteioHistoryList').querySelectorAll('[data-delete-draw]').forEach(button => {
+    $('sorteioHistoryList').querySelectorAll('[data-edit-assembly]').forEach(button => {
       button.addEventListener('click', () => {
-        const id = button.closest('[data-draw-id]').dataset.drawId;
-        const draw = state.draws.find(item => item.id === id);
-        if(!draw || !confirm(`Excluir o concurso ${draw.concurso}?`)) return;
-        state.draws = state.draws.filter(item => item.id !== id);
-        saveDraws();
+        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
+        const assembly = state.assemblies.find(item => item.id === id);
+        if(!assembly) return;
+        fillAssemblyForm(assembly);
+        window.scrollTo({top: $('view-sorteio').offsetTop, behavior: 'smooth'});
+        showMessage('sorteioFormMessage', `Assembleia ${assembly.numero} carregada para edição.`);
+      });
+    });
+
+    $('sorteioHistoryList').querySelectorAll('[data-delete-assembly]').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
+        const assembly = state.assemblies.find(item => item.id === id);
+        if(!assembly || !confirm(`Excluir a assembleia ${assembly.numero}?`)) return;
+        state.assemblies = state.assemblies.filter(item => item.id !== id);
+        saveAssemblies();
+        if(state.lastAssemblyId === id){
+          state.lastAssemblyId = null;
+          $('sorteioResultado').hidden = true;
+        }
         renderHistory();
         renderStats();
-        showMessage('sorteioHistoryMessage', 'Concurso excluído.');
+        showMessage('sorteioHistoryMessage', 'Assembleia excluída.');
       });
     });
   }
 
   function clientStats(client){
-    if(!state.draws.length){
-      return {client, average: null, best: null, closest: 0, contests: 0};
+    const ordered = sortAssembliesAsc();
+    const rows = [];
+    let contemplatedAt = null;
+
+    for(const assembly of ordered){
+      const result = clientAssemblyResult(client, assembly);
+      if(result.alreadyContemplated){
+        if(!contemplatedAt) contemplatedAt = 'Antes do histórico analisado';
+        continue;
+      }
+      rows.push({assembly, result});
+      if(result.currentWin && !contemplatedAt){
+        contemplatedAt = `Assembleia ${assembly.numero} · ${result.currentWin.modalidade}`;
+      }
     }
-    let sum = 0;
-    let best = Infinity;
-    let closest = 0;
-    state.draws.forEach(draw => {
-      const ranking = compareDraw(draw.numeros);
-      const current = ranking.find(item => item.id === client.id);
-      if(!current) return;
-      sum += current.melhor.distancia;
-      best = Math.min(best, current.melhor.distancia);
-      const min = ranking[0].melhor.distancia;
-      if(current.melhor.distancia === min) closest += 1;
-    });
+
+    const values = rows.map(row => row.result.adjustedDistance);
     return {
       client,
-      average: sum / state.draws.length,
-      best,
-      closest,
-      contests: state.draws.length
+      rows,
+      analyzed: values.length,
+      best: values.length ? Math.min(...values) : null,
+      average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+      latest: values.length ? values[values.length - 1] : null,
+      contemplatedAt
     };
   }
 
   function renderStats(){
-    const stats = state.clients.map(clientStats).sort((a, b) => {
-      if(a.average === null) return 1;
-      if(b.average === null) return -1;
-      return a.average - b.average || b.closest - a.closest;
-    });
-
-    if(!state.draws.length){
-      $('sorteioStatsGrid').innerHTML = '<div class="empty-state">As estatísticas aparecerão depois do primeiro concurso salvo.</div>';
+    const total = state.assemblies.length;
+    $('sorteioStatsCount').textContent = `${total} ${total === 1 ? 'assembleia' : 'assembleias'}`;
+    if(!total){
+      $('sorteioStatsGrid').innerHTML = '<div class="empty-state">As estatísticas aparecerão depois da primeira assembleia salva.</div>';
       return;
     }
 
-    $('sorteioStatsGrid').innerHTML = stats.map((item, index) => `
-      <article class="stat-client-card ${index === 0 ? 'top' : ''}">
+    $('sorteioStatsGrid').innerHTML = state.clients.map(clientStats).map(item => `
+      <article class="stat-client-card">
         <div class="stat-client-head"><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div>
         <div class="stat-client-numbers">
-          <div><span>Distância média</span><strong>${Math.round(item.average).toLocaleString('pt-BR')}</strong></div>
-          <div><span>Melhor resultado</span><strong>${item.best.toLocaleString('pt-BR')}</strong></div>
-          <div><span>Vezes mais próximo</span><strong>${item.closest}</strong></div>
+          <div><span>Menor distância ajustada</span><strong>${item.best === null ? '—' : item.best.toLocaleString('pt-BR')}</strong></div>
+          <div><span>Média ajustada</span><strong>${item.average === null ? '—' : Math.round(item.average).toLocaleString('pt-BR')}</strong></div>
+          <div><span>Última assembleia</span><strong>${item.latest === null ? '—' : item.latest.toLocaleString('pt-BR')}</strong></div>
         </div>
+        ${item.contemplatedAt ? `<p class="client-contemplated-note">${escapeHTML(item.contemplatedAt)}</p>` : ''}
       </article>
     `).join('');
   }
@@ -372,17 +458,23 @@
     if(state.clients.some(client => client.id === previous)) select.value = previous;
   }
 
+  function renderBaseline(){
+    $('sorteioBaseCount').textContent = `${state.baseline.length} ${state.baseline.length === 1 ? 'cota anterior' : 'cotas anteriores'}`;
+    $('sorteioBaseContempladas').value = state.baseline.join('\n');
+  }
+
   function renderAllData(){
     renderClients();
     renderHistory();
     renderStats();
     renderReportSelect();
+    renderBaseline();
   }
 
   function addClient(){
     const name = $('sorteioNewClientName').value.trim();
-    const number = $('sorteioNewClientQuota').value.replace(/\D/g, '');
-    if(!name || number.length !== 4){
+    const number = quota($('sorteioNewClientQuota').value);
+    if(!name || !number){
       showMessage('sorteioClientesMessage', 'Informe o nome e uma cota com quatro dígitos.', 'error');
       return;
     }
@@ -398,46 +490,106 @@
     showMessage('sorteioClientesMessage', 'Cliente adicionado.');
   }
 
-  function submitDraw(){
+  function collectAssemblyForm(){
+    const existing = state.assemblies.find(item => item.numero.toLowerCase() === $('sorteioAssembleia').value.trim().toLowerCase());
+    return normalizeAssembly({
+      id: existing?.id || uid('assembleia'),
+      numero: $('sorteioAssembleia').value.trim(),
+      data: $('sorteioData').value,
+      sorteio: $('sorteioCotaSorteio').value,
+      fixos: [$('sorteioFixo1').value, $('sorteioFixo2').value],
+      limitado: $('sorteioLimitado').value,
+      livre: $('sorteioLivre').value,
+      extras: extractQuotaList($('sorteioExtras').value),
+      createdAt: existing?.createdAt || Date.now()
+    });
+  }
+
+  function validateAssembly(assembly){
+    if(!assembly.numero) return 'Informe o número da assembleia.';
+    if(!assembly.data) return 'Informe a data da assembleia.';
+    if(!assembly.sorteio) return 'Informe a cota contemplada por sorteio.';
+
+    const winners = winnersDetailed(assembly).map(item => item.cota);
+    if(new Set(winners).size !== winners.length){
+      return 'A mesma cota não pode aparecer em duas modalidades na mesma assembleia.';
+    }
+
+    const previous = allContemplatedExcept(assembly.id);
+    const repeated = winners.find(cota => previous.has(cota));
+    if(repeated){
+      return `A cota ${repeated} já consta como contemplada em uma assembleia anterior ou na configuração inicial.`;
+    }
+    return '';
+  }
+
+  function fillAssemblyForm(assembly){
+    $('sorteioAssembleia').value = assembly.numero;
+    $('sorteioData').value = assembly.data;
+    $('sorteioCotaSorteio').value = assembly.sorteio;
+    $('sorteioFixo1').value = assembly.fixos[0] || '';
+    $('sorteioFixo2').value = assembly.fixos[1] || '';
+    $('sorteioLimitado').value = assembly.limitado || '';
+    $('sorteioLivre').value = assembly.livre || '';
+    $('sorteioExtras').value = assembly.extras.join('\n');
+  }
+
+  function clearAssemblyForm(){
+    $('sorteioAssembleia').value = '';
+    $('sorteioData').value = todayISO();
+    ['sorteioCotaSorteio','sorteioFixo1','sorteioFixo2','sorteioLimitado','sorteioLivre','sorteioExtras'].forEach(id => { $(id).value = ''; });
+  }
+
+  function submitAssembly(){
     if(!state.clients.length){
       showMessage('sorteioFormMessage', 'Cadastre pelo menos um cliente antes de conferir.', 'error');
       return;
     }
-    const contest = $('sorteioConcurso').value.trim();
-    const date = $('sorteioData').value;
-    const numbers = extractTickets($('sorteioNumeros').value);
-    if(!contest){
-      showMessage('sorteioFormMessage', 'Informe o número do concurso.', 'error');
+
+    const assembly = collectAssemblyForm();
+    const error = validateAssembly(assembly);
+    if(error){
+      showMessage('sorteioFormMessage', error, 'error');
       return;
     }
-    if(numbers.length !== 5){
-      showMessage('sorteioFormMessage', 'Cole os cinco números completos, com cinco dígitos cada.', 'error');
-      return;
-    }
-    const draw = {
-      id: uid('concurso'),
-      concurso: contest,
-      data: date,
-      numeros: numbers,
-      createdAt: Date.now()
-    };
-    const status = saveOrReplaceDraw(draw);
-    const saved = state.draws.find(item => item.concurso.toLowerCase() === contest.toLowerCase()) || draw;
-    const result = compareDraw(saved.numeros);
-    state.lastResult = {draw: saved, result};
-    renderLatest(result, saved);
+
+    const index = state.assemblies.findIndex(item => item.id === assembly.id);
+    if(index >= 0) state.assemblies.splice(index, 1, assembly);
+    else state.assemblies.push(assembly);
+    saveAssemblies();
+    state.lastAssemblyId = assembly.id;
+    renderLatest(assembly);
     renderHistory();
     renderStats();
-    showMessage('sorteioFormMessage', status === 'updated' ? 'Concurso atualizado e conferido.' : 'Concurso salvo e conferido.');
+    clearAssemblyForm();
+    showMessage('sorteioFormMessage', index >= 0 ? 'Assembleia atualizada e recalculada.' : 'Assembleia salva e calculada.');
+  }
+
+  function saveBaseConfiguration(){
+    const base = extractQuotaList($('sorteioBaseContempladas').value);
+    const assemblyWinners = new Set(state.assemblies.flatMap(item => winnersDetailed(item).map(entry => entry.cota)));
+    const repeated = base.find(cota => assemblyWinners.has(cota));
+    if(repeated){
+      showMessage('sorteioBaseMessage', `A cota ${repeated} já está registrada em uma assembleia. Retire-a da lista inicial.`, 'error');
+      return;
+    }
+    state.baseline = base;
+    saveBaseline();
+    renderBaseline();
+    renderStats();
+    if(state.lastAssemblyId){
+      const current = state.assemblies.find(item => item.id === state.lastAssemblyId);
+      if(current) renderLatest(current);
+    }
+    showMessage('sorteioBaseMessage', 'Configuração salva e distâncias recalculadas.');
   }
 
   function reportRows(client){
-    return sortedDraws().reverse().map(draw => {
-      const ranking = compareDraw(draw.numeros);
-      const item = ranking.find(entry => entry.id === client.id);
-      const rank = ranking.findIndex(entry => entry.id === client.id) + 1;
-      return {draw, item, rank};
-    });
+    return sortAssembliesAsc().map(assembly => ({
+      assembly,
+      result: clientAssemblyResult(client, assembly),
+      winners: winnersDetailed(assembly)
+    }));
   }
 
   function generateReport(){
@@ -447,8 +599,8 @@
       showMessage('sorteioReportMessage', 'Selecione um cliente.', 'error');
       return;
     }
-    if(!state.draws.length){
-      showMessage('sorteioReportMessage', 'Salve pelo menos um concurso para gerar o relatório.', 'error');
+    if(!state.assemblies.length){
+      showMessage('sorteioReportMessage', 'Salve pelo menos uma assembleia para gerar o relatório.', 'error');
       return;
     }
 
@@ -459,28 +611,43 @@
     const consultant = settings.consultant || '';
     const phone = settings.phone || '';
 
-    const tableRows = rows.map(({draw, item, rank}) => `
-      <tr>
-        <td><b>${escapeHTML(draw.concurso)}</b><small>${dateBR(draw.data)}</small></td>
-        <td class="tickets">${draw.numeros.map((number, index) => `<span>${index + 1}º: ${number} <i>(${finalFour(number)})</i></span>`).join('')}</td>
-        <td><b>${item.melhor.final}</b><small>${item.melhor.premio}º prêmio</small></td>
-        <td><b>${item.melhor.distancia.toLocaleString('pt-BR')}</b><small>${distanceText(item.melhor.distancia)}</small></td>
-        <td><b>${rank}º</b><small>entre os cadastrados</small></td>
-      </tr>
-    `).join('');
+    const tableRows = rows.map(({assembly, result, winners}) => {
+      const winnersHTML = winners.map(item => `<span><b>${escapeHTML(item.modalidade)}:</b> ${item.cota}</span>`).join('');
+      let distanceHTML = '';
+      if(result.alreadyContemplated){
+        distanceHTML = '<b>Cota já contemplada</b><small>Não participava desta assembleia</small>';
+      }else{
+        distanceHTML = `<b>${result.adjustedDistance.toLocaleString('pt-BR')}</b><small>${result.rawDistance.toLocaleString('pt-BR')} de distância numérica − ${result.removedBetween.toLocaleString('pt-BR')} já contempladas no intervalo</small>`;
+        if(result.currentWin) distanceHTML += `<em>Contemplada nesta assembleia por ${escapeHTML(result.currentWin.modalidade.toLowerCase())}</em>`;
+      }
+      return `
+        <tr>
+          <td><b>${escapeHTML(assembly.numero)}</b><small>${dateBR(assembly.data)}</small></td>
+          <td class="assembly-winners">${winnersHTML}</td>
+          <td><b>${assembly.sorteio}</b><small>Referência do sorteio</small></td>
+          <td>${distanceHTML}</td>
+        </tr>
+      `;
+    }).join('');
 
     const generated = new Date().toLocaleString('pt-BR');
+    const latestAssembly = sortAssembliesDesc()[0];
+    const latestResult = clientAssemblyResult(client, latestAssembly);
+    const latestText = latestResult.alreadyContemplated ? 'Cota já contemplada' : latestResult.adjustedDistance.toLocaleString('pt-BR');
+    const bestText = stats.best === null ? '—' : stats.best.toLocaleString('pt-BR');
+    const averageText = stats.average === null ? '—' : Math.round(stats.average).toLocaleString('pt-BR');
+
     const report = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Relatório de sorteios — ${escapeHTML(client.nome)}</title>
+<title>Histórico de assembleias — ${escapeHTML(client.nome)}</title>
 <style>
-@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#14202b;margin:0;background:#fff;font-size:10px}.header{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #f28a16;padding:0 0 10px;margin-bottom:10px}.brand{display:flex;gap:10px;align-items:center}.mark{width:38px;height:38px;border-radius:11px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}.header h1{font-size:18px;margin:0}.header p{margin:3px 0 0;color:#637181}.meta{text-align:right;color:#637181;line-height:1.45}.client{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:7px;margin-bottom:10px}.card{border:1px solid #d8e0e7;border-radius:9px;padding:8px;background:#f7f9fb}.card span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:#6b7782}.card strong{display:block;font-size:13px;margin-top:4px}.card.primary{background:#fff3e4;border-color:#f1b56e}.card.primary strong{font-size:16px}.intro{border:1px solid #d8e0e7;border-radius:9px;padding:8px 10px;margin-bottom:10px;color:#44515d;line-height:1.45}.intro b{color:#14202b}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#182633;color:#fff;font-size:7px;text-transform:uppercase;letter-spacing:.05em;padding:7px 6px;text-align:left}td{border-bottom:1px solid #dfe5ea;padding:7px 6px;vertical-align:top}th:nth-child(1){width:12%}th:nth-child(2){width:45%}th:nth-child(3){width:13%}th:nth-child(4){width:17%}th:nth-child(5){width:13%}td b{display:block;font-size:10px}td small{display:block;color:#6c7882;font-size:7px;margin-top:2px;line-height:1.25}.tickets{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}.tickets span{display:block;font-size:7px;background:#f3f6f8;border-radius:4px;padding:4px}.tickets i{font-style:normal;color:#f07b00}.footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}.footer b{color:#26343f}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#14202b;margin:0;background:#fff;font-size:9px}.header{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #f28a16;padding:0 0 10px;margin-bottom:10px}.brand{display:flex;gap:10px;align-items:center}.mark{width:38px;height:38px;border-radius:11px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}.header h1{font-size:18px;margin:0}.header p{margin:3px 0 0;color:#637181}.meta{text-align:right;color:#637181;line-height:1.45}.client{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:7px;margin-bottom:10px}.card{border:1px solid #d8e0e7;border-radius:9px;padding:8px;background:#f7f9fb}.card span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:#6b7782}.card strong{display:block;font-size:13px;margin-top:4px}.card.primary{background:#fff3e4;border-color:#f1b56e}.card.primary strong{font-size:16px}.intro{border:1px solid #d8e0e7;border-radius:9px;padding:8px 10px;margin-bottom:10px;color:#44515d;line-height:1.45}.intro b{color:#14202b}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#182633;color:#fff;font-size:7px;text-transform:uppercase;letter-spacing:.05em;padding:7px 6px;text-align:left}td{border-bottom:1px solid #dfe5ea;padding:7px 6px;vertical-align:top}th:nth-child(1){width:12%}th:nth-child(2){width:42%}th:nth-child(3){width:16%}th:nth-child(4){width:30%}td b{font-size:9px}td small{display:block;color:#6c7882;font-size:7px;margin-top:2px;line-height:1.3}.assembly-winners{display:grid;grid-template-columns:repeat(2,1fr);gap:3px}.assembly-winners span{display:block;background:#f3f6f8;border-radius:4px;padding:4px;font-size:7px}.assembly-winners b{display:block;color:#53616c;font-size:6px;text-transform:uppercase}.footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}.footer b{color:#26343f}em{display:block;margin-top:3px;color:#b45f00;font-style:normal;font-size:7px;font-weight:700}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
-<header class="header"><div class="brand"><div class="mark">SC</div><div><h1>Relatório individual de sorteios</h1><p>${escapeHTML(company)}</p></div></div><div class="meta">Emitido em ${generated}${consultant ? `<br>Consultor: ${escapeHTML(consultant)}` : ''}${phone ? `<br>WhatsApp: ${escapeHTML(phone)}` : ''}</div></header>
-<section class="client"><div class="card primary"><span>Cliente acompanhado</span><strong>${escapeHTML(client.nome)} · cota ${client.cota}</strong></div><div class="card"><span>Concursos analisados</span><strong>${stats.contests}</strong></div><div class="card"><span>Melhor distância</span><strong>${stats.best.toLocaleString('pt-BR')}</strong></div><div class="card"><span>Distância média</span><strong>${Math.round(stats.average).toLocaleString('pt-BR')}</strong></div></section>
-<div class="intro"><b>Como ler:</b> em cada concurso, o relatório compara a cota ${client.cota} com os quatro últimos dígitos dos cinco prêmios e apresenta o resultado mais próximo.</div>
-<table><thead><tr><th>Concurso</th><th>Números sorteados e finais</th><th>Final mais próximo</th><th>Distância</th><th>Posição</th></tr></thead><tbody>${tableRows}</tbody></table>
-<div class="footer"><b>Importante:</b> relatório gerado com os resultados cadastrados manualmente no aplicativo. Os números podem ser conferidos nos canais oficiais das Loterias CAIXA. O desempenho anterior não altera a probabilidade de um número em sorteios futuros.</div>
+<header class="header"><div class="brand"><div class="mark">SC</div><div><h1>Histórico individual de assembleias</h1><p>${escapeHTML(company)}</p></div></div><div class="meta">Emitido em ${generated}${consultant ? `<br>Consultor: ${escapeHTML(consultant)}` : ''}${phone ? `<br>WhatsApp: ${escapeHTML(phone)}` : ''}</div></header>
+<section class="client"><div class="card primary"><span>Cliente acompanhado</span><strong>${escapeHTML(client.nome)} · cota ${client.cota}</strong></div><div class="card"><span>Assembleias analisadas</span><strong>${stats.analyzed}</strong></div><div class="card"><span>Menor distância ajustada</span><strong>${bestText}</strong></div><div class="card"><span>Última assembleia</span><strong>${latestText}</strong></div></section>
+<div class="intro"><b>Como ler:</b> a distância ajustada parte da diferença numérica entre a cota ${client.cota} e a cota contemplada por sorteio. Depois, retira do intervalo as cotas que já haviam sido contempladas antes daquela assembleia. Média ajustada no histórico: <b>${averageText}</b>.</div>
+<table><thead><tr><th>Assembleia</th><th>Cotas contempladas</th><th>Referência</th><th>Situação da cota</th></tr></thead><tbody>${tableRows}</tbody></table>
+<div class="footer"><b>Importante:</b> relatório gerado com as assembleias cadastradas manualmente no aplicativo. Os dados devem ser conferidos nos resultados oficiais da administradora. A distância histórica não representa garantia nem aumenta a probabilidade de contemplação futura.</div>
 <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script></body></html>`;
 
     const reportWindow = window.open('', '_blank');
@@ -493,14 +660,21 @@
     reportWindow.document.close();
   }
 
-  function bind(){
-    $('sorteioData').value = todayISO();
-    $('sorteioNewClientQuota').addEventListener('input', event => {
+  function bindQuotaInput(id){
+    const input = $(id);
+    if(!input) return;
+    input.addEventListener('input', event => {
       event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
     });
+  }
+
+  function bind(){
+    $('sorteioData').value = todayISO();
+    ['sorteioCotaSorteio','sorteioFixo1','sorteioFixo2','sorteioLimitado','sorteioLivre','sorteioNewClientQuota'].forEach(bindQuotaInput);
     $('sorteioAddClientBtn').addEventListener('click', addClient);
-    $('sorteioConferirBtn').addEventListener('click', submitDraw);
+    $('sorteioConferirBtn').addEventListener('click', submitAssembly);
     $('sorteioGenerateReportBtn').addEventListener('click', generateReport);
+    $('sorteioSaveBaseBtn').addEventListener('click', saveBaseConfiguration);
   }
 
   function init(){
