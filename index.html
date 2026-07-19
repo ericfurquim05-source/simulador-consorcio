@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.2.14 BETA</title>
-  <link rel="manifest" href="./manifest.json?v=2212">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=2212">
-  <link rel="stylesheet" href="./estilos.css?v=2212">
+  <title>Simulador de Consórcio — v2.3.0</title>
+  <link rel="manifest" href="./manifest.json?v=230">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=230">
+  <link rel="stylesheet" href="./estilos.css?v=230">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.2.14 BETA</p>
+          <p>Simulações claras para apresentar ao cliente · v2.3.0</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -508,6 +508,95 @@
         </section>
       </section>
 
+
+      <section id="view-sorteio" class="view" data-view="sorteio">
+        <article class="panel hero-panel draw-hero">
+          <div class="result-topline">
+            <div>
+              <div class="eyebrow">Acompanhamento dos clientes</div>
+              <h2>Conferência de sorteios</h2>
+            </div>
+            <span class="pill">4 últimos dígitos</span>
+          </div>
+          <p class="lead">Cole os cinco números completos da Loteria Federal. O aplicativo identifica os finais, compara com todas as cotas e salva o concurso no histórico.</p>
+
+          <div class="form-grid draw-form">
+            <div class="field">
+              <label for="sorteioConcurso">Número do concurso</label>
+              <div class="control"><input id="sorteioConcurso" type="text" inputmode="numeric" maxlength="20" placeholder="Ex.: 6084"></div>
+            </div>
+            <div class="field">
+              <label for="sorteioData">Data do sorteio</label>
+              <div class="control"><input id="sorteioData" type="date"></div>
+            </div>
+            <div class="field full">
+              <label for="sorteioNumeros">Cole os cinco números sorteados</label>
+              <div class="control textarea-control"><textarea id="sorteioNumeros" rows="5" inputmode="numeric" placeholder="Exemplo:
+06446
+12345
+59870
+45500
+16720"></textarea></div>
+              <small>Use os números completos, com cinco dígitos. Pode colar todos de uma vez, separados por espaço ou por linha.</small>
+            </div>
+          </div>
+          <div id="sorteioFormMessage" class="message success" hidden></div>
+          <button id="sorteioConferirBtn" class="primary-button" type="button">Conferir e salvar concurso</button>
+        </article>
+
+        <section id="sorteioResultado" class="result-stack" hidden>
+          <article class="panel draw-result-panel">
+            <div class="result-topline">
+              <div><div class="eyebrow">Resultado da conferência</div><h2 id="sorteioResultadoTitulo">Concurso</h2></div>
+              <span id="sorteioResultadoData" class="pill"></span>
+            </div>
+            <div id="sorteioDestaque" class="draw-highlight"></div>
+            <div id="sorteioPremiosFinais" class="draw-prizes-grid"></div>
+          </article>
+
+          <article class="panel">
+            <div class="section-heading"><div><div class="eyebrow">Do mais próximo ao mais distante</div><h2>Ranking dos clientes</h2></div></div>
+            <div id="sorteioRanking" class="draw-ranking"></div>
+          </article>
+        </section>
+
+        <details class="panel draw-collapsible">
+          <summary><span><b>Clientes cadastrados</b><small>Abra para adicionar, editar ou excluir</small></span><strong id="sorteioClientesCount">0 clientes</strong></summary>
+          <div class="draw-details-body">
+            <div class="form-grid add-client-grid">
+              <div class="field"><label for="sorteioNewClientName">Nome do cliente</label><div class="control"><input id="sorteioNewClientName" type="text" maxlength="70" placeholder="Ex.: Maria"></div></div>
+              <div class="field"><label for="sorteioNewClientQuota">Número da cota</label><div class="control"><input id="sorteioNewClientQuota" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div></div>
+            </div>
+            <button id="sorteioAddClientBtn" class="secondary-button" type="button">Adicionar cliente</button>
+            <div id="sorteioClientesMessage" class="message success" hidden></div>
+            <div id="sorteioClientList" class="client-edit-list"></div>
+          </div>
+        </details>
+
+        <article class="panel client-report-panel">
+          <div class="section-heading"><div><div class="eyebrow">Relatório individual</div><h2>Gerar PDF para um cliente</h2></div></div>
+          <p class="lead">Selecione o cliente para reunir todos os concursos salvos, os cinco números sorteados e a distância da cota em cada resultado.</p>
+          <div class="report-client-row">
+            <div class="field"><label for="sorteioReportClient">Cliente</label><div class="control select-control"><select id="sorteioReportClient"></select></div></div>
+            <button id="sorteioGenerateReportBtn" class="primary-button" type="button">Abrir relatório / PDF</button>
+          </div>
+          <div id="sorteioReportMessage" class="message success" hidden></div>
+        </article>
+
+        <details class="panel draw-collapsible">
+          <summary><span><b>Histórico dos concursos</b><small>Resultados cadastrados neste aparelho</small></span><strong id="sorteioHistoryCount">0 concursos salvos</strong></summary>
+          <div class="draw-details-body"><div id="sorteioHistoryMessage" class="message success" hidden></div><div id="sorteioHistoryList" class="draw-history-list"></div></div>
+        </details>
+
+        <details class="panel draw-collapsible">
+          <summary><span><b>Estatísticas do grupo</b><small>Desempenho histórico das cotas cadastradas</small></span><strong>Ver análise</strong></summary>
+          <div class="draw-details-body">
+            <div id="sorteioStatsGrid" class="draw-stats-grid"></div>
+            <p class="historical-note">A estatística descreve somente os concursos cadastrados. Resultados anteriores não tornam uma cota mais provável no próximo sorteio.</p>
+          </div>
+        </details>
+      </section>
+
       <section id="view-configuracoes" class="view" data-view="configuracoes">
         <article class="panel">
           <div class="eyebrow">Personalização</div>
@@ -560,7 +649,8 @@
     <nav class="bottom-nav" aria-label="Navegação principal">
       <button type="button" data-nav="simular" class="active"><span>⌁</span>Simular</button>
       <button type="button" data-nav="patrimonio"><span>⌂</span>Patrimônio</button>
-      <button type="button" data-nav="configuracoes"><span>⚙</span>Configurações</button>
+      <button type="button" data-nav="sorteio"><span>◎</span>Sorteio</button>
+      <button type="button" data-nav="configuracoes"><span>⚙</span>Ajustes</button>
     </nav>
   </div>
 
@@ -572,11 +662,12 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=2212" defer></script>
-  <script src="./graficos.js?v=2212" defer></script>
-  <script src="./configuracoes.js?v=2212" defer></script>
-  <script src="./pdf.js?v=2212" defer></script>
-  <script src="./app.js?v=2212" defer></script>
-  <script src="./alavancagem.js?v=2212" defer></script>
+  <script src="./calculos.js?v=230" defer></script>
+  <script src="./graficos.js?v=230" defer></script>
+  <script src="./configuracoes.js?v=230" defer></script>
+  <script src="./pdf.js?v=230" defer></script>
+  <script src="./app.js?v=230" defer></script>
+  <script src="./alavancagem.js?v=230" defer></script>
+  <script src="./sorteio.js?v=230" defer></script>
 </body>
 </html>

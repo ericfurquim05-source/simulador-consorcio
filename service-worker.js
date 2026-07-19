@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.2.15-parcela-pos-lance';
+const VERSION = 'simulador-consorcio-v2.3.0-sorteios';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
@@ -11,6 +11,7 @@ const ASSETS = [
   './pdf.js',
   './app.js',
   './alavancagem.js',
+  './sorteio.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
