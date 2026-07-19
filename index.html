@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.4.0</title>
-  <link rel="manifest" href="./manifest.json?v=240">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=240">
-  <link rel="stylesheet" href="./estilos.css?v=240">
+  <title>Simulador de Consórcio — v2.4.1</title>
+  <link rel="manifest" href="./manifest.json?v=241">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=241">
+  <link rel="stylesheet" href="./estilos.css?v=241">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.4.0</p>
+          <p>Simulações claras para apresentar ao cliente · v2.4.1</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -621,8 +621,8 @@
         </details>
 
         <article class="panel client-report-panel">
-          <div class="section-heading"><div><div class="eyebrow">Relatório individual</div><h2>Gerar PDF para um cliente</h2></div></div>
-          <p class="lead">O relatório considera somente as assembleias e os clientes do grupo selecionado.</p>
+          <div class="section-heading"><div><div class="eyebrow">Acompanhamento do grupo</div><h2>Gerar relatório para um cliente</h2></div></div>
+          <p class="lead">O PDF destaca a cota do cliente, reúne todas as assembleias cadastradas e mostra o acumulado de contemplações por modalidade.</p>
           <div class="report-client-row">
             <div class="field"><label for="sorteioReportClient">Cliente</label><div class="control"><select id="sorteioReportClient"></select></div></div>
             <button id="sorteioGenerateReportBtn" class="primary-button" type="button">Gerar relatório em PDF</button>
@@ -638,19 +638,22 @@
           </div>
         </details>
 
-        <article class="panel probability-panel">
-          <div class="section-heading">
-            <div>
-              <div class="eyebrow">Mapa teórico do sorteio</div>
-              <h2>Probabilidade atual por faixa</h2>
+        <details class="panel draw-collapsible range-compact-panel">
+          <summary>
+            <span>
+              <b>Cotas ativas por faixa numérica</b>
+              <small>Selecione um intervalo para ver quantas cotas ainda permanecem no grupo</small>
+            </span>
+            <strong id="sorteioRangeCount">0 cotas ativas</strong>
+          </summary>
+          <div class="draw-details-body">
+            <div class="field">
+              <label for="sorteioRangeSelect">Faixa numérica</label>
+              <div class="control"><select id="sorteioRangeSelect"></select></div>
+              <small>Exemplo: “1 a 500 — 490 cotas ativas” significa que 10 cotas desse intervalo já foram contempladas. Esta contagem não prevê o próximo sorteio.</small>
             </div>
-            <span id="sorteioRangeBest" class="pill">Sem histórico</span>
           </div>
-          <p class="lead">A conta não tenta prever a Loteria Federal pelo histórico. Ela distribui todos os possíveis números de referência para a cota ainda ativa mais próxima, conforme as contemplações cadastradas.</p>
-          <div id="sorteioRangeSummary" class="range-summary-grid"></div>
-          <div id="sorteioRangeGrid" class="range-stats-grid"></div>
-          <p class="historical-note">Uma cota só ganha uma área maior quando surgem espaços imediatamente ao redor dela. Resultados antigos não tornam uma faixa “atrasada” nem mais provável por si só. A projeção assume cotas sequenciais de 1 até o total informado e considera removidas apenas as cotas cadastradas como contempladas.</p>
-        </article>
+        </details>
 
         <article class="panel modality-panel">
           <div class="section-heading">
@@ -743,12 +746,12 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=240" defer></script>
-  <script src="./graficos.js?v=240" defer></script>
-  <script src="./configuracoes.js?v=240" defer></script>
-  <script src="./pdf.js?v=240" defer></script>
-  <script src="./app.js?v=240" defer></script>
-  <script src="./alavancagem.js?v=240" defer></script>
-  <script src="./sorteio.js?v=240" defer></script>
+  <script src="./calculos.js?v=241" defer></script>
+  <script src="./graficos.js?v=241" defer></script>
+  <script src="./configuracoes.js?v=241" defer></script>
+  <script src="./pdf.js?v=241" defer></script>
+  <script src="./app.js?v=241" defer></script>
+  <script src="./alavancagem.js?v=241" defer></script>
+  <script src="./sorteio.js?v=241" defer></script>
 </body>
 </html>

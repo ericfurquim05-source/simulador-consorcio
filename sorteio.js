@@ -279,26 +279,22 @@
 
   function calculateRangeStats(group = currentGroup()){
     if(!group) return [];
-    const zones = captureZones(group);
     const removed = allContemplated(group);
     const ranges = [];
     for(let start = 1; start <= group.totalCotas; start += 500){
       const end = Math.min(group.totalCotas, start + 499);
-      const rangeZones = zones.filter(zone => zone.cota >= start && zone.cota <= end);
-      const possibilities = rangeZones.reduce((sum, zone) => sum + zone.possibilities, 0);
-      const active = rangeZones.length;
       let contemplated = 0;
       removed.forEach(value => {
         const number = Number(value);
         if(number >= start && number <= end) contemplated += 1;
       });
+      const totalInRange = end - start + 1;
       ranges.push({
         start,
         end,
-        active,
+        total: totalInRange,
         contemplated,
-        possibilities,
-        probability: group.totalCotas ? possibilities / group.totalCotas * 100 : 0
+        active: Math.max(0, totalInRange - contemplated)
       });
     }
     return ranges;
@@ -633,19 +629,16 @@
     const ranges = calculateRangeStats(group);
     const contemplated = allContemplated(group).size;
     const active = Math.max(0, group.totalCotas - contemplated);
-    const best = ranges.reduce((current, item) => !current || item.probability > current.probability ? item : current, null);
-    $('sorteioRangeBest').textContent = best && active ? `${rangeLabel(best.start, best.end)} · ${formatPercent(best.probability)}` : 'Sem cotas ativas';
-    $('sorteioRangeSummary').innerHTML = `
-      <div><span>Cotas previstas</span><strong>${formatInteger(group.totalCotas)}</strong></div>
-      <div><span>Já contempladas</span><strong>${formatInteger(contemplated)}</strong></div>
-      <div><span>Ainda ativas</span><strong>${formatInteger(active)}</strong></div>
-      <div><span>Referências possíveis</span><strong>${formatInteger(group.totalCotas)}</strong></div>`;
-    $('sorteioRangeGrid').innerHTML = ranges.map(item => `
-      <div class="range-stat-card${best && item.start === best.start ? ' best' : ''}">
-        <div class="range-stat-head"><strong>${rangeLabel(item.start, item.end)}</strong><span>${formatPercent(item.probability)}</span></div>
-        <div class="range-stat-bar"><i style="width:${Math.min(100, item.probability * 20)}%"></i></div>
-        <small>${formatInteger(item.active)} cotas ativas · ${formatInteger(item.contemplated)} contempladas · ${formatInteger(item.possibilities)} referências possíveis</small>
-      </div>`).join('');
+    const select = $('sorteioRangeSelect');
+    const previous = select?.value || '';
+    if(select){
+      select.innerHTML = ranges.map(item => {
+        const value = `${item.start}-${item.end}`;
+        return `<option value="${value}">${rangeLabel(item.start, item.end)} — ${formatInteger(item.active)} cotas ativas</option>`;
+      }).join('');
+      if(ranges.some(item => `${item.start}-${item.end}` === previous)) select.value = previous;
+    }
+    $('sorteioRangeCount').textContent = `${formatInteger(active)} ${active === 1 ? 'cota ativa' : 'cotas ativas'}`;
   }
 
   function renderModalityStats(){
@@ -711,27 +704,100 @@
       showMessage('sorteioReportMessage', 'Salve pelo menos uma assembleia neste grupo.', 'error');
       return;
     }
+
     const settings = global.Simulador?.Configuracoes?.load?.() || {};
-    const rows = sortAssembliesAsc(group).map(assembly => {
-      const data = clientAssemblyData(client, assembly, group);
+    const totals = modalityTotals(group);
+    const totalContemplations = Object.values(totals).reduce((sum, value) => sum + value, 0);
+    const contemplatedUnique = allContemplated(group).size;
+    const active = Math.max(0, group.totalCotas - contemplatedUnique);
+
+    const modalityCards = Object.entries(MODALITIES).map(([key, label]) => `
+      <div class="modality-card">
+        <span>${escapeHTML(label)}</span>
+        <strong>${formatInteger(totals[key] || 0)}</strong>
+      </div>`).join('');
+
+    const assemblyCards = sortAssembliesDesc(group).map(assembly => {
       const winners = winnersDetailed(assembly);
       const currentWin = winners.find(item => item.cota === client.cota);
+      const grouped = Object.entries(MODALITIES).map(([key, label]) => {
+        const quotas = winners.filter(item => item.modalidadeKey === key).map(item => item.cota);
+        if(!quotas.length) return '';
+        return `<div class="assembly-line"><b>${escapeHTML(label)}</b><span>${quotas.map(number => `<i class="${number === client.cota ? 'client-quota' : ''}">${number}</i>`).join('')}</span></div>`;
+      }).join('');
+
       return `
-        <tr>
-          <td><b>${escapeHTML(assembly.numero)}</b><small>${dateBR(assembly.data)}</small></td>
-          <td>${winners.map(item => `<span><b>${escapeHTML(item.modalidade)}</b>${item.cota}</span>`).join('')}</td>
-          <td>${data.reference ? `<b>${data.reference}</b><small>Distância numérica: ${formatInteger(data.rawDistance)}<br>Cotas ativas no intervalo: ${formatInteger(data.activeBetween)}</small>` : '<b>Sem referência</b><small>Nenhuma cota marcada como sorteio</small>'}${currentWin ? `<em>Contemplada por ${escapeHTML(currentWin.modalidade.toLowerCase())}</em>` : ''}</td>
-        </tr>`;
+        <article class="assembly-card${currentWin ? ' client-contemplated' : ''}">
+          <header>
+            <div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><small>${dateBR(assembly.data)}</small></div>
+            <b>${winners.length} ${winners.length === 1 ? 'contemplação' : 'contemplações'}</b>
+          </header>
+          <div class="assembly-lines">${grouped || '<p>Nenhuma contemplação registrada.</p>'}</div>
+          ${currentWin ? `<div class="client-note">A cota ${client.cota} foi contemplada por ${escapeHTML(currentWin.modalidade.toLowerCase())} nesta assembleia.</div>` : ''}
+        </article>`;
     }).join('');
 
-    const report = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Histórico — ${escapeHTML(client.nome)}</title><style>
-      @page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#14202b;margin:0;font-size:9px}.header{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #f28a16;padding-bottom:10px;margin-bottom:10px}.brand{display:flex;gap:10px;align-items:center}.mark{width:38px;height:38px;border-radius:11px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900}.header h1{font-size:18px;margin:0}.header p,.meta{margin:3px 0 0;color:#637181}.meta{text-align:right;line-height:1.5}.client{display:grid;grid-template-columns:2fr 1fr 1fr;gap:7px;margin-bottom:10px}.card{border:1px solid #d8e0e7;border-radius:9px;padding:8px;background:#f7f9fb}.card span{display:block;font-size:7px;text-transform:uppercase;color:#6b7782}.card strong{display:block;font-size:14px;margin-top:4px}.card.primary{background:#fff3e4;border-color:#f1b56e}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#182633;color:#fff;font-size:7px;text-transform:uppercase;padding:7px;text-align:left}td{border-bottom:1px solid #dfe5ea;padding:7px;vertical-align:top}th:nth-child(1){width:15%}th:nth-child(2){width:50%}th:nth-child(3){width:35%}td span{display:inline-block;background:#f3f6f8;border-radius:4px;padding:4px;margin:0 3px 3px 0;font-size:7px}td span b,td small{display:block;color:#6c7882;font-size:7px}em{display:block;color:#b45f00;font-style:normal;font-weight:700;margin-top:3px}.footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    const report = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acompanhamento — ${escapeHTML(client.nome)}</title><style>
+      @page{size:A4;margin:10mm}
+      *{box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;color:#17232e;margin:0;font-size:9px;background:#fff}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #f28a16;padding-bottom:10px;margin-bottom:10px}
+      .brand{display:flex;gap:10px;align-items:center}.mark{width:40px;height:40px;border-radius:12px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}
+      .header h1{font-size:18px;margin:0}.header p,.meta{margin:3px 0 0;color:#66737f}.meta{text-align:right;line-height:1.5}
+      .client-hero{display:grid;grid-template-columns:1.55fr .75fr .75fr;gap:8px;margin-bottom:10px}
+      .hero-card{border:1px solid #d8e0e7;border-radius:10px;padding:9px;background:#f7f9fb}
+      .hero-card span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.05em;color:#6b7782}
+      .hero-card strong{display:block;font-size:14px;margin-top:4px}
+      .hero-card.primary{background:#fff2e1;border-color:#f0ae5f}.hero-card.primary strong{font-size:25px;color:#c96500}
+      .section-title{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:12px 0 7px}
+      .section-title h2{font-size:12px;margin:0}.section-title span{font-size:7px;color:#74808a}
+      .snapshot{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+      .snapshot>div{border:1px solid #dce3e9;border-radius:9px;padding:8px;background:#f8fafb}
+      .snapshot span,.modality-card span{display:block;color:#6b7782;font-size:7px;text-transform:uppercase;line-height:1.3}
+      .snapshot strong,.modality-card strong{display:block;margin-top:4px;font-size:15px}
+      .modalities{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+      .modality-card{border:1px solid #dce3e9;border-radius:9px;padding:8px;background:#f8fafb;min-height:54px}
+      .modality-card:first-child{background:#fff2e1;border-color:#f0ae5f}
+      .assemblies{display:grid;gap:7px}
+      .assembly-card{border:1px solid #dce3e9;border-radius:10px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+      .assembly-card>header{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#edf2f5;padding:7px 9px}
+      .assembly-card>header strong{font-size:10px}.assembly-card>header small{display:block;color:#6b7782;font-size:7px;margin-top:2px}.assembly-card>header>b{font-size:7px;color:#66737f;text-transform:uppercase}
+      .assembly-lines{padding:7px 9px;display:grid;gap:5px}.assembly-line{display:grid;grid-template-columns:105px 1fr;gap:8px;align-items:start}
+      .assembly-line>b{font-size:7px;color:#64717d}.assembly-line span{display:flex;flex-wrap:wrap;gap:4px}
+      .assembly-line i{font-style:normal;font-weight:800;font-size:8px;background:#f1f4f6;border:1px solid #dce3e9;border-radius:5px;padding:3px 5px}
+      .assembly-line i.client-quota{background:#fff0db;border-color:#f28a16;color:#b75b00}
+      .client-contemplated{border-color:#f28a16}.client-note{padding:6px 9px;background:#fff4e5;color:#a95200;font-weight:700;font-size:7px}
+      .footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}
+      @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.assembly-card{break-inside:avoid;page-break-inside:avoid}}
     </style></head><body>
-      <header class="header"><div class="brand"><div class="mark">SC</div><div><h1>Histórico individual de assembleias</h1><p>${escapeHTML(settings.company || 'Acompanhamento de Consórcio')}</p></div></div><div class="meta">Grupo ${escapeHTML(group.numero)}<br>Emitido em ${new Date().toLocaleString('pt-BR')}${settings.consultant ? `<br>Consultor: ${escapeHTML(settings.consultant)}` : ''}</div></header>
-      <section class="client"><div class="card primary"><span>Cliente</span><strong>${escapeHTML(client.nome)} · ${client.cota}</strong></div><div class="card"><span>Grupo</span><strong>${escapeHTML(group.numero)}</strong></div><div class="card"><span>Assembleias</span><strong>${group.assemblies.length}</strong></div></section>
-      <table><thead><tr><th>Assembleia</th><th>Cotas contempladas</th><th>Referência e proximidade</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer"><b>Importante:</b> relatório formado pelos registros manuais deste grupo. A distância histórica não prevê o próximo resultado. Confira os dados nos resultados oficiais da administradora.</div>
-      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script></body></html>`;
+      <header class="header">
+        <div class="brand"><div class="mark">SC</div><div><h1>Acompanhamento de assembleias</h1><p>${escapeHTML(settings.company || 'Acompanhamento de Consórcio')}</p></div></div>
+        <div class="meta">Grupo ${escapeHTML(group.numero)}<br>Emitido em ${new Date().toLocaleString('pt-BR')}${settings.consultant ? `<br>Consultor: ${escapeHTML(settings.consultant)}` : ''}</div>
+      </header>
+
+      <section class="client-hero">
+        <div class="hero-card primary"><span>Cota de ${escapeHTML(client.nome)}</span><strong>${client.cota}</strong></div>
+        <div class="hero-card"><span>Grupo</span><strong>${escapeHTML(group.numero)}</strong></div>
+        <div class="hero-card"><span>Assembleias registradas</span><strong>${group.assemblies.length}</strong></div>
+      </section>
+
+      <div class="section-title"><h2>Resumo atual do grupo</h2><span>Dados acumulados até a assembleia mais recente cadastrada</span></div>
+      <section class="snapshot">
+        <div><span>Cotas previstas</span><strong>${formatInteger(group.totalCotas)}</strong></div>
+        <div><span>Cotas contempladas</span><strong>${formatInteger(contemplatedUnique)}</strong></div>
+        <div><span>Cotas ainda ativas</span><strong>${formatInteger(active)}</strong></div>
+        <div><span>Total de contemplações registradas</span><strong>${formatInteger(totalContemplations)}</strong></div>
+      </section>
+
+      <div class="section-title"><h2>Contemplações por modalidade</h2><span>Somatória de todas as assembleias cadastradas</span></div>
+      <section class="modalities">${modalityCards}</section>
+
+      <div class="section-title"><h2>Histórico das assembleias</h2><span>Assembleia mais recente primeiro</span></div>
+      <section class="assemblies">${assemblyCards}</section>
+
+      <div class="footer"><b>Importante:</b> este relatório reúne os registros manuais lançados no aplicativo. Ele apresenta o histórico do grupo e não representa previsão ou garantia de contemplação. Confira os dados com os resultados oficiais da administradora.</div>
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),350));<\/script>
+    </body></html>`;
 
     const reportWindow = window.open('', '_blank');
     if(!reportWindow){

@@ -367,3 +367,9 @@ button{cursor:pointer}
   .group-snapshot{grid-template-columns:1fr}
   .modality-stats-grid{grid-template-columns:1fr 1fr}
 }
+
+
+/* v2.4.1 — faixas numéricas compactas */
+.range-compact-panel .draw-details-body{padding-top:14px}
+.range-compact-panel .control select{font-weight:850}
+.range-compact-panel .field>small{display:block;margin-top:8px;line-height:1.5;color:var(--muted)}
