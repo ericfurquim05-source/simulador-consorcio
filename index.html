@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.3.2</title>
-  <link rel="manifest" href="./manifest.json?v=232">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=232">
-  <link rel="stylesheet" href="./estilos.css?v=232">
+  <title>Simulador de Consórcio — v2.4.0</title>
+  <link rel="manifest" href="./manifest.json?v=240">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=240">
+  <link rel="stylesheet" href="./estilos.css?v=240">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.3.2</p>
+          <p>Simulações claras para apresentar ao cliente · v2.4.0</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -510,15 +510,52 @@
 
 
       <section id="view-sorteio" class="view" data-view="sorteio">
+        <article class="panel draw-group-panel">
+          <div class="result-topline">
+            <div>
+              <div class="eyebrow">Radar de contemplações</div>
+              <h2 id="sorteioGrupoTitulo">Grupo 012186</h2>
+            </div>
+            <span id="sorteioGrupoResumo" class="pill">9.999 cotas</span>
+          </div>
+
+          <div class="group-selector-row">
+            <div class="field">
+              <label for="sorteioGrupoSelect">Grupo selecionado</label>
+              <div class="control"><select id="sorteioGrupoSelect"></select></div>
+            </div>
+            <div id="sorteioGroupSnapshot" class="group-snapshot"></div>
+          </div>
+
+          <details class="draw-inner-details">
+            <summary><span><b>Gerenciar grupos</b><small>Adicione grupos e informe a quantidade total de cotas</small></span></summary>
+            <div class="draw-details-body">
+              <div class="form-grid group-create-grid">
+                <div class="field">
+                  <label for="sorteioNewGroupNumber">Número do grupo</label>
+                  <div class="control"><input id="sorteioNewGroupNumber" type="text" maxlength="20" placeholder="Ex.: 012186"></div>
+                </div>
+                <div class="field">
+                  <label for="sorteioNewGroupSize">Quantidade de cotas</label>
+                  <div class="control"><input id="sorteioNewGroupSize" type="number" inputmode="numeric" min="1" max="9999" value="9999"></div>
+                </div>
+              </div>
+              <button id="sorteioAddGroupBtn" class="secondary-button" type="button">Adicionar grupo</button>
+              <div id="sorteioGroupMessage" class="message success" hidden></div>
+              <div id="sorteioGroupList" class="group-edit-list"></div>
+            </div>
+          </details>
+        </article>
+
         <article class="panel hero-panel draw-hero">
           <div class="result-topline">
             <div>
               <div class="eyebrow">Histórico real do grupo</div>
               <h2>Registrar assembleia</h2>
             </div>
-            <span class="pill">Cotas de 4 dígitos</span>
+            <span class="pill">Cadastro manual</span>
           </div>
-          <p class="lead">Cadastre as cotas contempladas uma a uma e escolha a modalidade de cada uma. As cotas marcadas como Sorteio viram referências da assembleia, e a conferência desconta da distância as cotas já contempladas anteriormente.</p>
+          <p class="lead">Cadastre cada cota contemplada e escolha a modalidade. Os registros ficam separados por grupo e alimentam automaticamente as estatísticas.</p>
 
           <div class="form-grid draw-form">
             <div class="field">
@@ -534,7 +571,7 @@
               <div class="assembly-add-heading">
                 <div>
                   <label for="sorteioNovaCota">Adicionar cota contemplada</label>
-                  <small>Informe a cota, escolha como ela foi contemplada e adicione. Repita quantas vezes precisar.</small>
+                  <small>Informe o número, selecione a modalidade e repita quantas vezes precisar.</small>
                 </div>
                 <strong id="sorteioDraftCount">0 cotas</strong>
               </div>
@@ -552,33 +589,26 @@
                 <button id="sorteioAddContempladaBtn" class="secondary-button" type="button">Adicionar cota</button>
               </div>
               <div id="sorteioDraftList" class="assembly-draft-list"></div>
-              <p class="assembly-form-note">Adicione pelo menos uma cota na modalidade <b>Sorteio</b>. Quando houver mais de uma, o aplicativo usa a referência mais próxima de cada cliente.</p>
             </div>
           </div>
 
           <div id="sorteioFormMessage" class="message success" hidden></div>
-          <button id="sorteioConferirBtn" class="primary-button" type="button">Salvar e conferir assembleia</button>
+          <button id="sorteioConferirBtn" class="primary-button" type="button">Salvar assembleia</button>
         </article>
 
         <section id="sorteioResultado" class="result-stack" hidden>
           <article class="panel draw-result-panel">
             <div class="result-topline">
-              <div><div class="eyebrow">Conferência da assembleia</div><h2 id="sorteioResultadoTitulo">Assembleia</h2></div>
+              <div><div class="eyebrow">Assembleia salva</div><h2 id="sorteioResultadoTitulo">Assembleia</h2></div>
               <span id="sorteioResultadoData" class="pill"></span>
             </div>
             <div id="sorteioDestaque" class="assembly-summary-grid"></div>
             <div id="sorteioContemplados" class="assembly-winners-grid"></div>
           </article>
-
-          <article class="panel">
-            <div class="section-heading"><div><div class="eyebrow">Sem ranking</div><h2>Distância de cada cliente</h2></div></div>
-            <p class="lead">A distância ajustada desconta somente as cotas contempladas em assembleias anteriores que estavam entre a cota do cliente e a cota sorteada.</p>
-            <div id="sorteioClientesResultado" class="assembly-client-list"></div>
-          </article>
         </section>
 
         <details class="panel draw-collapsible">
-          <summary><span><b>Clientes cadastrados</b><small>Abra para adicionar, editar ou excluir</small></span><strong id="sorteioClientesCount">0 clientes</strong></summary>
+          <summary><span><b>Clientes deste grupo</b><small>Os clientes ficam vinculados somente ao grupo selecionado</small></span><strong id="sorteioClientesCount">0 clientes</strong></summary>
           <div class="draw-details-body">
             <div class="form-grid add-client-grid">
               <div class="field"><label for="sorteioNewClientName">Nome do cliente</label><div class="control"><input id="sorteioNewClientName" type="text" maxlength="70" placeholder="Ex.: Maria"></div></div>
@@ -592,7 +622,7 @@
 
         <article class="panel client-report-panel">
           <div class="section-heading"><div><div class="eyebrow">Relatório individual</div><h2>Gerar PDF para um cliente</h2></div></div>
-          <p class="lead">O relatório reúne todas as assembleias salvas, as cotas contempladas em cada modalidade e a distância ajustada do cliente em cada data.</p>
+          <p class="lead">O relatório considera somente as assembleias e os clientes do grupo selecionado.</p>
           <div class="report-client-row">
             <div class="field"><label for="sorteioReportClient">Cliente</label><div class="control"><select id="sorteioReportClient"></select></div></div>
             <button id="sorteioGenerateReportBtn" class="primary-button" type="button">Gerar relatório em PDF</button>
@@ -601,29 +631,37 @@
         </article>
 
         <details class="panel draw-collapsible">
-          <summary><span><b>Histórico de assembleias</b><small>Abra para consultar ou excluir registros</small></span><strong id="sorteioHistoryCount">0 assembleias</strong></summary>
+          <summary><span><b>Histórico de assembleias</b><small>Consulte, edite ou exclua os registros do grupo</small></span><strong id="sorteioHistoryCount">0 assembleias</strong></summary>
           <div class="draw-details-body">
             <div id="sorteioHistoryMessage" class="message success" hidden></div>
             <div id="sorteioHistoryList" class="draw-history-list"></div>
           </div>
         </details>
 
-        <details class="panel draw-collapsible">
-          <summary><span><b>Estatísticas individuais</b><small>Inclui automaticamente a assembleia mais recente</small></span><strong id="sorteioStatsCount">0 assembleias</strong></summary>
-          <div class="draw-details-body">
-            <div id="sorteioStatsGrid" class="draw-stats-grid"></div>
-            <p class="historical-note">Os dados descrevem apenas o histórico registrado. Eles não aumentam nem reduzem a probabilidade de contemplação futura.</p>
+        <article class="panel probability-panel">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">Mapa teórico do sorteio</div>
+              <h2>Probabilidade atual por faixa</h2>
+            </div>
+            <span id="sorteioRangeBest" class="pill">Sem histórico</span>
           </div>
-        </details>
+          <p class="lead">A conta não tenta prever a Loteria Federal pelo histórico. Ela distribui todos os possíveis números de referência para a cota ainda ativa mais próxima, conforme as contemplações cadastradas.</p>
+          <div id="sorteioRangeSummary" class="range-summary-grid"></div>
+          <div id="sorteioRangeGrid" class="range-stats-grid"></div>
+          <p class="historical-note">Uma cota só ganha uma área maior quando surgem espaços imediatamente ao redor dela. Resultados antigos não tornam uma faixa “atrasada” nem mais provável por si só. A projeção assume cotas sequenciais de 1 até o total informado e considera removidas apenas as cotas cadastradas como contempladas.</p>
+        </article>
 
-        <details class="panel draw-collapsible">
-          <summary><span><b>Distribuição por faixas de 500 cotas</b><small>Chance teórica conforme as cotas que ainda permanecem ativas</small></span><strong id="sorteioRangeBest">Sem histórico</strong></summary>
-          <div class="draw-details-body">
-            <div id="sorteioRangeSummary" class="range-summary-grid"></div>
-            <div id="sorteioRangeGrid" class="range-stats-grid"></div>
-            <p class="historical-note">A chance da faixa é calculada pela quantidade de cotas ainda ativas nela dividida pelo total de cotas ainda ativas no grupo. Isso não torna uma cota individual mais provável: entre as cotas elegíveis, cada número continua com a mesma chance teórica.</p>
+        <article class="panel modality-panel">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">Acumulado do grupo</div>
+              <h2>Contemplações por modalidade</h2>
+            </div>
+            <span id="sorteioModalityAssemblies" class="pill">0 assembleias</span>
           </div>
-        </details>
+          <div id="sorteioModalityGrid" class="modality-stats-grid"></div>
+        </article>
 
         <details class="panel draw-collapsible">
           <summary><span><b>Configuração do histórico</b><small>Use quando o grupo já tinha contemplações antes do primeiro registro</small></span><strong id="sorteioBaseCount">0 cotas anteriores</strong></summary>
@@ -631,13 +669,14 @@
             <div class="field">
               <label for="sorteioBaseContempladas">Cotas contempladas antes da primeira assembleia cadastrada</label>
               <div class="control textarea-control compact-textarea"><textarea id="sorteioBaseContempladas" rows="5" inputmode="numeric" placeholder="Cole as cotas separadas por espaço, vírgula ou linha"></textarea></div>
-              <small>Essas cotas serão retiradas do intervalo ao calcular a distância ajustada.</small>
+              <small>Essas cotas serão retiradas do mapa teórico do grupo selecionado.</small>
             </div>
             <button id="sorteioSaveBaseBtn" class="secondary-button" type="button">Salvar configuração</button>
             <div id="sorteioBaseMessage" class="message success" hidden></div>
           </div>
         </details>
       </section>
+
 
       <section id="view-configuracoes" class="view" data-view="configuracoes">
         <article class="panel">
@@ -704,12 +743,12 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=232" defer></script>
-  <script src="./graficos.js?v=232" defer></script>
-  <script src="./configuracoes.js?v=232" defer></script>
-  <script src="./pdf.js?v=232" defer></script>
-  <script src="./app.js?v=232" defer></script>
-  <script src="./alavancagem.js?v=232" defer></script>
-  <script src="./sorteio.js?v=232" defer></script>
+  <script src="./calculos.js?v=240" defer></script>
+  <script src="./graficos.js?v=240" defer></script>
+  <script src="./configuracoes.js?v=240" defer></script>
+  <script src="./pdf.js?v=240" defer></script>
+  <script src="./app.js?v=240" defer></script>
+  <script src="./alavancagem.js?v=240" defer></script>
+  <script src="./sorteio.js?v=240" defer></script>
 </body>
 </html>

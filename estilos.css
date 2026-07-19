@@ -325,3 +325,45 @@ button{cursor:pointer}
   .range-summary-grid{grid-template-columns:1fr}.range-best-summary{grid-column:auto}
   .range-stat-values{grid-template-columns:1fr 1fr}.range-stat-values>div:last-child{grid-column:1/-1}
 }
+
+/* v2.4.0 — grupos e estatística teórica do sorteio */
+.draw-group-panel{display:grid;gap:16px}
+.group-selector-row{display:grid;grid-template-columns:minmax(220px,1fr) minmax(320px,1.6fr);gap:14px;align-items:end}
+.group-snapshot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.group-snapshot>div{border:1px solid var(--line);background:var(--soft);border-radius:12px;padding:11px 12px;min-width:0}
+.group-snapshot span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.group-snapshot strong{display:block;margin-top:4px;font-size:16px}
+.draw-inner-details{border-top:1px solid var(--line);padding-top:12px}
+.draw-inner-details summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none}
+.draw-inner-details summary::-webkit-details-marker{display:none}
+.draw-inner-details summary span{display:grid;gap:2px}.draw-inner-details summary small{color:var(--muted);font-weight:500}
+.group-create-grid{margin-top:14px}
+.group-edit-list{display:grid;gap:8px;margin-top:14px}
+.group-edit-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);background:var(--soft);border-radius:12px;padding:11px 12px}
+.group-edit-row.active{border-color:var(--orange);box-shadow:0 0 0 1px color-mix(in srgb,var(--orange) 35%,transparent)}
+.group-edit-row>div:first-child{display:grid;gap:3px}.group-edit-row span{color:var(--muted);font-size:11px}
+.group-edit-actions,.client-edit-actions,.draw-history-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.group-edit-actions button,.client-edit-actions button,.draw-history-actions button{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:9px;padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer}
+.group-edit-actions button.danger,.client-edit-actions button.danger,.draw-history-actions button.danger{color:#ff8e8e;border-color:#6a3434}
+.probability-panel,.modality-panel{display:grid;gap:14px}
+.modality-stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.modality-stat-card{border:1px solid var(--line);background:var(--soft);border-radius:13px;padding:12px;min-width:0}
+.modality-stat-card.total{background:linear-gradient(145deg,color-mix(in srgb,var(--orange) 16%,var(--soft)),var(--soft));border-color:color-mix(in srgb,var(--orange) 55%,var(--line))}
+.modality-stat-card span{display:block;color:var(--muted);font-size:10px;line-height:1.25;min-height:25px}
+.modality-stat-card strong{display:block;font-size:22px;margin-top:5px}
+.range-stat-card .range-stat-bar{height:7px;background:var(--line);border-radius:999px;overflow:hidden;margin:8px 0}
+.range-stat-card .range-stat-bar i{display:block;height:100%;background:var(--orange);border-radius:999px;min-width:2px}
+.range-stat-card.best{border-color:var(--orange)}
+.range-stat-card.best .range-stat-head span{color:var(--orange)}
+
+@media(max-width:760px){
+  .group-selector-row{grid-template-columns:1fr}
+  .group-snapshot{grid-template-columns:repeat(3,1fr)}
+  .group-edit-row{align-items:flex-start;flex-direction:column}
+  .group-edit-actions{width:100%;justify-content:flex-start}
+  .modality-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+  .group-snapshot{grid-template-columns:1fr}
+  .modality-stats-grid{grid-template-columns:1fr 1fr}
+}

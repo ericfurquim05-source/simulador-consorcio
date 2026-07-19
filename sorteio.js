@@ -1,9 +1,11 @@
 (function(global){
   'use strict';
 
-  const STORAGE_CLIENTS = 'simulador-sorteio-clientes-v1';
-  const STORAGE_ASSEMBLIES = 'simulador-sorteio-assembleias-v2';
-  const STORAGE_BASE = 'simulador-sorteio-base-contempladas-v2';
+  const STORAGE_GROUPS = 'simulador-sorteio-grupos-v1';
+  const STORAGE_SELECTED = 'simulador-sorteio-grupo-selecionado-v1';
+  const LEGACY_CLIENTS = 'simulador-sorteio-clientes-v1';
+  const LEGACY_ASSEMBLIES = 'simulador-sorteio-assembleias-v2';
+  const LEGACY_BASE = 'simulador-sorteio-base-contempladas-v2';
   const MAX_QUOTA = 9999;
 
   const DEFAULT_CLIENTS = [
@@ -25,9 +27,8 @@
   };
 
   const state = {
-    clients: [],
-    assemblies: [],
-    baseline: [],
+    groups: [],
+    selectedGroupId: null,
     lastAssemblyId: null,
     editingAssemblyId: null,
     draftContempladas: []
@@ -48,6 +49,15 @@
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  function loadJSON(key, fallback){
+    try{
+      const raw = JSON.parse(localStorage.getItem(key) || 'null');
+      return raw ?? fallback;
+    }catch{
+      return fallback;
+    }
+  }
+
   function todayISO(){
     const now = new Date();
     const offset = now.getTimezoneOffset();
@@ -66,14 +76,18 @@
     return digits ? digits.padStart(4, '0') : '';
   }
 
-  function isValidQuota(value){
-    const number = Number(value);
-    return /^\d{4}$/.test(String(value)) && number >= 1 && number <= MAX_QUOTA;
+  function quotaNumber(value){
+    return Number(quota(value));
   }
 
-  function extractQuotaList(text){
-    const matches = String(text || '').match(/(^|\D)(\d{1,4})(?=\D|$)/g) || [];
-    return [...new Set(matches.map(item => quota(item)).filter(isValidQuota))];
+  function formatInteger(value){
+    return Number(value || 0).toLocaleString('pt-BR');
+  }
+
+  function formatPercent(value){
+    const number = Number(value || 0);
+    const decimals = number < 0.1 ? 3 : 2;
+    return `${number.toLocaleString('pt-BR', {minimumFractionDigits: decimals, maximumFractionDigits: decimals})}%`;
   }
 
   function modalityKey(value){
@@ -90,47 +104,24 @@
 
   function normalizeEntry(item, fallbackModality = 'reposicao'){
     const number = quota(typeof item === 'object' ? item.cota : item);
-    if(!isValidQuota(number)) return null;
-    const key = modalityKey(typeof item === 'object' ? item.modalidade : fallbackModality);
+    if(!number) return null;
     return {
       id: String((typeof item === 'object' && item.id) || uid('contemplada')),
       cota: number,
-      modalidade: key
+      modalidade: modalityKey(typeof item === 'object' ? item.modalidade : fallbackModality)
     };
-  }
-
-  function loadJSON(key, fallback){
-    try{
-      const raw = JSON.parse(localStorage.getItem(key) || 'null');
-      return raw ?? fallback;
-    }catch{
-      return fallback;
-    }
-  }
-
-  function saveClients(){
-    localStorage.setItem(STORAGE_CLIENTS, JSON.stringify(state.clients));
-  }
-
-  function saveAssemblies(){
-    localStorage.setItem(STORAGE_ASSEMBLIES, JSON.stringify(state.assemblies));
-  }
-
-  function saveBaseline(){
-    localStorage.setItem(STORAGE_BASE, JSON.stringify(state.baseline));
   }
 
   function normalizeAssembly(item){
     let entries = [];
-    if(Array.isArray(item.contempladas)){
+    if(Array.isArray(item?.contempladas)){
       entries = item.contempladas.map(entry => normalizeEntry(entry)).filter(Boolean);
-    }else{
+    }else if(item){
       if(item.sorteio) entries.push(normalizeEntry(item.sorteio, 'sorteio'));
       (Array.isArray(item.fixos) ? item.fixos : []).forEach(value => entries.push(normalizeEntry(value, 'lance_fixo')));
       if(item.limitado) entries.push(normalizeEntry(item.limitado, 'lance_limitado'));
       if(item.livre) entries.push(normalizeEntry(item.livre, 'lance_livre'));
       (Array.isArray(item.extras) ? item.extras : []).forEach(value => entries.push(normalizeEntry(value, 'reposicao')));
-      entries = entries.filter(Boolean);
     }
 
     const unique = [];
@@ -142,37 +133,63 @@
     });
 
     return {
-      id: String(item.id || uid('assembleia')),
-      numero: String(item.numero || '').trim(),
-      data: String(item.data || ''),
+      id: String(item?.id || uid('assembleia')),
+      numero: String(item?.numero || '').trim(),
+      data: String(item?.data || ''),
       contempladas: unique,
-      createdAt: Number(item.createdAt || Date.now())
+      createdAt: Number(item?.createdAt || Date.now())
     };
   }
 
+  function normalizeClient(item){
+    const name = String(item?.nome || '').trim();
+    const number = quota(item?.cota);
+    if(!name || !number) return null;
+    return { id: String(item?.id || uid('cliente')), nome: name, cota: number };
+  }
+
+  function normalizeGroup(item){
+    const total = Math.max(1, Math.min(MAX_QUOTA, Number(item?.totalCotas || item?.maxQuota || 9999) || 9999));
+    return {
+      id: String(item?.id || uid('grupo')),
+      numero: String(item?.numero || item?.nome || 'Novo grupo').trim(),
+      totalCotas: total,
+      clients: (Array.isArray(item?.clients) ? item.clients : []).map(normalizeClient).filter(Boolean),
+      assemblies: (Array.isArray(item?.assemblies) ? item.assemblies : []).map(normalizeAssembly).filter(assembly => assembly.numero && assembly.data && assembly.contempladas.length),
+      baseline: [...new Set((Array.isArray(item?.baseline) ? item.baseline : []).map(quota).filter(Boolean))],
+      createdAt: Number(item?.createdAt || Date.now())
+    };
+  }
+
+  function currentGroup(){
+    return state.groups.find(group => group.id === state.selectedGroupId) || state.groups[0] || null;
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_GROUPS, JSON.stringify(state.groups));
+    localStorage.setItem(STORAGE_SELECTED, state.selectedGroupId || '');
+  }
+
+  function migrateLegacy(){
+    const clients = loadJSON(LEGACY_CLIENTS, null);
+    const assemblies = loadJSON(LEGACY_ASSEMBLIES, []);
+    const baseline = loadJSON(LEGACY_BASE, []);
+    return normalizeGroup({
+      id: 'grupo-012186',
+      numero: '012186',
+      totalCotas: 9999,
+      clients: Array.isArray(clients) && clients.length ? clients : DEFAULT_CLIENTS,
+      assemblies: Array.isArray(assemblies) ? assemblies : [],
+      baseline: Array.isArray(baseline) ? baseline : []
+    });
+  }
+
   function load(){
-    const storedClients = loadJSON(STORAGE_CLIENTS, null);
-    state.clients = Array.isArray(storedClients) && storedClients.length
-      ? storedClients.map(item => ({
-          id: String(item.id || uid('cliente')),
-          nome: String(item.nome || '').trim(),
-          cota: quota(item.cota)
-        })).filter(item => item.nome && isValidQuota(item.cota))
-      : DEFAULT_CLIENTS.map(item => ({...item}));
-
-    const storedAssemblies = loadJSON(STORAGE_ASSEMBLIES, []);
-    state.assemblies = Array.isArray(storedAssemblies)
-      ? storedAssemblies.map(normalizeAssembly).filter(item => item.numero && item.data && item.contempladas.length)
-      : [];
-
-    const storedBase = loadJSON(STORAGE_BASE, []);
-    state.baseline = Array.isArray(storedBase)
-      ? [...new Set(storedBase.map(quota).filter(isValidQuota))]
-      : [];
-
-    saveClients();
-    saveAssemblies();
-    saveBaseline();
+    const stored = loadJSON(STORAGE_GROUPS, null);
+    state.groups = Array.isArray(stored) && stored.length ? stored.map(normalizeGroup) : [migrateLegacy()];
+    const selected = localStorage.getItem(STORAGE_SELECTED);
+    state.selectedGroupId = state.groups.some(group => group.id === selected) ? selected : state.groups[0].id;
+    save();
   }
 
   function showMessage(id, text, type = 'success'){
@@ -185,522 +202,286 @@
     element._timer = setTimeout(() => { element.hidden = true; }, 5000);
   }
 
+  function isValidQuota(value, group = currentGroup()){
+    const number = quotaNumber(value);
+    return /^\d{4}$/.test(quota(value)) && number >= 1 && number <= Number(group?.totalCotas || MAX_QUOTA);
+  }
+
+  function extractQuotaList(text, group = currentGroup()){
+    const matches = String(text || '').match(/(^|\D)(\d{1,4})(?=\D|$)/g) || [];
+    return [...new Set(matches.map(item => quota(item)).filter(item => isValidQuota(item, group)))];
+  }
+
   function assemblyNumberValue(value){
     const numeric = Number(String(value || '').replace(/\D/g, ''));
     return Number.isFinite(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
   }
 
-  function sortAssembliesAsc(list = state.assemblies){
-    return [...list].sort((a, b) => {
+  function sortAssembliesAsc(group = currentGroup()){
+    return [...(group?.assemblies || [])].sort((a, b) => {
       if(a.data !== b.data) return a.data.localeCompare(b.data);
-      const numberDiff = assemblyNumberValue(a.numero) - assemblyNumberValue(b.numero);
-      if(numberDiff) return numberDiff;
-      return a.createdAt - b.createdAt;
+      const diff = assemblyNumberValue(a.numero) - assemblyNumberValue(b.numero);
+      return diff || a.createdAt - b.createdAt;
     });
   }
 
-  function sortAssembliesDesc(){
-    return sortAssembliesAsc().reverse();
+  function sortAssembliesDesc(group = currentGroup()){
+    return sortAssembliesAsc(group).reverse();
   }
 
   function winnersDetailed(assembly){
-    return (assembly.contempladas || []).map(entry => ({
+    return (assembly?.contempladas || []).map(entry => ({
       id: entry.id,
       cota: entry.cota,
-      modalidade: MODALITIES[entry.modalidade] || 'Outra contemplação',
-      modalidadeKey: entry.modalidade
+      modalidadeKey: entry.modalidade,
+      modalidade: MODALITIES[entry.modalidade] || 'Outra contemplação'
     }));
   }
 
   function referenceQuotas(assembly){
-    return (assembly.contempladas || [])
-      .filter(entry => entry.modalidade === 'sorteio')
-      .map(entry => entry.cota);
+    return (assembly?.contempladas || []).filter(entry => entry.modalidade === 'sorteio').map(entry => entry.cota);
   }
 
-  function priorContext(assembly){
-    const ordered = sortAssembliesAsc();
-    const prior = new Set(state.baseline);
-    for(const item of ordered){
-      if(item.id === assembly.id) break;
-      winnersDetailed(item).forEach(entry => prior.add(entry.cota));
+  function allContemplated(group = currentGroup(), beforeAssemblyId = null){
+    const set = new Set(group?.baseline || []);
+    for(const assembly of sortAssembliesAsc(group)){
+      if(beforeAssemblyId && assembly.id === beforeAssemblyId) break;
+      winnersDetailed(assembly).forEach(entry => set.add(entry.cota));
     }
-    return prior;
-  }
-
-  function allContemplatedExcept(assemblyId){
-    const set = new Set(state.baseline);
-    state.assemblies.forEach(item => {
-      if(item.id === assemblyId) return;
-      winnersDetailed(item).forEach(entry => set.add(entry.cota));
-    });
     return set;
   }
 
-  function allContemplated(){
-    const set = new Set(state.baseline);
-    state.assemblies.forEach(item => winnersDetailed(item).forEach(entry => set.add(entry.cota)));
-    return set;
-  }
-
-  function countBetween(set, first, second){
-    const a = Number(first);
-    const b = Number(second);
-    const min = Math.min(a, b);
-    const max = Math.max(a, b);
-    let total = 0;
-    set.forEach(value => {
-      const current = Number(value);
-      if(current > min && current < max) total += 1;
-    });
-    return total;
-  }
-
-  function closestReference(clientQuota, assembly, prior){
-    const references = referenceQuotas(assembly);
-    if(!references.length) return null;
-    return references.map(reference => {
-      const rawDistance = Math.abs(Number(clientQuota) - Number(reference));
-      const removedBetween = countBetween(prior, clientQuota, reference);
-      const adjustedDistance = Math.max(0, rawDistance - removedBetween);
-      return {reference, rawDistance, removedBetween, adjustedDistance};
-    }).sort((a, b) => a.adjustedDistance - b.adjustedDistance || a.rawDistance - b.rawDistance)[0];
-  }
-
-  function clientAssemblyResult(client, assembly){
-    const prior = priorContext(assembly);
-    const currentWinners = winnersDetailed(assembly);
-    const currentWin = currentWinners.find(item => item.cota === client.cota) || null;
-    const alreadyContemplated = prior.has(client.cota);
-
-    if(alreadyContemplated){
-      return {
-        client,
-        alreadyContemplated: true,
-        currentWin,
-        reference: null,
-        rawDistance: null,
-        removedBetween: null,
-        adjustedDistance: null,
-        priorCount: prior.size
-      };
+  function activeQuotaNumbers(group = currentGroup()){
+    if(!group) return [];
+    const removed = allContemplated(group);
+    const active = [];
+    for(let number = 1; number <= group.totalCotas; number += 1){
+      const key = String(number).padStart(4, '0');
+      if(!removed.has(key)) active.push(number);
     }
-
-    const closest = closestReference(client.cota, assembly, prior);
-    return {
-      client,
-      alreadyContemplated: false,
-      currentWin,
-      reference: closest?.reference || null,
-      rawDistance: closest?.rawDistance ?? null,
-      removedBetween: closest?.removedBetween ?? null,
-      adjustedDistance: closest?.adjustedDistance ?? null,
-      priorCount: prior.size
-    };
+    return active;
   }
 
-  function distanceLabel(value){
-    if(value === null || value === undefined) return 'Sem referência de sorteio';
-    if(value === 0) return 'Coincidência exata';
-    return `${value.toLocaleString('pt-BR')} ${value === 1 ? 'número' : 'números'}`;
+  // O contrato usa a cota ativa mais próxima da referência. Em empate, a cota acima vence.
+  // Assim, cada cota ativa recebe uma "zona de captura" entre os pontos médios dos vizinhos.
+  function captureZones(group = currentGroup()){
+    const active = activeQuotaNumbers(group);
+    const max = Number(group?.totalCotas || 0);
+    if(!active.length || !max) return [];
+    return active.map((number, index) => {
+      const previous = active[index - 1];
+      const next = active[index + 1];
+      const start = previous === undefined ? 1 : Math.ceil((previous + number) / 2);
+      const end = next === undefined ? max : Math.ceil((number + next) / 2) - 1;
+      return { cota: number, start, end, possibilities: Math.max(0, end - start + 1) };
+    });
   }
 
-  function renderLatest(assembly){
-    const section = $('sorteioResultado');
-    const prior = priorContext(assembly);
-    const winners = winnersDetailed(assembly);
-    const refs = referenceQuotas(assembly);
-    const totalAfter = new Set([...prior, ...winners.map(item => item.cota)]).size;
-    const activeAfter = Math.max(0, MAX_QUOTA - totalAfter);
+  function calculateRangeStats(group = currentGroup()){
+    if(!group) return [];
+    const zones = captureZones(group);
+    const removed = allContemplated(group);
+    const ranges = [];
+    for(let start = 1; start <= group.totalCotas; start += 500){
+      const end = Math.min(group.totalCotas, start + 499);
+      const rangeZones = zones.filter(zone => zone.cota >= start && zone.cota <= end);
+      const possibilities = rangeZones.reduce((sum, zone) => sum + zone.possibilities, 0);
+      const active = rangeZones.length;
+      let contemplated = 0;
+      removed.forEach(value => {
+        const number = Number(value);
+        if(number >= start && number <= end) contemplated += 1;
+      });
+      ranges.push({
+        start,
+        end,
+        active,
+        contemplated,
+        possibilities,
+        probability: group.totalCotas ? possibilities / group.totalCotas * 100 : 0
+      });
+    }
+    return ranges;
+  }
 
-    $('sorteioResultadoTitulo').textContent = `Assembleia ${assembly.numero}`;
-    $('sorteioResultadoData').textContent = dateBR(assembly.data);
-    $('sorteioDestaque').innerHTML = `
-      <div><span>Referência${refs.length > 1 ? 's' : ''} por sorteio</span><strong>${refs.map(value => `Cota ${value}`).join(' · ')}</strong></div>
-      <div><span>Já contempladas antes</span><strong>${prior.size.toLocaleString('pt-BR')}</strong></div>
-      <div><span>Contempladas nesta assembleia</span><strong>${winners.length}</strong></div>
-      <div><span>Cotas ativas após a assembleia</span><strong>${activeAfter.toLocaleString('pt-BR')}</strong></div>
-    `;
+  function rangeLabel(start, end){
+    return `${formatInteger(start)} a ${formatInteger(end)}`;
+  }
 
-    $('sorteioContemplados').innerHTML = winners.map(item => `
-      <div><span>${escapeHTML(item.modalidade)}</span><strong>${item.cota}</strong></div>
-    `).join('');
+  function modalityTotals(group = currentGroup()){
+    const totals = Object.fromEntries(Object.keys(MODALITIES).map(key => [key, 0]));
+    (group?.assemblies || []).forEach(assembly => {
+      winnersDetailed(assembly).forEach(entry => { totals[entry.modalidadeKey] = (totals[entry.modalidadeKey] || 0) + 1; });
+    });
+    return totals;
+  }
 
-    const results = state.clients.map(client => clientAssemblyResult(client, assembly));
-    $('sorteioClientesResultado').innerHTML = results.map(item => {
-      if(item.alreadyContemplated){
-        return `
-          <article class="assembly-client-card inactive">
-            <div class="assembly-client-head"><div><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div><b>Cota já contemplada</b></div>
-            <p>Esta cota já não participava da referência desta assembleia.</p>
-          </article>
-        `;
-      }
-      return `
-        <article class="assembly-client-card ${item.currentWin ? 'contemplated-now' : ''} ${item.adjustedDistance === 0 ? 'exact' : ''}">
-          <div class="assembly-client-head">
-            <div><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div>
-            <b>${item.currentWin ? `Contemplada por ${escapeHTML(item.currentWin.modalidade.toLowerCase())}` : distanceLabel(item.adjustedDistance)}</b>
-          </div>
-          <div class="assembly-distance-grid four">
-            <div><span>Referência mais próxima</span><strong>${item.reference || '—'}</strong></div>
-            <div><span>Distância numérica</span><strong>${item.rawDistance === null ? '—' : item.rawDistance.toLocaleString('pt-BR')}</strong></div>
-            <div><span>Já contempladas no intervalo</span><strong>${item.removedBetween === null ? '—' : item.removedBetween.toLocaleString('pt-BR')}</strong></div>
-            <div class="adjusted"><span>Distância ajustada</span><strong>${item.adjustedDistance === null ? '—' : item.adjustedDistance.toLocaleString('pt-BR')}</strong></div>
-          </div>
-        </article>
-      `;
-    }).join('') || '<div class="empty-state">Nenhum cliente cadastrado.</div>';
+  function renderGroupSelector(){
+    const group = currentGroup();
+    $('sorteioGrupoSelect').innerHTML = state.groups.map(item => `<option value="${escapeHTML(item.id)}"${item.id === state.selectedGroupId ? ' selected' : ''}>Grupo ${escapeHTML(item.numero)}</option>`).join('');
+    $('sorteioGrupoTitulo').textContent = group ? `Grupo ${group.numero}` : 'Nenhum grupo';
+    $('sorteioGrupoResumo').textContent = group ? `${formatInteger(group.totalCotas)} cotas` : '—';
+    if(group){
+      const contemplated = allContemplated(group).size;
+      const active = Math.max(0, group.totalCotas - contemplated);
+      $('sorteioGroupSnapshot').innerHTML = `
+        <div><span>Assembleias</span><strong>${group.assemblies.length}</strong></div>
+        <div><span>Contempladas</span><strong>${formatInteger(contemplated)}</strong></div>
+        <div><span>Ainda ativas</span><strong>${formatInteger(active)}</strong></div>`;
+    }else $('sorteioGroupSnapshot').innerHTML = '';
+  }
 
-    section.hidden = false;
-    section.scrollIntoView({behavior: 'smooth', block: 'start'});
+  function renderGroupList(){
+    $('sorteioGroupList').innerHTML = state.groups.map(group => `
+      <div class="group-edit-row${group.id === state.selectedGroupId ? ' active' : ''}" data-group-id="${escapeHTML(group.id)}">
+        <div><strong>Grupo ${escapeHTML(group.numero)}</strong><span>${formatInteger(group.totalCotas)} cotas · ${group.assemblies.length} assembleias · ${group.clients.length} clientes</span></div>
+        <div class="group-edit-actions">
+          <button type="button" data-action="select">Selecionar</button>
+          <button type="button" data-action="edit">Editar</button>
+          <button type="button" data-action="delete" class="danger">Excluir</button>
+        </div>
+      </div>`).join('');
+
+    $('sorteioGroupList').querySelectorAll('.group-edit-row').forEach(row => {
+      const id = row.dataset.groupId;
+      row.querySelector('[data-action="select"]').addEventListener('click', () => selectGroup(id));
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => editGroup(id));
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteGroup(id));
+    });
+  }
+
+  function selectGroup(id){
+    if(!state.groups.some(group => group.id === id)) return;
+    state.selectedGroupId = id;
+    state.lastAssemblyId = null;
+    state.editingAssemblyId = null;
+    state.draftContempladas = [];
+    save();
+    clearAssemblyForm();
+    renderAll();
+  }
+
+  function addGroup(){
+    const number = $('sorteioNewGroupNumber').value.trim();
+    const total = Number($('sorteioNewGroupSize').value);
+    if(!number){
+      showMessage('sorteioGroupMessage', 'Informe o número do grupo.', 'error');
+      return;
+    }
+    if(!Number.isInteger(total) || total < 1 || total > MAX_QUOTA){
+      showMessage('sorteioGroupMessage', 'Informe uma quantidade de cotas entre 1 e 9.999.', 'error');
+      return;
+    }
+    if(state.groups.some(group => group.numero.toLowerCase() === number.toLowerCase())){
+      showMessage('sorteioGroupMessage', 'Esse grupo já está cadastrado.', 'error');
+      return;
+    }
+    const group = normalizeGroup({ id: uid('grupo'), numero: number, totalCotas: total, clients: [], assemblies: [], baseline: [] });
+    state.groups.push(group);
+    state.selectedGroupId = group.id;
+    $('sorteioNewGroupNumber').value = '';
+    save();
+    clearAssemblyForm();
+    renderAll();
+    showMessage('sorteioGroupMessage', `Grupo ${number} adicionado.`);
+  }
+
+  function editGroup(id){
+    const group = state.groups.find(item => item.id === id);
+    if(!group) return;
+    const number = prompt('Número do grupo:', group.numero);
+    if(number === null) return;
+    const totalRaw = prompt('Quantidade total de cotas:', String(group.totalCotas));
+    if(totalRaw === null) return;
+    const total = Number(totalRaw);
+    if(!number.trim() || !Number.isInteger(total) || total < 1 || total > MAX_QUOTA){
+      showMessage('sorteioGroupMessage', 'Dados inválidos. Use de 1 a 9.999 cotas.', 'error');
+      return;
+    }
+    const highestUsed = Math.max(0, ...group.baseline.map(Number), ...group.clients.map(item => Number(item.cota)), ...group.assemblies.flatMap(item => item.contempladas.map(entry => Number(entry.cota))));
+    if(total < highestUsed){
+      showMessage('sorteioGroupMessage', `O grupo já possui a cota ${String(highestUsed).padStart(4, '0')}. O total não pode ficar abaixo dela.`, 'error');
+      return;
+    }
+    group.numero = number.trim();
+    group.totalCotas = total;
+    save();
+    renderAll();
+    showMessage('sorteioGroupMessage', 'Grupo atualizado.');
+  }
+
+  function deleteGroup(id){
+    if(state.groups.length === 1){
+      showMessage('sorteioGroupMessage', 'Mantenha pelo menos um grupo cadastrado.', 'error');
+      return;
+    }
+    const group = state.groups.find(item => item.id === id);
+    if(!group || !confirm(`Excluir o grupo ${group.numero} e todo o histórico salvo nele?`)) return;
+    state.groups = state.groups.filter(item => item.id !== id);
+    if(state.selectedGroupId === id) state.selectedGroupId = state.groups[0].id;
+    save();
+    clearAssemblyForm();
+    renderAll();
   }
 
   function renderDraft(){
     $('sorteioDraftCount').textContent = `${state.draftContempladas.length} ${state.draftContempladas.length === 1 ? 'cota' : 'cotas'}`;
-    if(!state.draftContempladas.length){
-      $('sorteioDraftList').innerHTML = '<div class="assembly-draft-empty">Nenhuma cota adicionada nesta assembleia.</div>';
-      return;
-    }
-    $('sorteioDraftList').innerHTML = state.draftContempladas.map(entry => `
-      <div class="assembly-draft-row" data-entry-id="${escapeHTML(entry.id)}">
-        <div><strong>Cota ${entry.cota}</strong><span>${escapeHTML(MODALITIES[entry.modalidade] || 'Outra contemplação')}</span></div>
-        <button type="button" data-remove-entry>Remover</button>
-      </div>
-    `).join('');
-    $('sorteioDraftList').querySelectorAll('[data-remove-entry]').forEach(button => {
+    $('sorteioDraftList').innerHTML = state.draftContempladas.length ? state.draftContempladas.map(entry => `
+      <div class="assembly-draft-item" data-entry-id="${escapeHTML(entry.id)}">
+        <div><strong>${entry.cota}</strong><span>${escapeHTML(MODALITIES[entry.modalidade])}</span></div>
+        <button type="button" aria-label="Remover cota">×</button>
+      </div>`).join('') : '<div class="empty-state compact">Nenhuma cota adicionada.</div>';
+    $('sorteioDraftList').querySelectorAll('.assembly-draft-item button').forEach(button => {
       button.addEventListener('click', () => {
-        const id = button.closest('[data-entry-id]').dataset.entryId;
-        state.draftContempladas = state.draftContempladas.filter(entry => entry.id !== id);
+        state.draftContempladas = state.draftContempladas.filter(entry => entry.id !== button.closest('.assembly-draft-item').dataset.entryId);
         renderDraft();
       });
     });
   }
 
   function addDraftEntry(){
+    const group = currentGroup();
     const number = quota($('sorteioNovaCota').value);
-    const modality = $('sorteioNovaModalidade').value;
-    if(!isValidQuota(number)){
-      showMessage('sorteioFormMessage', 'Informe uma cota entre 0001 e 9999.', 'error');
+    const modality = modalityKey($('sorteioNovaModalidade').value);
+    if(!isValidQuota(number, group)){
+      showMessage('sorteioFormMessage', `Informe uma cota entre 0001 e ${String(group.totalCotas).padStart(4, '0')}.`, 'error');
       return;
     }
     if(state.draftContempladas.some(entry => entry.cota === number)){
-      showMessage('sorteioFormMessage', `A cota ${number} já foi adicionada nesta assembleia.`, 'error');
+      showMessage('sorteioFormMessage', 'Essa cota já foi adicionada nesta assembleia.', 'error');
       return;
     }
-    state.draftContempladas.push({id: uid('contemplada'), cota: number, modalidade: MODALITIES[modality] ? modality : 'reposicao'});
+    if(allContemplated(group, state.editingAssemblyId).has(number)){
+      showMessage('sorteioFormMessage', 'Essa cota já estava contemplada antes desta assembleia.', 'error');
+      return;
+    }
+    state.draftContempladas.push({ id: uid('contemplada'), cota: number, modalidade: modality });
     $('sorteioNovaCota').value = '';
     $('sorteioNovaCota').focus();
     renderDraft();
   }
 
-  function renderClients(){
-    $('sorteioClientesCount').textContent = `${state.clients.length} ${state.clients.length === 1 ? 'cliente' : 'clientes'}`;
-    $('sorteioClientList').innerHTML = state.clients.map(client => `
-      <div class="client-edit-row" data-client-id="${escapeHTML(client.id)}">
-        <div class="field">
-          <label>Nome</label>
-          <div class="control"><input data-client-name type="text" maxlength="70" value="${escapeHTML(client.nome)}"></div>
-        </div>
-        <div class="field client-quota-field">
-          <label>Cota</label>
-          <div class="control"><input data-client-quota type="text" inputmode="numeric" maxlength="4" value="${client.cota}"></div>
-        </div>
-        <div class="client-row-actions">
-          <button type="button" class="small-action primary" data-save-client>Salvar</button>
-          <button type="button" class="small-action danger" data-delete-client>Excluir</button>
-        </div>
-      </div>
-    `).join('');
-
-    $('sorteioClientList').querySelectorAll('[data-client-quota]').forEach(input => {
-      input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, '').slice(0, 4); });
-    });
-
-    $('sorteioClientList').querySelectorAll('[data-save-client]').forEach(button => {
-      button.addEventListener('click', () => {
-        const row = button.closest('[data-client-id]');
-        const id = row.dataset.clientId;
-        const name = row.querySelector('[data-client-name]').value.trim();
-        const number = quota(row.querySelector('[data-client-quota]').value);
-        if(!name || !isValidQuota(number)){
-          showMessage('sorteioClientesMessage', 'Informe o nome e uma cota entre 0001 e 9999.', 'error');
-          return;
-        }
-        const duplicate = state.clients.some(client => client.id !== id && client.cota === number);
-        if(duplicate){
-          showMessage('sorteioClientesMessage', 'Essa cota já está cadastrada para outro cliente.', 'error');
-          return;
-        }
-        const client = state.clients.find(item => item.id === id);
-        client.nome = name;
-        client.cota = number;
-        saveClients();
-        renderAllData();
-        showMessage('sorteioClientesMessage', 'Cliente atualizado.');
-      });
-    });
-
-    $('sorteioClientList').querySelectorAll('[data-delete-client]').forEach(button => {
-      button.addEventListener('click', () => {
-        const row = button.closest('[data-client-id]');
-        const client = state.clients.find(item => item.id === row.dataset.clientId);
-        if(!client) return;
-        if(!confirm(`Excluir ${client.nome} — cota ${client.cota}?`)) return;
-        state.clients = state.clients.filter(item => item.id !== client.id);
-        saveClients();
-        renderAllData();
-        showMessage('sorteioClientesMessage', 'Cliente excluído.');
-      });
-    });
-  }
-
-  function renderHistory(){
-    const assemblies = sortAssembliesDesc();
-    $('sorteioHistoryCount').textContent = `${assemblies.length} ${assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
-    if(!assemblies.length){
-      $('sorteioHistoryList').innerHTML = '<div class="empty-state">Nenhuma assembleia salva ainda.</div>';
-      return;
-    }
-
-    $('sorteioHistoryList').innerHTML = assemblies.map(assembly => {
-      const winners = winnersDetailed(assembly);
-      const refs = referenceQuotas(assembly);
-      return `
-        <div class="draw-history-row" data-assembly-id="${escapeHTML(assembly.id)}">
-          <div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><span>${dateBR(assembly.data)} · sorteio ${refs.join(', ')} · ${winners.length} contempladas</span></div>
-          <div class="draw-history-actions">
-            <button type="button" data-open-assembly>Ver</button>
-            <button type="button" data-edit-assembly>Editar</button>
-            <button type="button" class="danger-text" data-delete-assembly>Excluir</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    $('sorteioHistoryList').querySelectorAll('[data-open-assembly]').forEach(button => {
-      button.addEventListener('click', () => {
-        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
-        const assembly = state.assemblies.find(item => item.id === id);
-        if(!assembly) return;
-        state.lastAssemblyId = assembly.id;
-        renderLatest(assembly);
-      });
-    });
-
-    $('sorteioHistoryList').querySelectorAll('[data-edit-assembly]').forEach(button => {
-      button.addEventListener('click', () => {
-        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
-        const assembly = state.assemblies.find(item => item.id === id);
-        if(!assembly) return;
-        fillAssemblyForm(assembly);
-        window.scrollTo({top: $('view-sorteio').offsetTop, behavior: 'smooth'});
-        showMessage('sorteioFormMessage', `Assembleia ${assembly.numero} carregada para edição.`);
-      });
-    });
-
-    $('sorteioHistoryList').querySelectorAll('[data-delete-assembly]').forEach(button => {
-      button.addEventListener('click', () => {
-        const id = button.closest('[data-assembly-id]').dataset.assemblyId;
-        const assembly = state.assemblies.find(item => item.id === id);
-        if(!assembly || !confirm(`Excluir a assembleia ${assembly.numero}?`)) return;
-        state.assemblies = state.assemblies.filter(item => item.id !== id);
-        saveAssemblies();
-        if(state.lastAssemblyId === id){
-          state.lastAssemblyId = null;
-          $('sorteioResultado').hidden = true;
-        }
-        renderHistory();
-        renderStats();
-        renderRangeStats();
-        showMessage('sorteioHistoryMessage', 'Assembleia excluída.');
-      });
-    });
-  }
-
-  function clientStats(client){
-    const ordered = sortAssembliesAsc();
-    const rows = [];
-    let contemplatedAt = null;
-
-    for(const assembly of ordered){
-      const result = clientAssemblyResult(client, assembly);
-      if(result.alreadyContemplated){
-        if(!contemplatedAt) contemplatedAt = 'Antes do histórico analisado';
-        continue;
-      }
-      if(result.adjustedDistance !== null) rows.push({assembly, result});
-      if(result.currentWin && !contemplatedAt){
-        contemplatedAt = `Assembleia ${assembly.numero} · ${result.currentWin.modalidade}`;
-      }
-    }
-
-    const values = rows.map(row => row.result.adjustedDistance);
-    return {
-      client,
-      rows,
-      analyzed: values.length,
-      best: values.length ? Math.min(...values) : null,
-      average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
-      latest: values.length ? values[values.length - 1] : null,
-      contemplatedAt
-    };
-  }
-
-  function renderStats(){
-    const total = state.assemblies.length;
-    $('sorteioStatsCount').textContent = `${total} ${total === 1 ? 'assembleia' : 'assembleias'}`;
-    if(!total){
-      $('sorteioStatsGrid').innerHTML = '<div class="empty-state">As estatísticas aparecerão depois da primeira assembleia salva.</div>';
-      return;
-    }
-
-    $('sorteioStatsGrid').innerHTML = state.clients.map(clientStats).map(item => `
-      <article class="stat-client-card">
-        <div class="stat-client-head"><strong>${escapeHTML(item.client.nome)}</strong><span>Cota ${item.client.cota}</span></div>
-        <div class="stat-client-numbers">
-          <div><span>Menor distância ajustada</span><strong>${item.best === null ? '—' : item.best.toLocaleString('pt-BR')}</strong></div>
-          <div><span>Média ajustada</span><strong>${item.average === null ? '—' : Math.round(item.average).toLocaleString('pt-BR')}</strong></div>
-          <div><span>Última assembleia</span><strong>${item.latest === null ? '—' : item.latest.toLocaleString('pt-BR')}</strong></div>
-        </div>
-        ${item.contemplatedAt ? `<p class="client-contemplated-note">${escapeHTML(item.contemplatedAt)}</p>` : ''}
-      </article>
-    `).join('');
-  }
-
-  function rangeLabel(start, end){
-    return `${start.toLocaleString('pt-BR')} a ${end.toLocaleString('pt-BR')}`;
-  }
-
-  function calculateRanges(){
-    const contemplated = allContemplated();
-    const totalActive = Math.max(0, MAX_QUOTA - contemplated.size);
-    const ranges = [];
-    for(let start = 1; start <= MAX_QUOTA; start += 500){
-      const end = Math.min(start + 499, MAX_QUOTA);
-      const total = end - start + 1;
-      let removed = 0;
-      contemplated.forEach(value => {
-        const number = Number(value);
-        if(number >= start && number <= end) removed += 1;
-      });
-      const active = total - removed;
-      const chance = totalActive > 0 ? (active / totalActive) * 100 : 0;
-      ranges.push({start, end, total, removed, active, chance});
-    }
-    return {ranges, contemplated: contemplated.size, totalActive};
-  }
-
-  function renderRangeStats(){
-    const data = calculateRanges();
-    const maxActive = Math.max(...data.ranges.map(item => item.active));
-    const best = data.ranges.filter(item => item.active === maxActive);
-    const bestLabel = best.length === 1 ? rangeLabel(best[0].start, best[0].end) : `${best.length} faixas empatadas`;
-    $('sorteioRangeBest').textContent = state.assemblies.length || state.baseline.length ? bestLabel : 'Sem histórico';
-
-    $('sorteioRangeSummary').innerHTML = `
-      <div><span>Cotas ainda ativas</span><strong>${data.totalActive.toLocaleString('pt-BR')}</strong></div>
-      <div><span>Cotas já contempladas</span><strong>${data.contemplated.toLocaleString('pt-BR')}</strong></div>
-      <div class="range-best-summary"><span>Maior presença de cotas ativas</span><strong>${escapeHTML(bestLabel)}</strong></div>
-    `;
-
-    $('sorteioRangeGrid').innerHTML = data.ranges.map(item => {
-      const isBest = item.active === maxActive;
-      return `
-        <article class="range-stat-card ${isBest ? 'best' : ''}">
-          <div class="range-stat-head"><strong>${rangeLabel(item.start, item.end)}</strong>${isBest ? '<span>Maior faixa ativa</span>' : ''}</div>
-          <div class="range-stat-values">
-            <div><span>Cotas ativas</span><strong>${item.active.toLocaleString('pt-BR')}</strong></div>
-            <div><span>Já contempladas</span><strong>${item.removed.toLocaleString('pt-BR')}</strong></div>
-            <div><span>Chance teórica da faixa</span><strong>${item.chance.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%</strong></div>
-          </div>
-          <div class="range-bar"><i style="width:${Math.min(100, item.chance * 20).toFixed(2)}%"></i></div>
-        </article>
-      `;
-    }).join('');
-  }
-
-  function renderReportSelect(){
-    const select = $('sorteioReportClient');
-    const previous = select.value;
-    select.innerHTML = state.clients.map(client => `<option value="${escapeHTML(client.id)}">${escapeHTML(client.nome)} — cota ${client.cota}</option>`).join('');
-    if(state.clients.some(client => client.id === previous)) select.value = previous;
-  }
-
-  function renderBaseline(){
-    $('sorteioBaseCount').textContent = `${state.baseline.length} ${state.baseline.length === 1 ? 'cota anterior' : 'cotas anteriores'}`;
-    $('sorteioBaseContempladas').value = state.baseline.join('\n');
-  }
-
-  function renderAllData(){
-    renderClients();
-    renderHistory();
-    renderStats();
-    renderRangeStats();
-    renderReportSelect();
-    renderBaseline();
-    renderDraft();
-  }
-
-  function addClient(){
-    const name = $('sorteioNewClientName').value.trim();
-    const number = quota($('sorteioNewClientQuota').value);
-    if(!name || !isValidQuota(number)){
-      showMessage('sorteioClientesMessage', 'Informe o nome e uma cota entre 0001 e 9999.', 'error');
-      return;
-    }
-    if(state.clients.some(client => client.cota === number)){
-      showMessage('sorteioClientesMessage', 'Essa cota já está cadastrada.', 'error');
-      return;
-    }
-    state.clients.push({id: uid('cliente'), nome: name, cota: number});
-    saveClients();
-    $('sorteioNewClientName').value = '';
-    $('sorteioNewClientQuota').value = '';
-    renderAllData();
-    showMessage('sorteioClientesMessage', 'Cliente adicionado.');
-  }
-
   function collectAssemblyForm(){
-    const number = $('sorteioAssembleia').value.trim();
-    const existingByNumber = state.assemblies.find(item => item.numero.toLowerCase() === number.toLowerCase());
-    const existing = state.editingAssemblyId
-      ? state.assemblies.find(item => item.id === state.editingAssemblyId)
-      : existingByNumber;
     return normalizeAssembly({
-      id: existing?.id || uid('assembleia'),
-      numero: number,
+      id: state.editingAssemblyId || uid('assembleia'),
+      numero: $('sorteioAssembleia').value.trim(),
       data: $('sorteioData').value,
       contempladas: state.draftContempladas,
-      createdAt: existing?.createdAt || Date.now()
+      createdAt: state.editingAssemblyId ? (currentGroup().assemblies.find(item => item.id === state.editingAssemblyId)?.createdAt || Date.now()) : Date.now()
     });
   }
 
   function validateAssembly(assembly){
+    const group = currentGroup();
     if(!assembly.numero) return 'Informe o número da assembleia.';
     if(!assembly.data) return 'Informe a data da assembleia.';
     if(!assembly.contempladas.length) return 'Adicione pelo menos uma cota contemplada.';
-    if(!referenceQuotas(assembly).length) return 'Adicione pelo menos uma cota na modalidade Sorteio para servir de referência.';
-
-    const winners = winnersDetailed(assembly).map(item => item.cota);
-    if(new Set(winners).size !== winners.length){
-      return 'A mesma cota não pode aparecer duas vezes na mesma assembleia.';
-    }
-
-    const previous = allContemplatedExcept(assembly.id);
-    const repeated = winners.find(cota => previous.has(cota));
-    if(repeated){
-      return `A cota ${repeated} já consta como contemplada em uma assembleia anterior ou na configuração inicial.`;
-    }
+    const invalid = assembly.contempladas.find(entry => !isValidQuota(entry.cota, group));
+    if(invalid) return `A cota ${invalid.cota} não pertence ao intervalo deste grupo.`;
+    const duplicates = group.assemblies.filter(item => item.id !== assembly.id).flatMap(item => item.contempladas.map(entry => entry.cota));
+    const duplicated = assembly.contempladas.find(entry => group.baseline.includes(entry.cota) || duplicates.includes(entry.cota));
+    if(duplicated) return `A cota ${duplicated.cota} já foi contemplada anteriormente neste grupo.`;
     return '';
-  }
-
-  function fillAssemblyForm(assembly){
-    state.editingAssemblyId = assembly.id;
-    state.draftContempladas = assembly.contempladas.map(entry => ({...entry}));
-    $('sorteioAssembleia').value = assembly.numero;
-    $('sorteioData').value = assembly.data;
-    renderDraft();
   }
 
   function clearAssemblyForm(){
@@ -709,128 +490,252 @@
     $('sorteioAssembleia').value = '';
     $('sorteioData').value = todayISO();
     $('sorteioNovaCota').value = '';
-    $('sorteioNovaModalidade').value = 'sorteio';
+    $('sorteioConferirBtn').textContent = 'Salvar assembleia';
     renderDraft();
   }
 
-  function submitAssembly(){
-    if(!state.clients.length){
-      showMessage('sorteioFormMessage', 'Cadastre pelo menos um cliente antes de conferir.', 'error');
-      return;
-    }
+  function fillAssemblyForm(assembly){
+    state.editingAssemblyId = assembly.id;
+    state.draftContempladas = assembly.contempladas.map(entry => ({...entry}));
+    $('sorteioAssembleia').value = assembly.numero;
+    $('sorteioData').value = assembly.data;
+    $('sorteioConferirBtn').textContent = 'Salvar alterações';
+    renderDraft();
+    document.getElementById('view-sorteio').scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
 
+  function submitAssembly(){
+    const group = currentGroup();
     const assembly = collectAssemblyForm();
     const error = validateAssembly(assembly);
     if(error){
       showMessage('sorteioFormMessage', error, 'error');
       return;
     }
-
-    const index = state.assemblies.findIndex(item => item.id === assembly.id);
-    if(index >= 0) state.assemblies.splice(index, 1, assembly);
-    else state.assemblies.push(assembly);
-    saveAssemblies();
+    const index = group.assemblies.findIndex(item => item.id === assembly.id);
+    if(index >= 0) group.assemblies.splice(index, 1, assembly);
+    else group.assemblies.push(assembly);
     state.lastAssemblyId = assembly.id;
+    save();
     renderLatest(assembly);
-    renderHistory();
-    renderStats();
-    renderRangeStats();
     clearAssemblyForm();
-    showMessage('sorteioFormMessage', index >= 0 ? 'Assembleia atualizada e recalculada.' : 'Assembleia salva e calculada.');
+    renderAll();
+    showMessage('sorteioFormMessage', index >= 0 ? 'Assembleia atualizada.' : 'Assembleia salva.');
+  }
+
+  function renderLatest(assembly){
+    if(!assembly){
+      $('sorteioResultado').hidden = true;
+      return;
+    }
+    $('sorteioResultado').hidden = false;
+    $('sorteioResultadoTitulo').textContent = `Assembleia ${assembly.numero}`;
+    $('sorteioResultadoData').textContent = dateBR(assembly.data);
+    const winners = winnersDetailed(assembly);
+    const references = referenceQuotas(assembly);
+    $('sorteioDestaque').innerHTML = `
+      <div><span>Grupo</span><strong>${escapeHTML(currentGroup().numero)}</strong></div>
+      <div><span>Total contemplado</span><strong>${winners.length}</strong></div>
+      <div><span>Por sorteio</span><strong>${references.length}</strong></div>`;
+    $('sorteioContemplados').innerHTML = winners.map(item => `
+      <div class="assembly-winner-card"><span>${escapeHTML(item.modalidade)}</span><strong>${item.cota}</strong></div>`).join('');
+  }
+
+  function renderClients(){
+    const group = currentGroup();
+    $('sorteioClientesCount').textContent = `${group.clients.length} ${group.clients.length === 1 ? 'cliente' : 'clientes'}`;
+    $('sorteioClientList').innerHTML = group.clients.length ? group.clients.map(client => `
+      <div class="client-edit-row" data-client-id="${escapeHTML(client.id)}">
+        <div><strong>${escapeHTML(client.nome)}</strong><span>Cota ${client.cota}</span></div>
+        <div class="client-edit-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div>
+      </div>`).join('') : '<div class="empty-state">Nenhum cliente cadastrado neste grupo.</div>';
+
+    $('sorteioClientList').querySelectorAll('.client-edit-row').forEach(row => {
+      const client = group.clients.find(item => item.id === row.dataset.clientId);
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => {
+        const name = prompt('Nome do cliente:', client.nome);
+        if(name === null) return;
+        const number = quota(prompt('Número da cota:', client.cota));
+        if(!name.trim() || !isValidQuota(number, group)){
+          showMessage('sorteioClientesMessage', 'Nome ou cota inválidos.', 'error');
+          return;
+        }
+        if(group.clients.some(item => item.id !== client.id && item.cota === number)){
+          showMessage('sorteioClientesMessage', 'Essa cota já pertence a outro cliente deste grupo.', 'error');
+          return;
+        }
+        client.nome = name.trim();
+        client.cota = number;
+        save();
+        renderClients();
+        renderReportSelect();
+      });
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => {
+        if(!confirm(`Excluir ${client.nome} deste grupo?`)) return;
+        group.clients = group.clients.filter(item => item.id !== client.id);
+        save();
+        renderClients();
+        renderReportSelect();
+      });
+    });
+  }
+
+  function addClient(){
+    const group = currentGroup();
+    const name = $('sorteioNewClientName').value.trim();
+    const number = quota($('sorteioNewClientQuota').value);
+    if(!name || !isValidQuota(number, group)){
+      showMessage('sorteioClientesMessage', `Informe nome e uma cota entre 0001 e ${String(group.totalCotas).padStart(4, '0')}.`, 'error');
+      return;
+    }
+    if(group.clients.some(item => item.cota === number)){
+      showMessage('sorteioClientesMessage', 'Essa cota já está cadastrada neste grupo.', 'error');
+      return;
+    }
+    group.clients.push({ id: uid('cliente'), nome: name, cota: number });
+    $('sorteioNewClientName').value = '';
+    $('sorteioNewClientQuota').value = '';
+    save();
+    renderClients();
+    renderReportSelect();
+    showMessage('sorteioClientesMessage', 'Cliente adicionado.');
+  }
+
+  function renderHistory(){
+    const group = currentGroup();
+    const assemblies = sortAssembliesDesc(group);
+    $('sorteioHistoryCount').textContent = `${assemblies.length} ${assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
+    $('sorteioHistoryList').innerHTML = assemblies.length ? assemblies.map(assembly => {
+      const winners = winnersDetailed(assembly);
+      return `
+        <div class="draw-history-item" data-assembly-id="${escapeHTML(assembly.id)}">
+          <div class="draw-history-head"><div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><span>${dateBR(assembly.data)} · ${winners.length} contemplações</span></div><div class="draw-history-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div></div>
+          <div class="draw-history-winners">${winners.map(item => `<span><b>${escapeHTML(item.modalidade)}</b>${item.cota}</span>`).join('')}</div>
+        </div>`;
+    }).join('') : '<div class="empty-state">Nenhuma assembleia cadastrada neste grupo.</div>';
+
+    $('sorteioHistoryList').querySelectorAll('.draw-history-item').forEach(row => {
+      const assembly = group.assemblies.find(item => item.id === row.dataset.assemblyId);
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => fillAssemblyForm(assembly));
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => {
+        if(!confirm(`Excluir a assembleia ${assembly.numero}?`)) return;
+        group.assemblies = group.assemblies.filter(item => item.id !== assembly.id);
+        if(state.lastAssemblyId === assembly.id) state.lastAssemblyId = null;
+        save();
+        renderAll();
+        showMessage('sorteioHistoryMessage', 'Assembleia excluída.');
+      });
+    });
+  }
+
+  function renderRangeStats(){
+    const group = currentGroup();
+    const ranges = calculateRangeStats(group);
+    const contemplated = allContemplated(group).size;
+    const active = Math.max(0, group.totalCotas - contemplated);
+    const best = ranges.reduce((current, item) => !current || item.probability > current.probability ? item : current, null);
+    $('sorteioRangeBest').textContent = best && active ? `${rangeLabel(best.start, best.end)} · ${formatPercent(best.probability)}` : 'Sem cotas ativas';
+    $('sorteioRangeSummary').innerHTML = `
+      <div><span>Cotas previstas</span><strong>${formatInteger(group.totalCotas)}</strong></div>
+      <div><span>Já contempladas</span><strong>${formatInteger(contemplated)}</strong></div>
+      <div><span>Ainda ativas</span><strong>${formatInteger(active)}</strong></div>
+      <div><span>Referências possíveis</span><strong>${formatInteger(group.totalCotas)}</strong></div>`;
+    $('sorteioRangeGrid').innerHTML = ranges.map(item => `
+      <div class="range-stat-card${best && item.start === best.start ? ' best' : ''}">
+        <div class="range-stat-head"><strong>${rangeLabel(item.start, item.end)}</strong><span>${formatPercent(item.probability)}</span></div>
+        <div class="range-stat-bar"><i style="width:${Math.min(100, item.probability * 20)}%"></i></div>
+        <small>${formatInteger(item.active)} cotas ativas · ${formatInteger(item.contemplated)} contempladas · ${formatInteger(item.possibilities)} referências possíveis</small>
+      </div>`).join('');
+  }
+
+  function renderModalityStats(){
+    const group = currentGroup();
+    const totals = modalityTotals(group);
+    const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
+    $('sorteioModalityAssemblies').textContent = `${group.assemblies.length} ${group.assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
+    $('sorteioModalityGrid').innerHTML = `
+      <div class="modality-stat-card total"><span>Total de contemplações</span><strong>${formatInteger(total)}</strong></div>
+      ${Object.entries(MODALITIES).map(([key, label]) => `<div class="modality-stat-card"><span>${escapeHTML(label)}</span><strong>${formatInteger(totals[key] || 0)}</strong></div>`).join('')}`;
+  }
+
+  function renderBaseline(){
+    const group = currentGroup();
+    $('sorteioBaseCount').textContent = `${group.baseline.length} ${group.baseline.length === 1 ? 'cota anterior' : 'cotas anteriores'}`;
+    $('sorteioBaseContempladas').value = group.baseline.join('\n');
   }
 
   function saveBaseConfiguration(){
-    const base = extractQuotaList($('sorteioBaseContempladas').value);
-    const assemblyWinners = new Set(state.assemblies.flatMap(item => winnersDetailed(item).map(entry => entry.cota)));
-    const repeated = base.find(cota => assemblyWinners.has(cota));
+    const group = currentGroup();
+    const base = extractQuotaList($('sorteioBaseContempladas').value, group);
+    const assemblyWinners = new Set(group.assemblies.flatMap(item => item.contempladas.map(entry => entry.cota)));
+    const repeated = base.find(number => assemblyWinners.has(number));
     if(repeated){
-      showMessage('sorteioBaseMessage', `A cota ${repeated} já está registrada em uma assembleia. Retire-a da lista inicial.`, 'error');
+      showMessage('sorteioBaseMessage', `A cota ${repeated} já está registrada em uma assembleia.`, 'error');
       return;
     }
-    state.baseline = base;
-    saveBaseline();
-    renderBaseline();
-    renderStats();
-    renderRangeStats();
-    if(state.lastAssemblyId){
-      const current = state.assemblies.find(item => item.id === state.lastAssemblyId);
-      if(current) renderLatest(current);
-    }
-    showMessage('sorteioBaseMessage', 'Configuração salva e estatísticas recalculadas.');
+    group.baseline = base;
+    save();
+    renderAll();
+    showMessage('sorteioBaseMessage', 'Configuração salva e mapa recalculado.');
   }
 
-  function reportRows(client){
-    return sortAssembliesAsc().map(assembly => ({
-      assembly,
-      result: clientAssemblyResult(client, assembly),
-      winners: winnersDetailed(assembly)
-    }));
+  function renderReportSelect(){
+    const group = currentGroup();
+    $('sorteioReportClient').innerHTML = group.clients.length ? group.clients.map(client => `<option value="${escapeHTML(client.id)}">${escapeHTML(client.nome)} · ${client.cota}</option>`).join('') : '<option value="">Nenhum cliente cadastrado</option>';
+  }
+
+  function clientAssemblyData(client, assembly, group){
+    const references = referenceQuotas(assembly).map(Number);
+    const clientNumber = Number(client.cota);
+    const priorRemoved = allContemplated(group, assembly.id);
+    const activeBefore = [];
+    for(let number = 1; number <= group.totalCotas; number += 1){
+      if(!priorRemoved.has(String(number).padStart(4, '0'))) activeBefore.push(number);
+    }
+    if(!references.length) return { reference: null, rawDistance: null, activeBetween: null };
+    const reference = references.reduce((best, value) => Math.abs(value - clientNumber) < Math.abs(best - clientNumber) ? value : best, references[0]);
+    const min = Math.min(reference, clientNumber);
+    const max = Math.max(reference, clientNumber);
+    const activeBetween = activeBefore.filter(number => number > min && number < max).length;
+    return { reference: String(reference).padStart(4, '0'), rawDistance: Math.abs(reference - clientNumber), activeBetween };
   }
 
   function generateReport(){
-    const clientId = $('sorteioReportClient').value;
-    const client = state.clients.find(item => item.id === clientId);
+    const group = currentGroup();
+    const client = group.clients.find(item => item.id === $('sorteioReportClient').value);
     if(!client){
       showMessage('sorteioReportMessage', 'Selecione um cliente.', 'error');
       return;
     }
-    if(!state.assemblies.length){
-      showMessage('sorteioReportMessage', 'Salve pelo menos uma assembleia para gerar o relatório.', 'error');
+    if(!group.assemblies.length){
+      showMessage('sorteioReportMessage', 'Salve pelo menos uma assembleia neste grupo.', 'error');
       return;
     }
-
-    const rows = reportRows(client);
-    const stats = clientStats(client);
     const settings = global.Simulador?.Configuracoes?.load?.() || {};
-    const company = settings.company || 'Acompanhamento de Consórcio';
-    const consultant = settings.consultant || '';
-    const phone = settings.phone || '';
-
-    const tableRows = rows.map(({assembly, result, winners}) => {
-      const winnersHTML = winners.map(item => `<span><b>${escapeHTML(item.modalidade)}:</b> ${item.cota}</span>`).join('');
-      const references = referenceQuotas(assembly).join(', ');
-      let distanceHTML = '';
-      if(result.alreadyContemplated){
-        distanceHTML = '<b>Cota já contemplada</b><small>Não participava desta assembleia</small>';
-      }else if(result.adjustedDistance === null){
-        distanceHTML = '<b>Sem referência</b><small>Nenhuma cota por sorteio cadastrada</small>';
-      }else{
-        distanceHTML = `<b>${result.adjustedDistance.toLocaleString('pt-BR')}</b><small>Referência ${result.reference}: ${result.rawDistance.toLocaleString('pt-BR')} de distância numérica − ${result.removedBetween.toLocaleString('pt-BR')} já contempladas no intervalo</small>`;
-        if(result.currentWin) distanceHTML += `<em>Contemplada nesta assembleia por ${escapeHTML(result.currentWin.modalidade.toLowerCase())}</em>`;
-      }
+    const rows = sortAssembliesAsc(group).map(assembly => {
+      const data = clientAssemblyData(client, assembly, group);
+      const winners = winnersDetailed(assembly);
+      const currentWin = winners.find(item => item.cota === client.cota);
       return `
         <tr>
           <td><b>${escapeHTML(assembly.numero)}</b><small>${dateBR(assembly.data)}</small></td>
-          <td class="assembly-winners">${winnersHTML}</td>
-          <td><b>${references}</b><small>Referência(s) por sorteio</small></td>
-          <td>${distanceHTML}</td>
-        </tr>
-      `;
+          <td>${winners.map(item => `<span><b>${escapeHTML(item.modalidade)}</b>${item.cota}</span>`).join('')}</td>
+          <td>${data.reference ? `<b>${data.reference}</b><small>Distância numérica: ${formatInteger(data.rawDistance)}<br>Cotas ativas no intervalo: ${formatInteger(data.activeBetween)}</small>` : '<b>Sem referência</b><small>Nenhuma cota marcada como sorteio</small>'}${currentWin ? `<em>Contemplada por ${escapeHTML(currentWin.modalidade.toLowerCase())}</em>` : ''}</td>
+        </tr>`;
     }).join('');
 
-    const generated = new Date().toLocaleString('pt-BR');
-    const latestAssembly = sortAssembliesDesc()[0];
-    const latestResult = clientAssemblyResult(client, latestAssembly);
-    const latestText = latestResult.alreadyContemplated ? 'Cota já contemplada' : (latestResult.adjustedDistance === null ? '—' : latestResult.adjustedDistance.toLocaleString('pt-BR'));
-    const bestText = stats.best === null ? '—' : stats.best.toLocaleString('pt-BR');
-    const averageText = stats.average === null ? '—' : Math.round(stats.average).toLocaleString('pt-BR');
-
-    const report = `<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Histórico de assembleias — ${escapeHTML(client.nome)}</title>
-<style>
-@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#14202b;margin:0;background:#fff;font-size:9px}.header{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #f28a16;padding:0 0 10px;margin-bottom:10px}.brand{display:flex;gap:10px;align-items:center}.mark{width:38px;height:38px;border-radius:11px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}.header h1{font-size:18px;margin:0}.header p{margin:3px 0 0;color:#637181}.meta{text-align:right;color:#637181;line-height:1.45}.client{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:7px;margin-bottom:10px}.card{border:1px solid #d8e0e7;border-radius:9px;padding:8px;background:#f7f9fb}.card span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:#6b7782}.card strong{display:block;font-size:13px;margin-top:4px}.card.primary{background:#fff3e4;border-color:#f1b56e}.card.primary strong{font-size:16px}.intro{border:1px solid #d8e0e7;border-radius:9px;padding:8px 10px;margin-bottom:10px;color:#44515d;line-height:1.45}.intro b{color:#14202b}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#182633;color:#fff;font-size:7px;text-transform:uppercase;letter-spacing:.05em;padding:7px 6px;text-align:left}td{border-bottom:1px solid #dfe5ea;padding:7px 6px;vertical-align:top}th:nth-child(1){width:12%}th:nth-child(2){width:42%}th:nth-child(3){width:16%}th:nth-child(4){width:30%}td b{font-size:9px}td small{display:block;color:#6c7882;font-size:7px;margin-top:2px;line-height:1.3}.assembly-winners{display:grid;grid-template-columns:repeat(2,1fr);gap:3px}.assembly-winners span{display:block;background:#f3f6f8;border-radius:4px;padding:4px;font-size:7px}.assembly-winners b{display:block;color:#53616c;font-size:6px;text-transform:uppercase}.footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}.footer b{color:#26343f}em{display:block;margin-top:3px;color:#b45f00;font-style:normal;font-size:7px;font-weight:700}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body>
-<header class="header"><div class="brand"><div class="mark">SC</div><div><h1>Histórico individual de assembleias</h1><p>${escapeHTML(company)}</p></div></div><div class="meta">Emitido em ${generated}${consultant ? `<br>Consultor: ${escapeHTML(consultant)}` : ''}${phone ? `<br>WhatsApp: ${escapeHTML(phone)}` : ''}</div></header>
-<section class="client"><div class="card primary"><span>Cliente acompanhado</span><strong>${escapeHTML(client.nome)} · cota ${client.cota}</strong></div><div class="card"><span>Assembleias analisadas</span><strong>${stats.analyzed}</strong></div><div class="card"><span>Menor distância ajustada</span><strong>${bestText}</strong></div><div class="card"><span>Última assembleia</span><strong>${latestText}</strong></div></section>
-<div class="intro"><b>Como ler:</b> em assembleias com uma ou mais cotas por sorteio, o relatório usa a referência que ficou mais próxima da cota ${client.cota}. Depois, retira do intervalo as cotas que já haviam sido contempladas. Média ajustada no histórico: <b>${averageText}</b>.</div>
-<table><thead><tr><th>Assembleia</th><th>Cotas contempladas</th><th>Referência</th><th>Situação da cota</th></tr></thead><tbody>${tableRows}</tbody></table>
-<div class="footer"><b>Importante:</b> relatório gerado com as assembleias cadastradas manualmente no aplicativo. Os dados devem ser conferidos nos resultados oficiais da administradora. As estatísticas históricas não representam garantia de contemplação futura.</div>
-<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script></body></html>`;
+    const report = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Histórico — ${escapeHTML(client.nome)}</title><style>
+      @page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#14202b;margin:0;font-size:9px}.header{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #f28a16;padding-bottom:10px;margin-bottom:10px}.brand{display:flex;gap:10px;align-items:center}.mark{width:38px;height:38px;border-radius:11px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900}.header h1{font-size:18px;margin:0}.header p,.meta{margin:3px 0 0;color:#637181}.meta{text-align:right;line-height:1.5}.client{display:grid;grid-template-columns:2fr 1fr 1fr;gap:7px;margin-bottom:10px}.card{border:1px solid #d8e0e7;border-radius:9px;padding:8px;background:#f7f9fb}.card span{display:block;font-size:7px;text-transform:uppercase;color:#6b7782}.card strong{display:block;font-size:14px;margin-top:4px}.card.primary{background:#fff3e4;border-color:#f1b56e}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#182633;color:#fff;font-size:7px;text-transform:uppercase;padding:7px;text-align:left}td{border-bottom:1px solid #dfe5ea;padding:7px;vertical-align:top}th:nth-child(1){width:15%}th:nth-child(2){width:50%}th:nth-child(3){width:35%}td span{display:inline-block;background:#f3f6f8;border-radius:4px;padding:4px;margin:0 3px 3px 0;font-size:7px}td span b,td small{display:block;color:#6c7882;font-size:7px}em{display:block;color:#b45f00;font-style:normal;font-weight:700;margin-top:3px}.footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body>
+      <header class="header"><div class="brand"><div class="mark">SC</div><div><h1>Histórico individual de assembleias</h1><p>${escapeHTML(settings.company || 'Acompanhamento de Consórcio')}</p></div></div><div class="meta">Grupo ${escapeHTML(group.numero)}<br>Emitido em ${new Date().toLocaleString('pt-BR')}${settings.consultant ? `<br>Consultor: ${escapeHTML(settings.consultant)}` : ''}</div></header>
+      <section class="client"><div class="card primary"><span>Cliente</span><strong>${escapeHTML(client.nome)} · ${client.cota}</strong></div><div class="card"><span>Grupo</span><strong>${escapeHTML(group.numero)}</strong></div><div class="card"><span>Assembleias</span><strong>${group.assemblies.length}</strong></div></section>
+      <table><thead><tr><th>Assembleia</th><th>Cotas contempladas</th><th>Referência e proximidade</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="footer"><b>Importante:</b> relatório formado pelos registros manuais deste grupo. A distância histórica não prevê o próximo resultado. Confira os dados nos resultados oficiais da administradora.</div>
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script></body></html>`;
 
     const reportWindow = window.open('', '_blank');
     if(!reportWindow){
-      showMessage('sorteioReportMessage', 'O navegador bloqueou a abertura do relatório. Permita pop-ups e tente novamente.', 'error');
+      showMessage('sorteioReportMessage', 'Permita pop-ups no navegador e tente novamente.', 'error');
       return;
     }
     reportWindow.document.open();
@@ -838,26 +743,41 @@
     reportWindow.document.close();
   }
 
+  function renderAll(){
+    renderGroupSelector();
+    renderGroupList();
+    renderDraft();
+    renderClients();
+    renderReportSelect();
+    renderHistory();
+    renderRangeStats();
+    renderModalityStats();
+    renderBaseline();
+    const group = currentGroup();
+    const latest = state.lastAssemblyId ? group.assemblies.find(item => item.id === state.lastAssemblyId) : null;
+    renderLatest(latest || null);
+  }
+
   function bindQuotaInput(id){
     const input = $(id);
     if(!input) return;
-    input.addEventListener('input', event => {
-      event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
-    });
+    input.addEventListener('input', event => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4); });
   }
 
   function bind(){
     $('sorteioData').value = todayISO();
-    ['sorteioNovaCota','sorteioNewClientQuota'].forEach(bindQuotaInput);
+    ['sorteioNovaCota', 'sorteioNewClientQuota'].forEach(bindQuotaInput);
+    $('sorteioGrupoSelect').addEventListener('change', event => selectGroup(event.target.value));
+    $('sorteioAddGroupBtn').addEventListener('click', addGroup);
+    $('sorteioAddContempladaBtn').addEventListener('click', addDraftEntry);
     $('sorteioNovaCota').addEventListener('keydown', event => {
       if(event.key === 'Enter'){
         event.preventDefault();
         addDraftEntry();
       }
     });
-    $('sorteioAddContempladaBtn').addEventListener('click', addDraftEntry);
-    $('sorteioAddClientBtn').addEventListener('click', addClient);
     $('sorteioConferirBtn').addEventListener('click', submitAssembly);
+    $('sorteioAddClientBtn').addEventListener('click', addClient);
     $('sorteioGenerateReportBtn').addEventListener('click', generateReport);
     $('sorteioSaveBaseBtn').addEventListener('click', saveBaseConfiguration);
   }
@@ -865,7 +785,7 @@
   function init(){
     load();
     bind();
-    renderAllData();
+    renderAll();
   }
 
   document.addEventListener('DOMContentLoaded', init);
