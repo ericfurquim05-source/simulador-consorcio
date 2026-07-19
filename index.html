@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.3.1</title>
-  <link rel="manifest" href="./manifest.json?v=231">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=231">
-  <link rel="stylesheet" href="./estilos.css?v=231">
+  <title>Simulador de Consórcio — v2.3.2</title>
+  <link rel="manifest" href="./manifest.json?v=232">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=232">
+  <link rel="stylesheet" href="./estilos.css?v=232">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.3.1</p>
+          <p>Simulações claras para apresentar ao cliente · v2.3.2</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -518,7 +518,7 @@
             </div>
             <span class="pill">Cotas de 4 dígitos</span>
           </div>
-          <p class="lead">Cadastre as cotas efetivamente contempladas na assembleia. A conferência usa a cota oficial do sorteio e desconta, da distância, as cotas que já haviam sido contempladas anteriormente.</p>
+          <p class="lead">Cadastre as cotas contempladas uma a uma e escolha a modalidade de cada uma. As cotas marcadas como Sorteio viram referências da assembleia, e a conferência desconta da distância as cotas já contempladas anteriormente.</p>
 
           <div class="form-grid draw-form">
             <div class="field">
@@ -530,37 +530,31 @@
               <div class="control"><input id="sorteioData" type="date"></div>
             </div>
 
-            <div class="field full assembly-reference-field">
-              <label for="sorteioCotaSorteio">Cota contemplada por sorteio</label>
-              <div class="control"><input id="sorteioCotaSorteio" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
-              <small>Esta é a referência usada para calcular a distância dos clientes.</small>
-            </div>
-
-            <div class="field">
-              <label for="sorteioFixo1">1ª cota por lance fixo <span class="optional">opcional</span></label>
-              <div class="control"><input id="sorteioFixo1" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
-            </div>
-            <div class="field">
-              <label for="sorteioFixo2">2ª cota por lance fixo <span class="optional">opcional</span></label>
-              <div class="control"><input id="sorteioFixo2" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
-            </div>
-            <div class="field">
-              <label for="sorteioLimitado">Cota por lance limitado <span class="optional">opcional</span></label>
-              <div class="control"><input id="sorteioLimitado" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
-            </div>
-            <div class="field">
-              <label for="sorteioLivre">Cota por lance livre <span class="optional">opcional</span></label>
-              <div class="control"><input id="sorteioLivre" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
+            <div class="field full assembly-add-card">
+              <div class="assembly-add-heading">
+                <div>
+                  <label for="sorteioNovaCota">Adicionar cota contemplada</label>
+                  <small>Informe a cota, escolha como ela foi contemplada e adicione. Repita quantas vezes precisar.</small>
+                </div>
+                <strong id="sorteioDraftCount">0 cotas</strong>
+              </div>
+              <div class="assembly-add-grid">
+                <div class="control"><input id="sorteioNovaCota" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
+                <div class="control"><select id="sorteioNovaModalidade">
+                  <option value="sorteio">Sorteio</option>
+                  <option value="sorteio_excluido">Sorteio de excluídos</option>
+                  <option value="lance_fixo">Lance fixo</option>
+                  <option value="lance_limitado">Lance limitado</option>
+                  <option value="lance_livre">Lance livre</option>
+                  <option value="lance_fidelidade">Lance fidelidade</option>
+                  <option value="reposicao">Reposição / outra contemplação</option>
+                </select></div>
+                <button id="sorteioAddContempladaBtn" class="secondary-button" type="button">Adicionar cota</button>
+              </div>
+              <div id="sorteioDraftList" class="assembly-draft-list"></div>
+              <p class="assembly-form-note">Adicione pelo menos uma cota na modalidade <b>Sorteio</b>. Quando houver mais de uma, o aplicativo usa a referência mais próxima de cada cliente.</p>
             </div>
           </div>
-
-          <details class="inline-draw-details">
-            <summary>Adicionar outras cotas contempladas</summary>
-            <div class="field">
-              <label for="sorteioExtras">Reposições ou contemplações adicionais <span class="optional">opcional</span></label>
-              <div class="control textarea-control compact-textarea"><textarea id="sorteioExtras" rows="3" inputmode="numeric" placeholder="Cole as cotas separadas por espaço, vírgula ou linha"></textarea></div>
-            </div>
-          </details>
 
           <div id="sorteioFormMessage" class="message success" hidden></div>
           <button id="sorteioConferirBtn" class="primary-button" type="button">Salvar e conferir assembleia</button>
@@ -619,6 +613,15 @@
           <div class="draw-details-body">
             <div id="sorteioStatsGrid" class="draw-stats-grid"></div>
             <p class="historical-note">Os dados descrevem apenas o histórico registrado. Eles não aumentam nem reduzem a probabilidade de contemplação futura.</p>
+          </div>
+        </details>
+
+        <details class="panel draw-collapsible">
+          <summary><span><b>Distribuição por faixas de 500 cotas</b><small>Chance teórica conforme as cotas que ainda permanecem ativas</small></span><strong id="sorteioRangeBest">Sem histórico</strong></summary>
+          <div class="draw-details-body">
+            <div id="sorteioRangeSummary" class="range-summary-grid"></div>
+            <div id="sorteioRangeGrid" class="range-stats-grid"></div>
+            <p class="historical-note">A chance da faixa é calculada pela quantidade de cotas ainda ativas nela dividida pelo total de cotas ainda ativas no grupo. Isso não torna uma cota individual mais provável: entre as cotas elegíveis, cada número continua com a mesma chance teórica.</p>
           </div>
         </details>
 
@@ -701,12 +704,12 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=231" defer></script>
-  <script src="./graficos.js?v=231" defer></script>
-  <script src="./configuracoes.js?v=231" defer></script>
-  <script src="./pdf.js?v=231" defer></script>
-  <script src="./app.js?v=231" defer></script>
-  <script src="./alavancagem.js?v=231" defer></script>
-  <script src="./sorteio.js?v=231" defer></script>
+  <script src="./calculos.js?v=232" defer></script>
+  <script src="./graficos.js?v=232" defer></script>
+  <script src="./configuracoes.js?v=232" defer></script>
+  <script src="./pdf.js?v=232" defer></script>
+  <script src="./app.js?v=232" defer></script>
+  <script src="./alavancagem.js?v=232" defer></script>
+  <script src="./sorteio.js?v=232" defer></script>
 </body>
 </html>

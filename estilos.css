@@ -276,3 +276,52 @@ button{cursor:pointer}
   .assembly-summary-grid,.assembly-winners-grid{grid-template-columns:1fr}
   .assembly-winners-grid>div:first-child{grid-column:auto}
 }
+
+/* v2.3.2 — cadastro flexível de contempladas e distribuição por faixas */
+.assembly-add-card{padding:14px;border:1px solid #705022;border-radius:15px;background:linear-gradient(145deg,rgba(255,150,40,.09),rgba(255,150,40,.025))}
+.assembly-add-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.assembly-add-heading label{display:block}
+.assembly-add-heading small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.45}
+.assembly-add-heading>strong{white-space:nowrap;color:var(--orange-2);font-size:10px;padding-top:2px}
+.assembly-add-grid{display:grid;grid-template-columns:.65fr 1.1fr auto;gap:9px;align-items:center;margin-top:13px}
+.assembly-add-grid .secondary-button{margin:0;min-height:49px;padding:0 17px}
+.assembly-draft-list{display:grid;gap:7px;margin-top:12px}
+.assembly-draft-empty{padding:13px;border:1px dashed #3a4856;border-radius:11px;color:var(--muted);font-size:9px;text-align:center;background:rgba(8,14,20,.35)}
+.assembly-draft-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:#0b1219}
+.assembly-draft-row strong{display:block;font-size:12px}
+.assembly-draft-row span{display:block;margin-top:3px;color:var(--muted);font-size:8px}
+.assembly-draft-row button{border:1px solid #683c42;background:#2a171b;color:#ffaaaa;border-radius:8px;padding:8px 10px;font-size:8px;font-weight:900}
+.assembly-form-note{margin:11px 0 0;color:var(--muted);font-size:8px;line-height:1.5}
+.assembly-distance-grid.four{grid-template-columns:repeat(4,1fr)}
+.range-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px}
+.range-summary-grid>div{padding:12px;border:1px solid var(--line);border-radius:13px;background:#0b1219}
+.range-summary-grid span{display:block;color:var(--muted);font-size:8px;line-height:1.35;text-transform:uppercase;letter-spacing:.04em}
+.range-summary-grid strong{display:block;margin-top:6px;font-size:16px}
+.range-summary-grid .range-best-summary{border-color:#75501f;background:linear-gradient(145deg,#2a2117,#111820)}
+.range-summary-grid .range-best-summary strong{color:var(--orange-2);font-size:13px}
+.range-stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.range-stat-card{padding:11px;border:1px solid var(--line);border-radius:13px;background:#0b1219}
+.range-stat-card.best{border-color:#76501c;box-shadow:0 0 0 1px rgba(255,149,39,.05)}
+.range-stat-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.range-stat-head strong{font-size:12px}
+.range-stat-head span{color:var(--orange-2);font-size:7px;font-weight:900;text-align:right}
+.range-stat-values{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.range-stat-values>div{padding:7px;background:#131d26;border-radius:8px}
+.range-stat-values span{display:block;color:var(--muted);font-size:6.5px;line-height:1.3}
+.range-stat-values strong{display:block;margin-top:4px;font-size:11px}
+.range-bar{height:5px;margin-top:9px;border-radius:20px;overflow:hidden;background:#202c37}
+.range-bar i{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,var(--orange),var(--orange-2))}
+@media(max-width:760px){
+  .assembly-add-grid{grid-template-columns:.7fr 1.3fr}.assembly-add-grid .secondary-button{grid-column:1/-1}
+  .assembly-distance-grid.four{grid-template-columns:repeat(2,1fr)}
+  .range-summary-grid{grid-template-columns:1fr 1fr}.range-best-summary{grid-column:1/-1}
+  .range-stats-grid{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  .assembly-add-heading{display:block}.assembly-add-heading>strong{display:block;margin-top:7px}
+  .assembly-add-grid{grid-template-columns:1fr}
+  .assembly-add-grid .secondary-button{grid-column:auto}
+  .assembly-distance-grid.four{grid-template-columns:1fr}
+  .range-summary-grid{grid-template-columns:1fr}.range-best-summary{grid-column:auto}
+  .range-stat-values{grid-template-columns:1fr 1fr}.range-stat-values>div:last-child{grid-column:1/-1}
+}
