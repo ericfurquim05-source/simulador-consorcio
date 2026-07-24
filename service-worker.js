@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.4.1-relatorio-grupo';
+const VERSION = 'simulador-consorcio-v2.5.0-aposentadoria-imobiliaria';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [

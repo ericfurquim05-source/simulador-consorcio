@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v2.4.1</title>
-  <link rel="manifest" href="./manifest.json?v=241">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=241">
-  <link rel="stylesheet" href="./estilos.css?v=241">
+  <title>Simulador de Consórcio — v2.5.0</title>
+  <link rel="manifest" href="./manifest.json?v=250">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=250">
+  <link rel="stylesheet" href="./estilos.css?v=250">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v2.4.1</p>
+          <p>Simulações claras para apresentar ao cliente · v2.5.0</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -200,314 +200,189 @@
 
 
       <section id="view-patrimonio" class="view" data-view="patrimonio">
-        <article class="panel hero-panel patrimony-hero">
+        <article class="panel hero-panel retirement-hero">
           <div class="result-topline">
             <div>
-              <div class="eyebrow">Protótipo para investidores</div>
-              <h2>Alavancagem patrimonial</h2>
+              <div class="eyebrow">Planejamento para investidores</div>
+              <h2>Aposentadoria Imobiliária</h2>
             </div>
-            <span class="pill beta-pill">BETA</span>
+            <span class="pill beta-pill">BETA 2</span>
           </div>
-          <p class="lead">Compare a compra do mesmo imóvel por consórcio e financiamento usando apenas os dois números principais: parcela inicial e aluguel mensal estimado.</p>
+          <p class="lead">Monte uma estratégia com uma ou mais cotas, projete o crédito na contemplação, o imóvel que poderá ser adquirido, a renda de aluguel e a evolução do patrimônio até a quitação.</p>
 
-          <div class="field full">
-            <label>Tipo de imóvel</label>
-            <div class="segment property-segment" role="group" aria-label="Tipo de imóvel">
-              <button type="button" data-property-type="residencial" class="active">Residencial</button>
-              <button type="button" data-property-type="comercial">Comercial / outros</button>
-            </div>
-            <small>Referência inicial editável: 0,50% a.m. no residencial e 0,70% a.m. no comercial.</small>
-          </div>
-
-          <div class="form-grid patrimony-form">
+          <div class="form-grid retirement-main-fields">
             <div class="field">
-              <label for="patValorImovel">Valor do imóvel</label>
-              <div class="control money-control"><span>R$</span><input id="patValorImovel" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
+              <label for="patCliente">Nome do cliente <span class="optional">opcional</span></label>
+              <div class="control"><input id="patCliente" type="text" maxlength="80" placeholder="Ex.: João da Silva" autocomplete="off"></div>
             </div>
             <div class="field">
-              <label for="patCredito">Valor da carta</label>
-              <div class="control money-control"><span>R$</span><input id="patCredito" type="text" inputmode="numeric" value="250.000" autocomplete="off"></div>
-            </div>
-            <div class="field full">
-              <label for="patRentabilidadeAluguel">Estimativa de aluguel mensal</label>
-              <div class="control"><input id="patRentabilidadeAluguel" type="number" value="0.50" step="0.01" min="0"><span>% do imóvel</span></div>
-              <small id="patAluguelPreview">Estimativa atual: R$ 1.250,00 por mês.</small>
+              <label for="patDataInicio">Início do planejamento</label>
+              <div class="control"><input id="patDataInicio" type="date"></div>
             </div>
           </div>
 
-          <details class="assumptions patrimony-assumptions">
-            <summary><span>Configurações da operação</span><small>Toque para ajustar</small></summary>
-            <div class="pat-config-group">
-              <div class="pat-config-title">Consórcio</div>
-              <div class="form-grid assumptions-grid">
-                <div class="field">
-                  <label for="patPrazoConsorcio">Prazo original do grupo</label>
-                  <div class="control"><input id="patPrazoConsorcio" type="number" value="220" min="1" max="500"><span>meses</span></div>
-                </div>
-                <div class="field">
-                  <label for="patTaxaAdmin">Taxa administrativa total</label>
-                  <div class="control"><input id="patTaxaAdmin" type="number" value="24.2" step="0.1" min="0"><span>%</span></div>
-                </div>
-                <div class="field">
-                  <label for="patReajusteConsorcio">Reajuste anual do consórcio</label>
-                  <div class="control"><input id="patReajusteConsorcio" type="number" value="5.5" step="0.1" min="0"><span>% a.a.</span></div>
-                </div>
-                <div class="field">
-                  <label for="patParcelaReduzida">Parcela antes da contemplação</label>
-                  <div class="control"><input id="patParcelaReduzida" type="number" value="50" step="1" min="1" max="100"><span>% da cheia</span></div>
-                </div>
-                <div class="field">
-                  <label for="patMesContemplacao">Mês estimado da contemplação</label>
-                  <div class="control"><input id="patMesContemplacao" type="number" value="24" min="1" max="500"><span>mês</span></div>
-                </div>
-                <div class="field">
-                  <label for="patModalidadeLance">Modalidade de lance</label>
-                  <div class="control select-control">
-                    <select id="patModalidadeLance">
-                      <option value="sem" selected>Sem lance</option>
-                      <option value="fixo">Lance fixo</option>
-                      <option value="limitado">Lance limitado</option>
-                      <option value="livre">Lance livre</option>
-                    </select>
-                  </div>
-                  <small id="patLanceRegraTexto">A contemplação é simulada sem oferta de lance.</small>
-                </div>
-                <div class="field" id="patParcelasLanceField" hidden>
-                  <label for="patParcelasLance">Quantidade de parcelas ofertadas</label>
-                  <div class="control"><input id="patParcelasLance" type="number" value="44" step="1" min="1" max="220"><span>parcelas</span></div>
-                </div>
-                <div class="field" id="patEmbutidoLanceField" hidden>
-                  <label for="patPercentualEmbutidoLance">Parte embutida do lance</label>
-                  <div class="control"><input id="patPercentualEmbutidoLance" type="number" value="100" step="1" min="0" max="100"><span>% do lance</span></div>
-                  <small>O restante do lance será considerado como recurso próprio.</small>
-                </div>
-                <div class="field" id="patAplicacaoLanceField" hidden>
-                  <label for="patAplicacaoLance">Aplicação do lance</label>
-                  <div class="control select-control">
-                    <select id="patAplicacaoLance">
-                      <option value="parcela" selected>Reduzir o valor das parcelas</option>
-                      <option value="prazo">Reduzir o prazo</option>
-                    </select>
-                  </div>
-                  <small>Define como o lance vencedor amortiza o saldo devedor nesta simulação.</small>
-                </div>
-                <div id="patLanceResumo" class="bid-summary-card" hidden>
-                  <div class="bid-summary-head">
-                    <div>
-                      <span>Resumo do lance</span>
-                      <small>Percentuais calculados sobre a carta estimada na contemplação.</small>
-                    </div>
-                    <strong id="patLancePercentualTotal">0,0%</strong>
-                  </div>
-                  <div class="bid-summary-grid">
-                    <div>
-                      <span>Carta estimada</span>
-                      <strong id="patLanceCartaPreview">R$ 0,00</strong>
-                    </div>
-                    <div>
-                      <span>Lance total</span>
-                      <strong id="patLanceTotalPreview">R$ 0,00</strong>
-                      <small id="patLanceTotalPercentPreview">0,0% da carta</small>
-                    </div>
-                    <div>
-                      <span>Lance embutido</span>
-                      <strong id="patLanceEmbutidoPreview">R$ 0,00</strong>
-                      <small id="patLanceEmbutidoPercentPreview">0,0% da carta</small>
-                    </div>
-                    <div>
-                      <span>Recursos próprios</span>
-                      <strong id="patLanceProprioPreview">R$ 0,00</strong>
-                      <small id="patLanceProprioPercentPreview">0,0% da carta</small>
-                    </div>
-                  </div>
-                  <p id="patLanceResumoTexto" class="bid-summary-text"></p>
-                </div>
-              </div>
-              <div class="assumption-footer">
-                <span>Regras deste protótipo: lance fixo de <b>44 parcelas</b>; lance limitado de <b>1 a 88 parcelas</b>; lance livre com quantidade editável. No limitado e no livre, a parte embutida fica limitada a <b>50% do lance ofertado</b>.</span>
-              </div>
-            </div>
+          <div class="retirement-reference-grid">
+            <div><span>Aluguel projetado</span><strong>0,60% ao mês</strong><small>editável</small></div>
+            <div><span>Reajuste do crédito</span><strong>5,00% ao ano</strong><small>editável</small></div>
+            <div><span>Valorização do imóvel</span><strong>4,82% ao ano</strong><small>editável</small></div>
+          </div>
 
-            <div class="pat-config-group">
-              <div class="pat-config-title">Financiamento</div>
-              <div class="form-grid assumptions-grid">
-                <div class="field">
-                  <label for="patEntradaFinanciamento">Entrada do financiamento</label>
-                  <div class="control"><input id="patEntradaFinanciamento" type="number" value="20" step="0.1" min="0" max="100"><span>% do imóvel</span></div>
-                </div>
-                <div class="field">
-                  <label for="patSistemaFinanciamento">Sistema de amortização</label>
-                  <div class="control select-control">
-                    <select id="patSistemaFinanciamento">
-                      <option value="price" selected>Price</option>
-                      <option value="sac">SAC</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="patIndexadorFinanciamento">Modalidade da taxa</label>
-                  <div class="control select-control">
-                    <select id="patIndexadorFinanciamento">
-                      <option value="prefixada" selected>Prefixada</option>
-                      <option value="tr">Taxa + TR</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="patTaxaFinanciamento">Taxa efetiva anual</label>
-                  <div class="control"><input id="patTaxaFinanciamento" type="number" value="11.50" step="0.01" min="0"><span>% a.a.</span></div>
-                </div>
-                <div class="field" id="patTRFinanciamentoField" hidden>
-                  <label for="patTRFinanciamento">TR mensal estimada</label>
-                  <div class="control"><input id="patTRFinanciamento" type="number" value="0.17" step="0.01" min="0"><span>% a.m.</span></div>
-                </div>
-                <div class="field">
-                  <label for="patPrazoFinanciamento">Prazo do financiamento</label>
-                  <div class="control"><input id="patPrazoFinanciamento" type="number" value="360" min="1" max="500"><span>meses</span></div>
-                </div>
-                <div class="field">
-                  <label for="patCustosFinanciamento">Seguros e tarifas mensais</label>
-                  <div class="control money-control"><span>R$</span><input id="patCustosFinanciamento" type="text" inputmode="numeric" value="0" autocomplete="off"></div>
-                  <small>Campo opcional para aproximar MIP, DFI e tarifa administrativa.</small>
-                </div>
+          <details class="assumptions retirement-assumptions">
+            <summary><span>Premissas gerais</span><small>Toque para ajustar</small></summary>
+            <div class="form-grid assumptions-grid">
+              <div class="field">
+                <label for="patReajusteCredito">Reajuste anual de crédito e parcelas</label>
+                <div class="control"><input id="patReajusteCredito" type="number" value="5.00" step="0.1" min="0"><span>% a.a.</span></div>
               </div>
-            </div>
-
-            <div class="pat-config-group">
-              <div class="pat-config-title">Imóvel e aluguel</div>
-              <div class="form-grid assumptions-grid">
-                <div class="field">
-                  <label for="patValorizacao">Valorização anual do imóvel</label>
-                  <div class="control"><input id="patValorizacao" type="number" value="5.0" step="0.1" min="0"><span>% a.a.</span></div>
-                </div>
-                <div class="field">
-                  <label for="patReajusteAluguel">Reajuste anual do aluguel</label>
-                  <div class="control"><input id="patReajusteAluguel" type="number" value="5.0" step="0.1" min="0"><span>% a.a.</span></div>
-                </div>
+              <div class="field">
+                <label for="patRendimentoAluguel">Aluguel mensal estimado</label>
+                <div class="control"><input id="patRendimentoAluguel" type="number" value="0.60" step="0.01" min="0"><span>% do imóvel</span></div>
+              </div>
+              <div class="field">
+                <label for="patValorizacaoImovel">Valorização anual do imóvel</label>
+                <div class="control"><input id="patValorizacaoImovel" type="number" value="4.82" step="0.1" min="0"><span>% a.a.</span></div>
+              </div>
+              <div class="field">
+                <label for="patDocumentacao">Documentação e aquisição</label>
+                <div class="control"><input id="patDocumentacao" type="number" value="3.00" step="0.1" min="0"><span>% do crédito líquido</span></div>
+              </div>
+              <div class="field">
+                <label for="patTaxaAdmin">Taxa administrativa total</label>
+                <div class="control"><input id="patTaxaAdmin" type="number" value="24.20" step="0.1" min="0"><span>%</span></div>
+              </div>
+              <div class="field">
+                <label for="patPrazoOriginalLance">Prazo original para cálculo do lance</label>
+                <div class="control"><input id="patPrazoOriginalLance" type="number" value="220" step="1" min="1"><span>meses</span></div>
               </div>
             </div>
             <div class="assumption-footer">
-              <span>Referência inicial editável: <b>Price</b>, taxa <b>prefixada</b> de <b>11,50% a.a.</b> e prazo de <b>360 meses</b>. Também é possível selecionar SAC ou taxa acrescida de TR.</span>
+              <span>Os valores são projeções editáveis. O crédito, as parcelas e o saldo devedor são reajustados no modelo uma vez a cada ciclo de 12 meses.</span>
             </div>
           </details>
+        </article>
 
+        <article class="panel retirement-quota-panel">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">Estrutura do plano</div>
+              <h2>Cotas e estratégias</h2>
+              <p class="lead">Cada cota pode ter crédito, grupo, prazo e forma de contemplação próprios.</p>
+            </div>
+            <span id="patQuotaCountBadge" class="pill">1 cota</span>
+          </div>
+          <div id="patCotasEditor" class="retirement-quota-list"></div>
+          <button id="patAdicionarCotaBtn" class="secondary-button retirement-add-button" type="button">+ Adicionar outra cota</button>
           <div id="patError" class="message error" hidden></div>
-          <button id="patCalcularBtn" class="primary-button" type="button">Comparar consórcio e financiamento</button>
+          <button id="patCalcularBtn" class="primary-button" type="button">Gerar planejamento patrimonial</button>
         </article>
 
         <section id="patResultSection" class="result-stack" hidden>
-          <article class="panel comparison-focus-panel">
-            <div class="section-heading comparison-main-heading">
+          <article class="panel retirement-plan-panel">
+            <div class="section-heading">
               <div>
-                <div class="eyebrow">Comparativo principal</div>
-                <h2>Consórcio x financiamento</h2>
-                <p class="lead comparison-lead">Compare a parcela inicial com o aluguel mensal estimado do mesmo imóvel.</p>
+                <div class="eyebrow">Visão geral</div>
+                <h2>Planejamento</h2>
+                <p class="lead">Resumo consolidado das cotas, da renda projetada e do patrimônio estimado.</p>
               </div>
             </div>
-
-            <div id="patResultLanceResumo" class="bid-summary-card result-bid-summary" hidden>
-              <div class="bid-summary-head">
-                <div>
-                  <span>Estratégia de lance</span>
-                  <small id="patResultLanceParcelas">0 parcelas de 0</small>
-                </div>
-                <strong id="patResultLancePercentual">0,0% da carta</strong>
-              </div>
-              <div class="bid-summary-grid">
-                <div>
-                  <span>Carta na contemplação</span>
-                  <strong id="patResultLanceCarta">R$ 0,00</strong>
-                </div>
-                <div>
-                  <span>Lance total</span>
-                  <strong id="patResultLanceTotal">R$ 0,00</strong>
-                  <small id="patResultLanceTotalPct">0,0% da carta</small>
-                </div>
-                <div>
-                  <span>Lance embutido</span>
-                  <strong id="patResultLanceEmbutido">R$ 0,00</strong>
-                  <small id="patResultLanceEmbutidoPct">0,0% da carta</small>
-                </div>
-                <div>
-                  <span>Recursos próprios</span>
-                  <strong id="patResultLanceProprio">R$ 0,00</strong>
-                  <small id="patResultLanceProprioPct">0,0% da carta</small>
-                </div>
-              </div>
-              <p id="patResultLanceTexto" class="bid-summary-text"></p>
+            <div class="retirement-kpi-grid">
+              <div><span>Cotas</span><strong id="patResCotas">0</strong></div>
+              <div><span>Crédito inicial</span><strong id="patResCreditoInicial">R$ 0,00</strong></div>
+              <div class="highlight"><span>Crédito liberado planejado</span><strong id="patResCreditoLiberado">R$ 0,00</strong></div>
+              <div><span>1ª parcela total</span><strong id="patResPrimeiraParcela">R$ 0,00</strong></div>
+              <div><span>Aluguel inicial projetado</span><strong id="patResAluguelInicial">R$ 0,00</strong></div>
+              <div class="green"><span>Aluguel ao final</span><strong id="patResAluguelFinal">R$ 0,00</strong></div>
             </div>
 
-            <div class="scenario-grid professional-scenario-grid">
-              <div class="scenario-card consorcio-scenario">
-                <div class="scenario-title"><span>Consórcio</span><b id="patConsPrazoBadge">0 meses</b></div>
-                <div class="metric-list compact-comparison-list">
-                  <div><span id="patConsParcelaLabel">Parcela estimada após contemplação</span><strong id="patConsParcelaInicial">R$ 0,00</strong></div>
-                  <div><span>Aluguel mensal estimado</span><strong id="patConsAluguel">R$ 0,00</strong></div>
-                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patConsTotalPago">R$ 0,00</strong></div>
-                </div>
-              </div>
+            <div class="retirement-summary-title">Planejamento resumido</div>
+            <div id="patResumoCotas" class="retirement-summary-list"></div>
+            <div class="retirement-total-strip">
+              <div><span>Aporte estimado até as aquisições</span><strong id="patResAporteTotal">R$ 0,00</strong></div>
+              <div><span>Patrimônio imobiliário ao final</span><strong id="patResPatrimonioFinal">R$ 0,00</strong></div>
+            </div>
+          </article>
 
-              <div class="scenario-card financing-scenario">
-                <div class="scenario-title"><span>Financiamento</span><b id="patFinPrazoBadge">0 meses</b></div>
-                <div class="metric-list compact-comparison-list">
-                  <div><span>Parcela inicial estimada</span><strong id="patFinParcela">R$ 0,00</strong></div>
-                  <div><span>Aluguel mensal estimado</span><strong id="patFinAluguel">R$ 0,00</strong></div>
-                  <div class="metric-total"><span>Total estimado pago no final</span><strong id="patFinTotalPago">R$ 0,00</strong></div>
-                </div>
+          <article class="panel retirement-timeline-panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Linha do tempo</div>
+                <h2>Planejamento detalhado</h2>
+                <p class="lead">Veja como cada cota se transforma em crédito, imóvel e renda.</p>
               </div>
             </div>
+            <div id="patTimeline" class="retirement-timeline"></div>
+          </article>
 
-            <details class="calculation-note operation-details">
-              <summary>Ver detalhes da operação</summary>
-              <div class="operation-detail-grid">
-                <section class="operation-detail-card">
-                  <h3>Estrutura do consórcio</h3>
-                  <div class="operation-detail-list">
-                    <div><span>Modalidade de lance</span><strong id="patResModalidadeLance">Sem lance</strong></div>
-                    <div><span>Parcelas ofertadas</span><strong id="patResParcelasLance">Não se aplica</strong></div>
-                    <div><span>Valor da parcela linear do lance</span><strong id="patResParcelaLinearLance">R$ 0,00</strong></div>
-                    <div><span>Valor total do lance</span><strong id="patResLanceTotal">R$ 0,00</strong></div>
-                    <div><span>Lance total sobre a carta</span><strong id="patResLancePercentual">0,0%</strong></div>
-                    <div><span>Parte paga com recursos próprios</span><strong id="patResLanceProprio">R$ 0,00</strong></div>
-                    <div><span>Recursos próprios sobre a carta</span><strong id="patResLanceProprioPercentual">0,0%</strong></div>
-                    <div><span>Parte embutida no crédito</span><strong id="patResLanceEmbutido">R$ 0,00</strong></div>
-                    <div><span>Lance embutido sobre a carta</span><strong id="patResLanceEmbutidoPercentual">0,0%</strong></div>
-                    <div><span>Carta estimada na contemplação</span><strong id="patResCartaContemplacao">R$ 0,00</strong></div>
-                    <div><span>Crédito líquido liberado</span><strong id="patResCreditoLiquido">R$ 0,00</strong></div>
-                    <div><span>Saldo devedor após o lance</span><strong id="patResSaldoAposLance">R$ 0,00</strong></div>
-                    <div><span>Aplicação do lance</span><strong id="patResAplicacaoLance">Reduzir parcelas</strong></div>
-                    <div><span>Complemento para adquirir o imóvel</span><strong id="patResComplemento">R$ 0,00</strong></div>
-                  </div>
-                </section>
-
-                <section class="operation-detail-card">
-                  <h3>Estrutura do financiamento</h3>
-                  <div class="operation-detail-list">
-                    <div><span>Entrada utilizada</span><strong id="patFinEntrada">R$ 0,00</strong></div>
-                    <div><span>Valor financiado</span><strong id="patFinValor">R$ 0,00</strong></div>
-                    <div><span>Prazo contratado</span><strong id="patFinPrazoDetalhe">0 meses</strong></div>
-                    <div><span>Modalidade da taxa</span><strong id="patFinIndexadorDetalhe">Prefixada</strong></div>
-                    <div><span>Taxa efetiva anual</span><strong id="patFinTaxaDetalhe">0,00% a.a.</strong></div>
-                    <div><span>TR mensal projetada</span><strong id="patFinTRDetalhe">Não se aplica</strong></div>
-                    <div><span>Sistema de amortização</span><strong id="patFinSistemaDetalhe">Price</strong></div>
-                    <div><span>Seguros e tarifas mensais</span><strong id="patFinCustosDetalhe">R$ 0,00</strong></div>
-                  </div>
-                </section>
+          <article class="panel retirement-evolution-panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Evolução financeira</div>
+                <h2>Crédito e saldo devedor</h2>
+                <p class="lead">Projeção anual da cota selecionada, incluindo contemplação, parcelas e saldo estimado.</p>
               </div>
-            </details>
-
+            </div>
+            <div class="field full evolution-select-field">
+              <label for="patCotaEvolucao">Cota analisada</label>
+              <div class="control select-control"><select id="patCotaEvolucao"></select></div>
+            </div>
+            <div id="patEvolutionSnapshot" class="evolution-snapshot"></div>
+            <div class="table-wrap retirement-table-wrap">
+              <table class="retirement-evolution-table">
+                <thead><tr><th>Ano</th><th>Crédito</th><th>Parcela</th><th>Pago acumulado</th><th>Saldo estimado</th></tr></thead>
+                <tbody id="patEvolutionBody"></tbody>
+              </table>
+            </div>
             <details class="calculation-note">
-              <summary>Como esta versão calcula?</summary>
-              <p>No consórcio, o lance é calculado pela parcela linear do grupo: carta vigente somada à taxa administrativa, dividida pelo prazo original e multiplicada pelas parcelas ofertadas. O lance total amortiza o saldo devedor; somente a parte embutida reduz o crédito disponível para comprar o imóvel. Quando selecionado “Reduzir o valor das parcelas”, o saldo restante é diluído nas parcelas vincendas. As taxas permanecem referenciadas no crédito integral contratado. No financiamento, o cálculo usa Price ou SAC.</p>
+              <summary>Como esta evolução foi calculada?</summary>
+              <p>O modelo reajusta crédito, parcela e saldo a cada 12 meses. O lance reduz o saldo devedor; somente a parte embutida reduz o crédito liberado. A tabela é uma projeção para estudo e pode variar conforme o contrato do grupo.</p>
             </details>
           </article>
 
-          <article class="disclaimer">
-            <b>Protótipo:</b> os resultados são estimativas para estudo de viabilidade. Não existe garantia de contemplação. As regras da administradora, o CET do financiamento, seguros, impostos e despesas do imóvel podem alterar os valores reais.
+          <article class="panel retirement-financing-panel">
+            <details class="retirement-financing-details">
+              <summary>
+                <span><b>Comparativo opcional com financiamento</b><small>Mantém a análise anterior sem ocupar a tela principal.</small></span>
+                <span>Configurar</span>
+              </summary>
+              <div class="form-grid assumptions-grid retirement-financing-form">
+                <div class="field">
+                  <label for="patFinEntrada">Entrada</label>
+                  <div class="control"><input id="patFinEntrada" type="number" value="20" step="0.1" min="0" max="100"><span>%</span></div>
+                </div>
+                <div class="field">
+                  <label for="patFinSistema">Sistema</label>
+                  <div class="control select-control"><select id="patFinSistema"><option value="price" selected>Price</option><option value="sac">SAC</option></select></div>
+                </div>
+                <div class="field">
+                  <label for="patFinTaxa">Taxa efetiva anual</label>
+                  <div class="control"><input id="patFinTaxa" type="number" value="11.50" step="0.01" min="0"><span>% a.a.</span></div>
+                </div>
+                <div class="field">
+                  <label for="patFinPrazo">Prazo</label>
+                  <div class="control"><input id="patFinPrazo" type="number" value="360" min="1"><span>meses</span></div>
+                </div>
+              </div>
+              <button id="patCompararFinBtn" class="secondary-button" type="button">Atualizar comparação</button>
+              <div id="patFinComparison" class="retirement-financing-result"></div>
+            </details>
+          </article>
+
+          <article class="panel retirement-actions-panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">Apresentação</div>
+                <h2>Relatório para o cliente</h2>
+                <p class="lead">O PDF reúne o planejamento, as cotas, a linha do tempo e as premissas utilizadas.</p>
+              </div>
+            </div>
+            <div class="action-grid">
+              <button id="patGerarPdfBtn" class="action-button" type="button">Gerar PDF patrimonial</button>
+              <button id="patCopiarResumoBtn" class="action-button" type="button">Copiar resumo</button>
+            </div>
+            <div id="patActionMessage" class="message success" hidden></div>
           </article>
         </section>
       </section>
-
 
       <section id="view-sorteio" class="view" data-view="sorteio">
         <article class="panel draw-group-panel">
@@ -746,12 +621,12 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=241" defer></script>
-  <script src="./graficos.js?v=241" defer></script>
-  <script src="./configuracoes.js?v=241" defer></script>
-  <script src="./pdf.js?v=241" defer></script>
-  <script src="./app.js?v=241" defer></script>
-  <script src="./alavancagem.js?v=241" defer></script>
-  <script src="./sorteio.js?v=241" defer></script>
+  <script src="./calculos.js?v=250" defer></script>
+  <script src="./graficos.js?v=250" defer></script>
+  <script src="./configuracoes.js?v=250" defer></script>
+  <script src="./pdf.js?v=250" defer></script>
+  <script src="./app.js?v=250" defer></script>
+  <script src="./alavancagem.js?v=250" defer></script>
+  <script src="./sorteio.js?v=250" defer></script>
 </body>
 </html>

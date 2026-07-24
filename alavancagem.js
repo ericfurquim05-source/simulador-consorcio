@@ -2,589 +2,488 @@
   'use strict';
 
   const get = id => document.getElementById(id);
-  const state = { propertyType: 'residencial', bidMode: 'sem' };
+  const STORAGE_KEY = 'simulador-patrimonio-v2.5.0';
+  const state = { cotas: [], result: null, evolutionIndex: 0, saveTimer: null };
 
-  const BID_LABELS = {
+  const STRATEGIES = {
+    sorteio: 'Sorteio',
     sem: 'Sem lance',
     fixo: 'Lance fixo',
     limitado: 'Lance limitado',
     livre: 'Lance livre'
   };
 
-  function valueOf(id, fallback = ''){
-    const element = get(id);
-    return element && 'value' in element ? element.value : fallback;
+  function uid(){ return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`; }
+  function num(v, fallback = 0){
+    const n = parseFloat(String(v ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : fallback;
   }
-
-  function setText(id, text){
-    const element = get(id);
-    if(element) element.textContent = text;
-    return element;
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function parseMoney(v){
+    let s = String(v ?? '').trim().replace(/R\$/g,'').replace(/\s/g,'');
+    if(!s) return 0;
+    if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+    else if(/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,'');
+    const n = Number(s.replace(/[^0-9.-]/g,''));
+    return Number.isFinite(n) ? n : 0;
   }
-
-  function number(value){
-    const parsed = parseFloat(String(value ?? '').replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : 0;
+  function brl(v){
+    return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v)||0);
   }
-
-  function moneyFromText(value){
-    const digits = String(value ?? '').replace(/\D/g, '');
-    const parsed = parseInt(digits, 10);
-    return Number.isFinite(parsed) ? parsed : 0;
+  function moneyInput(v, cents = true){
+    return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:cents?2:0,maximumFractionDigits:cents?2:0}).format(Number(v)||0);
   }
-
-  function brl(value){
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency', currency: 'BRL', maximumFractionDigits: 2
-    }).format(Number(value) || 0);
+  function pct(v, digits = 1){
+    return `${(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:digits,maximumFractionDigits:digits})}%`;
   }
-
-  function pct(value){
-    return `${(Math.max(0, Number(value) || 0) * 100).toLocaleString('pt-BR', {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1
-    })}%`;
+  function esc(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+  function dateISO(){ return new Date().toISOString().slice(0,10); }
+  function dateBR(value){
+    if(!value) return 'Não informada';
+    const [y,m,d] = value.split('-');
+    return y && m && d ? `${d}/${m}/${y}` : value;
   }
-
-  function formatMoneyInput(element){
-    if(!element) return;
-    const digits = String(element.value || '').replace(/\D/g, '');
-    element.value = digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '';
+  function addMonths(dateValue, months){
+    const base = dateValue ? new Date(`${dateValue}T12:00:00`) : new Date();
+    base.setMonth(base.getMonth() + Math.max(0,months));
+    return base;
   }
-
-  function updateRentPreview(){
-    const propertyValue = moneyFromText(valueOf('patValorImovel', '250.000'));
-    const rentalYield = number(valueOf('patRentabilidadeAluguel', '0.50')) / 100;
-    const monthlyRent = Math.max(0, propertyValue * rentalYield);
-    setText('patAluguelPreview', `Estimativa atual: ${brl(monthlyRent)} por mês.`);
-    return monthlyRent;
-  }
-
-  function annualToMonthly(annualRate){
-    return Math.pow(1 + annualRate, 1 / 12) - 1;
-  }
-
-  function pricePayment(principal, monthlyRate, months){
+  function monthYear(date){ return new Intl.DateTimeFormat('pt-BR',{month:'2-digit',year:'numeric'}).format(date); }
+  function annualToMonthly(rate){ return Math.pow(1 + rate, 1/12) - 1; }
+  function pricePayment(principal, rate, months){
     if(principal <= 0 || months <= 0) return 0;
-    if(monthlyRate <= 0) return principal / months;
-    const factor = Math.pow(1 + monthlyRate, months);
-    return principal * monthlyRate * factor / (factor - 1);
+    if(rate <= 0) return principal / months;
+    const f = Math.pow(1+rate,months);
+    return principal*rate*f/(f-1);
   }
 
-  function futureValue(value, annualRate, months){
-    return value * Math.pow(1 + annualRate, months / 12);
-  }
-
-  function showError(message){
-    const element = get('patError');
-    if(!element) return;
-    element.textContent = message;
-    element.hidden = false;
-  }
-
-  function clearError(){
-    const element = get('patError');
-    if(element) element.hidden = true;
-  }
-
-  function setPropertyType(type){
-    state.propertyType = type;
-    document.querySelectorAll('[data-property-type]').forEach(button => {
-      button.classList.toggle('active', button.dataset.propertyType === type);
-    });
-    const yieldInput = get('patRentabilidadeAluguel');
-    if(yieldInput) yieldInput.value = type === 'comercial' ? '0.70' : '0.50';
-    updateRentPreview();
-  }
-
-  function toggleFinancingRateType(type){
-    const normalized = type === 'tr' ? 'tr' : 'prefixada';
-    const field = get('patTRFinanciamentoField');
-    const input = get('patTRFinanciamento');
-    if(field) field.hidden = normalized !== 'tr';
-    if(input) input.disabled = normalized !== 'tr';
-  }
-
-  function bidPreviewFromForm(){
-    const mode = String(valueOf('patModalidadeLance', 'sem')).toLowerCase();
-    const credit = moneyFromText(valueOf('patCredito'));
-    const term = Math.max(1, Math.round(number(valueOf('patPrazoConsorcio', '220'))));
-    const adminRate = number(valueOf('patTaxaAdmin', '24.2')) / 100;
-    const annualAdjustment = number(valueOf('patReajusteConsorcio', '5.5')) / 100;
-    const contemplationMonth = Math.max(1, Math.round(number(valueOf('patMesContemplacao', '24'))));
-    const completedYears = Math.floor((contemplationMonth - 1) / 12);
-    const adjustedCredit = credit * Math.pow(1 + annualAdjustment, completedYears);
-    const linearInstallment = term > 0 ? adjustedCredit * (1 + adminRate) / term : 0;
-    let installments = 0;
-    let embeddedShare = 0;
-
-    if(mode === 'fixo'){
-      installments = 44;
-      embeddedShare = 1;
-    }else if(mode === 'limitado' || mode === 'livre'){
-      installments = Math.max(0, Math.round(number(valueOf('patParcelasLance', '0'))));
-      embeddedShare = Math.min(0.5, Math.max(0, number(valueOf('patPercentualEmbutidoLance', '0')) / 100));
-    }
-
-    const totalBid = Math.max(0, linearInstallment * installments);
-    const embeddedBid = Math.max(0, totalBid * embeddedShare);
-    const ownBid = Math.max(0, totalBid - embeddedBid);
-    const denominator = adjustedCredit > 0 ? adjustedCredit : 1;
-
+  function defaultCota(index = 0){
+    const first = index === 0;
     return {
-      mode,
-      adjustedCredit,
-      totalBid,
-      embeddedBid,
-      ownBid,
-      totalRate: totalBid / denominator,
-      embeddedRate: embeddedBid / denominator,
-      ownRate: ownBid / denominator
+      id: uid(),
+      group: first ? '12193' : '12194',
+      credit: first ? 250000 : 100000,
+      firstPayment: first ? 1422.50 : 567.10,
+      term: first ? 219 : 219,
+      contemplationMonth: first ? 60 : 48,
+      strategy: 'sorteio',
+      bidInstallments: 44,
+      embeddedPercent: 100,
+      prePaymentPercent: 100,
+      bidApplication: 'parcela'
     };
   }
 
-  function updateBidPreview(){
-    const summary = get('patLanceResumo');
-    const mode = String(valueOf('patModalidadeLance', 'sem')).toLowerCase();
-    const preview = bidPreviewFromForm();
-    if(summary) summary.hidden = mode === 'sem';
-    if(mode === 'sem') return;
-
-    setText('patLancePercentualTotal', pct(preview.totalRate));
-    setText('patLanceCartaPreview', brl(preview.adjustedCredit));
-    setText('patLanceTotalPreview', brl(preview.totalBid));
-    setText('patLanceTotalPercentPreview', `${pct(preview.totalRate)} da carta`);
-    setText('patLanceEmbutidoPreview', brl(preview.embeddedBid));
-    setText('patLanceEmbutidoPercentPreview', `${pct(preview.embeddedRate)} da carta`);
-    setText('patLanceProprioPreview', brl(preview.ownBid));
-    setText('patLanceProprioPercentPreview', `${pct(preview.ownRate)} da carta`);
-    setText(
-      'patLanceResumoTexto',
-      `Em uma carta estimada em ${brl(preview.adjustedCredit)}, o lance de ${brl(preview.totalBid)} representa ${pct(preview.totalRate)} do crédito. Desse total, ${brl(preview.embeddedBid)} será embutido e ${brl(preview.ownBid)} será pago com recursos próprios.`
-    );
+  function readGlobal(){
+    return {
+      client: (get('patCliente')?.value || '').trim(),
+      startDate: get('patDataInicio')?.value || dateISO(),
+      adjustment: clamp(num(get('patReajusteCredito')?.value,5),0,100)/100,
+      rentalYield: clamp(num(get('patRendimentoAluguel')?.value,0.6),0,100)/100,
+      appreciation: clamp(num(get('patValorizacaoImovel')?.value,4.82),0,100)/100,
+      docsRate: clamp(num(get('patDocumentacao')?.value,3),0,100)/100,
+      adminRate: clamp(num(get('patTaxaAdmin')?.value,24.2),0,300)/100,
+      bidOriginalTerm: Math.max(1,Math.round(num(get('patPrazoOriginalLance')?.value,220))),
+      financingEntry: clamp(num(get('patFinEntrada')?.value,20),0,100)/100,
+      financingSystem: get('patFinSistema')?.value === 'sac' ? 'sac' : 'price',
+      financingAnnual: clamp(num(get('patFinTaxa')?.value,11.5),0,100)/100,
+      financingTerm: Math.max(1,Math.round(num(get('patFinPrazo')?.value,360)))
+    };
   }
 
-  function updateBidControls(mode){
-    state.bidMode = BID_LABELS[mode] ? mode : 'sem';
-
-    const modeSelect = get('patModalidadeLance');
-    const installmentsField = get('patParcelasLanceField');
-    const embeddedField = get('patEmbutidoLanceField');
-    const applicationField = get('patAplicacaoLanceField');
-    const installmentsInput = get('patParcelasLance');
-    const embeddedInput = get('patPercentualEmbutidoLance');
-    const ruleText = get('patLanceRegraTexto');
-    const term = Math.max(1, Math.round(number(valueOf('patPrazoConsorcio', '220'))));
-
-    if(modeSelect) modeSelect.value = state.bidMode;
-
-    if(state.bidMode === 'sem'){
-      if(installmentsField) installmentsField.hidden = true;
-      if(embeddedField) embeddedField.hidden = true;
-      if(applicationField) applicationField.hidden = true;
-      if(installmentsInput){ installmentsInput.value = '0'; installmentsInput.disabled = true; }
-      if(embeddedInput){ embeddedInput.value = '0'; embeddedInput.disabled = true; }
-      if(ruleText) ruleText.textContent = 'A contemplação é simulada sem oferta de lance.';
-      updateBidPreview();
-      return;
-    }
-
-    if(installmentsField) installmentsField.hidden = false;
-    if(embeddedField) embeddedField.hidden = false;
-    if(applicationField) applicationField.hidden = false;
-
-    if(state.bidMode === 'fixo'){
-      if(installmentsInput){
-        installmentsInput.value = '44';
-        installmentsInput.min = '44';
-        installmentsInput.max = '44';
-        installmentsInput.disabled = true;
-      }
-      if(embeddedInput){
-        embeddedInput.value = '100';
-        embeddedInput.min = '100';
-        embeddedInput.max = '100';
-        embeddedInput.disabled = true;
-      }
-      if(ruleText) ruleText.textContent = 'Oferta fixa de 44 parcelas. Nesta regra, o lance pode ser integralmente embutido.';
-      updateBidPreview();
-      return;
-    }
-
-    if(installmentsInput){
-      installmentsInput.disabled = false;
-      installmentsInput.min = '1';
-      installmentsInput.max = state.bidMode === 'limitado' ? '88' : String(term);
-      const current = Math.round(number(installmentsInput.value));
-      const maximum = state.bidMode === 'limitado' ? 88 : term;
-      if(current < 1 || current > maximum) installmentsInput.value = state.bidMode === 'limitado' ? '88' : String(Math.min(88, term));
-    }
-
-    if(embeddedInput){
-      embeddedInput.disabled = false;
-      embeddedInput.min = '0';
-      embeddedInput.max = '50';
-      const current = number(embeddedInput.value);
-      if(current < 0 || current > 50) embeddedInput.value = '50';
-      if(current === 100 || current === 0) embeddedInput.value = '50';
-    }
-
-    if(ruleText){
-      ruleText.textContent = state.bidMode === 'limitado'
-        ? 'De 1 a 88 parcelas. Até 50% do lance ofertado pode ser embutido; o restante usa recursos próprios.'
-        : 'Quantidade de parcelas editável. Até 50% do lance ofertado pode ser embutido; o restante usa recursos próprios.';
-    }
-    updateBidPreview();
+  function savePlanSoon(){
+    clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(savePlan,250);
   }
-
-  function applyVersionDefaults(){
-    const key = 'patrimonio-defaults-v2.2.15';
+  function savePlan(){
     try{
-      if(sessionStorage.getItem(key)) return;
-      const property = get('patValorImovel');
-      const credit = get('patCredito');
-      const rent = get('patRentabilidadeAluguel');
-      const system = get('patSistemaFinanciamento');
-      if(property) property.value = '250.000';
-      if(credit) credit.value = '250.000';
-      if(rent) rent.value = '0.50';
-      if(system) system.value = 'price';
-      sessionStorage.setItem(key, '1');
-    }catch(_error){
-      // Mantém os valores declarados no HTML quando o armazenamento não estiver disponível.
+      const g = readGlobal();
+      localStorage.setItem(STORAGE_KEY,JSON.stringify({
+        client:g.client,startDate:g.startDate,adjustment:g.adjustment*100,rentalYield:g.rentalYield*100,
+        appreciation:g.appreciation*100,docsRate:g.docsRate*100,adminRate:g.adminRate*100,
+        bidOriginalTerm:g.bidOriginalTerm,cotas:state.cotas
+      }));
+    }catch(_e){}
+  }
+  function loadPlan(){
+    let saved = null;
+    try{ saved = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'); }catch(_e){}
+    if(saved && Array.isArray(saved.cotas) && saved.cotas.length){
+      state.cotas = saved.cotas.map((c,i)=>({...defaultCota(i),...c,id:c.id||uid()}));
+      if(get('patCliente')) get('patCliente').value = saved.client || '';
+      if(get('patDataInicio')) get('patDataInicio').value = saved.startDate || dateISO();
+      if(get('patReajusteCredito')) get('patReajusteCredito').value = num(saved.adjustment,5).toFixed(2);
+      if(get('patRendimentoAluguel')) get('patRendimentoAluguel').value = num(saved.rentalYield,0.6).toFixed(2);
+      if(get('patValorizacaoImovel')) get('patValorizacaoImovel').value = num(saved.appreciation,4.82).toFixed(2);
+      if(get('patDocumentacao')) get('patDocumentacao').value = num(saved.docsRate,3).toFixed(2);
+      if(get('patTaxaAdmin')) get('patTaxaAdmin').value = num(saved.adminRate,24.2).toFixed(2);
+      if(get('patPrazoOriginalLance')) get('patPrazoOriginalLance').value = Math.round(num(saved.bidOriginalTerm,220));
+    }else{
+      state.cotas = [defaultCota(0)];
+      if(get('patDataInicio')) get('patDataInicio').value = dateISO();
     }
   }
 
-  function readInput(){
-    return {
-      propertyValue: moneyFromText(valueOf('patValorImovel')),
-      credit: moneyFromText(valueOf('patCredito')),
-      bidMode: String(valueOf('patModalidadeLance', 'sem')).toLowerCase(),
-      bidInstallments: Math.round(number(valueOf('patParcelasLance', '0'))),
-      embeddedBidShare: number(valueOf('patPercentualEmbutidoLance', '0')) / 100,
-      bidApplication: String(valueOf('patAplicacaoLance', 'parcela')).toLowerCase(),
-      rentalYield: number(valueOf('patRentabilidadeAluguel', '0.50')) / 100,
-      consortiumTerm: Math.round(number(valueOf('patPrazoConsorcio', '220'))),
-      adminRate: number(valueOf('patTaxaAdmin', '24.2')) / 100,
-      consortiumAdjustment: number(valueOf('patReajusteConsorcio', '5.5')) / 100,
-      reducedPaymentRate: number(valueOf('patParcelaReduzida', '50')) / 100,
-      contemplationMonth: Math.round(number(valueOf('patMesContemplacao', '24'))),
-      financingEntryRate: number(valueOf('patEntradaFinanciamento', '20')) / 100,
-      financingSystem: String(valueOf('patSistemaFinanciamento', 'price')).toLowerCase(),
-      financingRateType: String(valueOf('patIndexadorFinanciamento', 'prefixada')).toLowerCase(),
-      financingAnnualRate: number(valueOf('patTaxaFinanciamento', '11.50')) / 100,
-      financingTRMonthly: String(valueOf('patIndexadorFinanciamento', 'prefixada')).toLowerCase() === 'tr'
-        ? number(valueOf('patTRFinanciamento', '0.17')) / 100
-        : 0,
-      financingTerm: Math.round(number(valueOf('patPrazoFinanciamento', '360'))),
-      financingMonthlyCosts: moneyFromText(valueOf('patCustosFinanciamento', '0')),
-      appreciation: number(valueOf('patValorizacao', '5')) / 100,
-      rentAdjustment: number(valueOf('patReajusteAluguel', '5')) / 100
-    };
-  }
-
-  function normalizeBid(input){
-    const mode = BID_LABELS[input.bidMode] ? input.bidMode : 'sem';
-    if(mode === 'sem') return { mode, label: BID_LABELS[mode], installments: 0, embeddedShare: 0 };
-    if(mode === 'fixo') return { mode, label: BID_LABELS[mode], installments: 44, embeddedShare: 1 };
-    return {
-      mode,
-      label: BID_LABELS[mode],
-      installments: input.bidInstallments,
-      embeddedShare: input.embeddedBidShare
-    };
-  }
-
-  function validate(input){
-    if(input.propertyValue <= 0) throw new Error('Informe o valor do imóvel.');
-    if(input.credit <= 0) throw new Error('Informe o valor da carta.');
-    if(input.consortiumTerm <= 0 || input.financingTerm <= 0) throw new Error('Revise os prazos informados.');
-    if(input.reducedPaymentRate <= 0 || input.reducedPaymentRate > 1) throw new Error('Revise o percentual da parcela antes da contemplação.');
-    if(input.financingEntryRate < 0 || input.financingEntryRate >= 1) throw new Error('A entrada do financiamento deve ficar abaixo de 100%.');
-    if(!['sac','price'].includes(input.financingSystem)) throw new Error('Revise o sistema de amortização do financiamento.');
-    if(!['prefixada','tr'].includes(input.financingRateType)) throw new Error('Revise a modalidade da taxa do financiamento.');
-    if(input.financingAnnualRate < 0 || input.financingTRMonthly < 0 || input.financingMonthlyCosts < 0) throw new Error('Revise as taxas e custos do financiamento.');
-    if(input.contemplationMonth <= 0 || input.contemplationMonth > input.consortiumTerm) throw new Error('Revise o mês estimado da contemplação.');
-
-    const bid = normalizeBid(input);
-    if(bid.mode === 'fixo' && input.consortiumTerm < 44) throw new Error('O prazo original do grupo deve permitir a oferta de 44 parcelas.');
-    if(bid.mode === 'limitado' && (bid.installments < 1 || bid.installments > 88)) throw new Error('No lance limitado, informe de 1 a 88 parcelas.');
-    if(bid.mode === 'livre' && (bid.installments < 1 || bid.installments > input.consortiumTerm)) throw new Error('No lance livre, informe uma quantidade válida de parcelas.');
-    if(['limitado','livre'].includes(bid.mode) && (bid.embeddedShare < 0 || bid.embeddedShare > 0.5)) throw new Error('No lance limitado ou livre, a parte embutida pode representar no máximo 50% do lance ofertado.');
-    if(!['parcela','prazo'].includes(input.bidApplication)) throw new Error('Revise a forma de aplicação do lance.');
-  }
-
-  function simulateConsortium(input){
-    const bid = normalizeBid(input);
-    let balance = input.credit * (1 + input.adminRate);
-    let currentFullPayment = balance / input.consortiumTerm;
-    const initialFullPayment = currentFullPayment;
-    const initialReducedPayment = initialFullPayment * input.reducedPaymentRate;
-
-    const completedYears = Math.floor((input.contemplationMonth - 1) / 12);
-    const adjustedCredit = input.credit * Math.pow(1 + input.consortiumAdjustment, completedYears);
-    const linearBidInstallment = adjustedCredit * (1 + input.adminRate) / input.consortiumTerm;
-    const requestedTotalBid = linearBidInstallment * bid.installments;
-    const propertyAtContemplation = futureValue(input.propertyValue, input.appreciation, input.contemplationMonth - 1);
-
-    let totalInstallmentsPaid = 0;
-    let totalBidUsed = 0;
-    let ownBidUsed = 0;
-    let embeddedBidUsed = 0;
-    let paymentAtContemplation = initialFullPayment;
-    let balanceAfterBid = balance;
-
-    for(let month = 1; month <= input.consortiumTerm; month += 1){
-      if(month > 1 && (month - 1) % 12 === 0){
-        balance *= 1 + input.consortiumAdjustment;
-        currentFullPayment *= 1 + input.consortiumAdjustment;
-      }
-
-      if(month < input.contemplationMonth){
-        const payment = Math.min(balance, currentFullPayment * input.reducedPaymentRate);
-        totalInstallmentsPaid += payment;
-        balance = Math.max(0, balance - payment);
-        continue;
-      }
-
-      if(month === input.contemplationMonth){
-        totalBidUsed = Math.min(requestedTotalBid, balance);
-        const maxEmbeddedByRule = totalBidUsed * bid.embeddedShare;
-        const maxEmbeddedByCredit = bid.mode === 'fixo' ? adjustedCredit : adjustedCredit * 0.5;
-        embeddedBidUsed = Math.min(maxEmbeddedByRule, maxEmbeddedByCredit, adjustedCredit);
-        ownBidUsed = Math.max(0, totalBidUsed - embeddedBidUsed);
-        balance = Math.max(0, balance - totalBidUsed);
-        balanceAfterBid = balance;
-
-        const remainingMonths = input.consortiumTerm - month + 1;
-        if(input.bidApplication === 'parcela'){
-          currentFullPayment = remainingMonths > 0 ? balance / remainingMonths : 0;
-        }
-        paymentAtContemplation = currentFullPayment;
-      }
-
-      const payment = Math.min(balance, currentFullPayment);
-      totalInstallmentsPaid += payment;
-      balance = Math.max(0, balance - payment);
+  function normalizeCota(c){
+    c.credit = Math.max(1000,num(c.credit));
+    c.firstPayment = Math.max(0,num(c.firstPayment));
+    c.term = Math.max(1,Math.round(num(c.term,219)));
+    c.contemplationMonth = clamp(Math.round(num(c.contemplationMonth,60)),1,c.term);
+    c.prePaymentPercent = clamp(num(c.prePaymentPercent,100),1,100);
+    c.strategy = STRATEGIES[c.strategy] ? c.strategy : 'sorteio';
+    if(c.strategy === 'fixo'){
+      c.bidInstallments = 44;c.embeddedPercent = 100;
+    }else if(c.strategy === 'limitado'){
+      c.bidInstallments = clamp(Math.round(num(c.bidInstallments,88)),1,88);
+      c.embeddedPercent = clamp(num(c.embeddedPercent,50),0,50);
+    }else if(c.strategy === 'livre'){
+      c.bidInstallments = clamp(Math.round(num(c.bidInstallments,88)),1,Math.max(1,c.term));
+      c.embeddedPercent = clamp(num(c.embeddedPercent,50),0,50);
+    }else{
+      c.bidInstallments = 0;c.embeddedPercent = 0;
     }
-
-    const netCredit = Math.max(0, adjustedCredit - embeddedBidUsed);
-    const purchaseComplement = Math.max(0, propertyAtContemplation - netCredit);
-    const bidRateBase = adjustedCredit > 0 ? adjustedCredit : 1;
-    const totalBidRate = totalBidUsed / bidRateBase;
-    const ownBidRate = ownBidUsed / bidRateBase;
-    const embeddedBidRate = embeddedBidUsed / bidRateBase;
-    const totalPaid = totalInstallmentsPaid + ownBidUsed + purchaseComplement;
-    const rentAtContemplation = input.propertyValue * input.rentalYield * Math.pow(1 + input.rentAdjustment, completedYears);
-    const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.consortiumTerm);
-
-    return {
-      bidMode: bid.mode,
-      bidLabel: bid.label,
-      bidInstallments: bid.installments,
-      linearBidInstallment,
-      totalBid: totalBidUsed,
-      totalBidRate,
-      ownBidRate,
-      embeddedBidRate,
-      adjustedCredit,
-      embeddedBid: embeddedBidUsed,
-      netCredit,
-      balanceAfterBid,
-      bidApplication: input.bidApplication,
-      propertyAtContemplation,
-      purchaseComplement,
-      ownBid: ownBidUsed,
-      initialReducedPayment,
-      initialFullPayment,
-      paymentAtContemplation,
-      rentAtContemplation,
-      totalPaid,
-      propertyValueAtEnd
-    };
+    c.bidApplication = c.bidApplication === 'prazo' ? 'prazo' : 'parcela';
+    return c;
   }
 
-  function simulateFinancing(input){
-    const entry = input.propertyValue * input.financingEntryRate;
-    const financedAmount = Math.max(0, input.propertyValue - entry);
-    const interestMonthly = annualToMonthly(input.financingAnnualRate);
-    const monthlyRent = input.propertyValue * input.rentalYield;
-    const monthlyCosts = input.financingMonthlyCosts;
+  function cotaEditor(c,index){
+    normalizeCota(c);
+    const hasBid = ['fixo','limitado','livre'].includes(c.strategy);
+    const locked = c.strategy === 'fixo';
+    return `<details class="retirement-quota-editor" data-cota-id="${c.id}" ${index===0?'open':''}>
+      <summary>
+        <span><b>${index+1}ª cota · ${index+1}º imóvel</b><small>Grupo ${esc(c.group||'não informado')} · ${brl(c.credit)} · ${STRATEGIES[c.strategy]}</small></span>
+        <strong>${monthYear(addMonths(readGlobal().startDate,c.contemplationMonth))}</strong>
+      </summary>
+      <div class="retirement-quota-body">
+        <div class="form-grid">
+          <div class="field"><label>Grupo</label><div class="control"><input data-field="group" value="${esc(c.group)}" inputmode="numeric"></div></div>
+          <div class="field"><label>Crédito inicial</label><div class="control money-control"><span>R$</span><input data-field="credit" data-money="1" value="${moneyInput(c.credit,false)}" inputmode="numeric"></div></div>
+          <div class="field"><label>Prazo da cota</label><div class="control"><input data-field="term" type="number" value="${c.term}" min="1"><span>meses</span></div></div>
+          <div class="field"><label>1ª parcela</label><div class="control money-control"><span>R$</span><input data-field="firstPayment" data-money="1" value="${moneyInput(c.firstPayment,true)}" inputmode="decimal"></div><small>Valor informado no plano; pode ser ajustado.</small></div>
+          <div class="field"><label>Mês estimado da contemplação</label><div class="control"><input data-field="contemplationMonth" type="number" value="${c.contemplationMonth}" min="1" max="${c.term}"><span>mês</span></div></div>
+          <div class="field"><label>Estratégia</label><div class="control select-control"><select data-field="strategy">
+            ${Object.entries(STRATEGIES).map(([v,l])=>`<option value="${v}" ${c.strategy===v?'selected':''}>${l}</option>`).join('')}
+          </select></div></div>
+          <div class="field"><label>Parcela antes da contemplação</label><div class="control"><input data-field="prePaymentPercent" type="number" value="${c.prePaymentPercent}" min="1" max="100"><span>% da informada</span></div></div>
+          <div class="field"><label>Aplicação do lance</label><div class="control select-control"><select data-field="bidApplication" ${hasBid?'':'disabled'}><option value="parcela" ${c.bidApplication==='parcela'?'selected':''}>Reduzir parcelas</option><option value="prazo" ${c.bidApplication==='prazo'?'selected':''}>Reduzir prazo</option></select></div></div>
+          <div class="field" ${hasBid?'':'hidden'}><label>Parcelas ofertadas no lance</label><div class="control"><input data-field="bidInstallments" type="number" value="${c.bidInstallments}" min="1" max="${c.strategy==='limitado'?88:c.term}" ${locked?'disabled':''}><span>parcelas</span></div></div>
+          <div class="field" ${hasBid?'':'hidden'}><label>Parte embutida</label><div class="control"><input data-field="embeddedPercent" type="number" value="${c.embeddedPercent}" min="0" max="${c.strategy==='fixo'?100:50}" ${locked?'disabled':''}><span>% do lance</span></div></div>
+        </div>
+        <div class="retirement-quota-actions">
+          <button type="button" data-action="recalculate-payment">Recalcular 1ª parcela</button>
+          ${state.cotas.length>1?'<button type="button" data-action="remove" class="danger">Remover cota</button>':''}
+        </div>
+      </div>
+    </details>`;
+  }
 
-    let balance = financedAmount;
-    let initialPayment = 0;
-    let finalPayment = 0;
-    let totalInstallments = 0;
+  function renderCotas(){
+    const box = get('patCotasEditor');
+    if(!box) return;
+    box.innerHTML = state.cotas.map(cotaEditor).join('');
+    const badge = get('patQuotaCountBadge');
+    if(badge) badge.textContent = `${state.cotas.length} ${state.cotas.length===1?'cota':'cotas'}`;
+  }
 
-    for(let month = 1; month <= input.financingTerm; month += 1){
-      const remainingMonths = input.financingTerm - month + 1;
-      balance *= 1 + input.financingTRMonthly;
+  function updateCotaFromElement(el){
+    const editor = el.closest('[data-cota-id]');
+    if(!editor) return;
+    const c = state.cotas.find(x=>x.id===editor.dataset.cotaId);
+    if(!c) return;
+    const field = el.dataset.field;
+    if(!field) return;
+    if(el.dataset.money) c[field] = parseMoney(el.value);
+    else if(['group','strategy','bidApplication'].includes(field)) c[field] = el.value;
+    else c[field] = num(el.value);
+    normalizeCota(c);
+    const summary = editor.querySelector('summary small');
+    const right = editor.querySelector('summary>strong');
+    if(summary) summary.textContent = `Grupo ${c.group||'não informado'} · ${brl(c.credit)} · ${STRATEGIES[c.strategy]}`;
+    if(right) right.textContent = monthYear(addMonths(readGlobal().startDate,c.contemplationMonth));
+    savePlanSoon();
+  }
 
-      let amortization = 0;
-      let basePayment = 0;
+  function recalculateFirstPayment(c){
+    const g = readGlobal();
+    c.firstPayment = c.credit*(1+g.adminRate)/Math.max(1,c.term);
+  }
 
-      if(input.financingSystem === 'sac'){
-        amortization = remainingMonths > 0 ? balance / remainingMonths : balance;
-        const interest = balance * interestMonthly;
-        basePayment = amortization + interest;
+  function bidData(c,g,adjustedCredit){
+    let installments = 0, embeddedShare = 0;
+    if(c.strategy==='fixo'){ installments=44;embeddedShare=1; }
+    if(c.strategy==='limitado'){ installments=clamp(c.bidInstallments,1,88);embeddedShare=clamp(c.embeddedPercent/100,0,.5); }
+    if(c.strategy==='livre'){ installments=clamp(c.bidInstallments,1,c.term);embeddedShare=clamp(c.embeddedPercent/100,0,.5); }
+    const linear = adjustedCredit*(1+g.adminRate)/Math.max(1,g.bidOriginalTerm);
+    const total = Math.min(adjustedCredit,linear*installments);
+    const embedded = Math.min(adjustedCredit,total*embeddedShare);
+    const own = Math.max(0,total-embedded);
+    return {installments,linear,total,embedded,own};
+  }
+
+  function simulateCota(raw,index,g){
+    const c = normalizeCota({...raw});
+    if(c.credit<=0) throw new Error(`Informe o crédito da ${index+1}ª cota.`);
+    if(c.firstPayment<=0) throw new Error(`Informe a primeira parcela da ${index+1}ª cota.`);
+    const adjustments = Math.floor(c.contemplationMonth/12);
+    const adjustedCredit = c.credit*Math.pow(1+g.adjustment,adjustments);
+    const paymentAtContemplation = c.firstPayment*Math.pow(1+g.adjustment,adjustments);
+    const bid = bidData(c,g,adjustedCredit);
+    const releasedCredit = Math.max(0,adjustedCredit-bid.embedded);
+    const documentation = releasedCredit*g.docsRate;
+    const purchasePower = Math.max(0,releasedCredit-documentation);
+    const initialRent = purchasePower*g.rentalYield;
+    const remainingMonths = Math.max(0,c.term-c.contemplationMonth);
+    const remainingFullYears = Math.max(0,Math.floor(remainingMonths/12));
+    const finalProperty = purchasePower*Math.pow(1+g.appreciation,remainingFullYears);
+    const finalRent = finalProperty*g.rentalYield;
+
+    let balance = c.firstPayment*c.term;
+    let paidInstallments = 0;
+    let paidBeforeContemplation = 0;
+    let paymentAfterContemplation = 0;
+    let contemplated = false;
+    const rows=[];
+    const startYear = new Date(`${g.startDate}T12:00:00`).getFullYear();
+
+    for(let month=1;month<=c.term && balance>0.005;month+=1){
+      if(month>1 && (month-1)%12===0) balance*=1+g.adjustment;
+      const cycle=Math.floor((month-1)/12);
+      const indexedPayment=c.firstPayment*Math.pow(1+g.adjustment,cycle);
+      let payment;
+      if(month<=c.contemplationMonth){
+        payment=indexedPayment*(c.prePaymentPercent/100);
+      }else if(c.bidApplication==='prazo'){
+        payment=Math.min(indexedPayment,balance);
       }else{
-        basePayment = pricePayment(balance, interestMonthly, remainingMonths);
-        const interest = balance * interestMonthly;
-        amortization = Math.max(0, basePayment - interest);
+        payment=balance/Math.max(1,c.term-month+1);
       }
-
-      const payment = basePayment + monthlyCosts;
-      if(month === 1) initialPayment = payment;
-      finalPayment = payment;
-      totalInstallments += payment;
-      balance = Math.max(0, balance - amortization);
+      payment=Math.min(payment,balance);
+      balance=Math.max(0,balance-payment);
+      paidInstallments+=payment;
+      if(month<=c.contemplationMonth) paidBeforeContemplation+=payment;
+      if(month===c.contemplationMonth){
+        contemplated=true;
+        balance=Math.max(0,balance-bid.total);
+      }
+      if(month===c.contemplationMonth+1) paymentAfterContemplation=payment;
+      if(month%12===0 || month===c.term || balance<=0.005){
+        const yearNo=Math.ceil(month/12);
+        const creditCycle=Math.max(0,yearNo-1);
+        rows.push({
+          year:yearNo,
+          calendarYear:startYear+yearNo-1,
+          credit:c.credit*Math.pow(1+g.adjustment,creditCycle),
+          payment,
+          paid:paidInstallments+(month>=c.contemplationMonth?bid.own:0),
+          balance:month<c.contemplationMonth?null:balance,
+          contemplation: c.contemplationMonth>month-12 && c.contemplationMonth<=month
+        });
+      }
     }
-
-    const totalPaid = entry + totalInstallments;
-    const propertyValueAtEnd = futureValue(input.propertyValue, input.appreciation, input.financingTerm);
-
+    if(!paymentAfterContemplation) paymentAfterContemplation = paymentAtContemplation;
+    const totalPaid=paidInstallments+bid.own;
+    const acquisitionDate=addMonths(g.startDate,c.contemplationMonth);
     return {
-      entry,
-      financedAmount,
-      payment: initialPayment,
-      finalPayment,
-      monthlyRent,
-      totalPaid,
-      propertyValueAtEnd,
-      interestMonthly,
-      monthlyCosts,
-      system: input.financingSystem
+      ...c,index,adjustments,adjustedCredit,paymentAtContemplation,bid,releasedCredit,documentation,purchasePower,
+      initialRent,remainingMonths,remainingFullYears,finalProperty,finalRent,balance,totalPaid,paidBeforeContemplation,
+      contributionUntilPurchase:paidBeforeContemplation+bid.own,paymentAfterContemplation,rows,acquisitionDate,
+      acquisitionLabel:monthYear(acquisitionDate),strategyLabel:STRATEGIES[c.strategy],contemplated
     };
   }
 
-  function render(input, consortium, financing){
-    const resultSection = get('patResultSection');
-    if(resultSection) resultSection.hidden = false;
+  function calculateResult(){
+    const g=readGlobal();
+    const cotas=state.cotas.map((c,i)=>simulateCota(c,i,g));
+    const sum=key=>cotas.reduce((a,c)=>a+(Number(c[key])||0),0);
+    return {g,cotas,totals:{
+      initialCredit:sum('credit'),releasedCredit:sum('releasedCredit'),firstPayment:sum('firstPayment'),
+      initialRent:sum('initialRent'),finalRent:sum('finalRent'),contribution:sum('contributionUntilPurchase'),
+      finalProperty:sum('finalProperty'),totalPaid:sum('totalPaid'),purchasePower:sum('purchasePower')
+    }};
+  }
 
-    setText('patResModalidadeLance', consortium.bidLabel);
-    setText('patResParcelasLance', consortium.bidInstallments > 0 ? `${consortium.bidInstallments} parcelas` : 'Não se aplica');
-    setText('patResParcelaLinearLance', consortium.bidInstallments > 0 ? brl(consortium.linearBidInstallment) : 'Não se aplica');
-    setText('patResLanceTotal', brl(consortium.totalBid));
-    setText('patResLancePercentual', pct(consortium.totalBidRate));
-    setText('patResCartaContemplacao', brl(consortium.adjustedCredit));
-    setText('patResCreditoLiquido', brl(consortium.netCredit));
-    setText('patResSaldoAposLance', brl(consortium.balanceAfterBid));
-    setText('patResAplicacaoLance', consortium.bidApplication === 'prazo' ? 'Reduzir prazo' : 'Reduzir parcelas');
-    setText('patResLanceProprio', brl(consortium.ownBid));
-    setText('patResLanceProprioPercentual', pct(consortium.ownBidRate));
-    setText('patResLanceEmbutido', brl(consortium.embeddedBid));
-    setText('patResLanceEmbutidoPercentual', pct(consortium.embeddedBidRate));
-    setText('patResComplemento', brl(consortium.purchaseComplement));
+  function summaryCard(c){
+    return `<article class="retirement-summary-card">
+      <div class="retirement-summary-head"><div><b>${c.index+1}º imóvel</b><span>Grupo ${esc(c.group||'não informado')} · ${c.strategyLabel}</span></div><strong>${c.acquisitionLabel}</strong></div>
+      <div class="retirement-summary-metrics">
+        <div><span>Crédito inicial</span><strong>${brl(c.credit)}</strong></div>
+        <div><span>Contemplação estimada</span><strong>${c.contemplationMonth}º mês</strong></div>
+        <div><span>Aporte até aquisição</span><strong>${brl(c.contributionUntilPurchase)}</strong></div>
+        <div><span>Crédito liberado</span><strong>${brl(c.releasedCredit)}</strong></div>
+        <div><span>Aluguel inicial</span><strong>${brl(c.initialRent)}</strong></div>
+        <div><span>Imóvel ao final</span><strong>${brl(c.finalProperty)}</strong></div>
+        <div><span>Aluguel ao final</span><strong>${brl(c.finalRent)}</strong></div>
+      </div>
+    </article>`;
+  }
 
-    const resultBidSummary = get('patResultLanceResumo');
-    const hasBid = consortium.bidMode !== 'sem' && consortium.bidInstallments > 0;
-    if(resultBidSummary) resultBidSummary.hidden = !hasBid;
-    if(hasBid){
-      const installmentsRate = input.consortiumTerm > 0 ? consortium.bidInstallments / input.consortiumTerm : 0;
-      setText('patResultLanceParcelas', `${consortium.bidInstallments} parcelas de ${input.consortiumTerm} (${pct(installmentsRate)} do prazo)`);
-      setText('patResultLancePercentual', `${pct(consortium.totalBidRate)} da carta`);
-      setText('patResultLanceCarta', brl(consortium.adjustedCredit));
-      setText('patResultLanceTotal', brl(consortium.totalBid));
-      setText('patResultLanceTotalPct', `${pct(consortium.totalBidRate)} da carta`);
-      setText('patResultLanceEmbutido', brl(consortium.embeddedBid));
-      setText('patResultLanceEmbutidoPct', `${pct(consortium.embeddedBidRate)} da carta`);
-      setText('patResultLanceProprio', brl(consortium.ownBid));
-      setText('patResultLanceProprioPct', `${pct(consortium.ownBidRate)} da carta`);
-      setText('patResultLanceTexto', `${consortium.bidInstallments} parcelas representam ${pct(installmentsRate)} do prazo do grupo. O lance de ${brl(consortium.totalBid)} equivale a ${pct(consortium.totalBidRate)} da carta estimada na contemplação.`);
+  function timelineCard(c){
+    const bidText=c.bid.total>0
+      ? `O lance projetado é de ${brl(c.bid.total)}, sendo ${brl(c.bid.embedded)} embutidos e ${brl(c.bid.own)} em recursos próprios.`
+      : 'A contemplação foi projetada sem lance vencedor.';
+    return `<article class="retirement-timeline-item">
+      <div class="retirement-timeline-marker">${c.index+1}</div>
+      <div class="retirement-timeline-card">
+        <div class="retirement-timeline-head"><b>${c.index+1}º imóvel</b><span>Crédito planejado: ${brl(c.credit)} · crédito reajustado: <strong>${brl(c.adjustedCredit)}</strong></span></div>
+        <p>Grupo <b>${esc(c.group||'não informado')}</b>, prazo de <b>${c.term} meses</b>, com contemplação estimada no <b>${c.contemplationMonth}º mês</b> pela estratégia <b>${c.strategyLabel}</b>. A parcela inicial informada é de <b>${brl(c.firstPayment)}</b> e a parcela estimada após a contemplação é de <b>${brl(c.paymentAfterContemplation)}</b>.</p>
+        <p>${bidText} Após documentação estimada em ${brl(c.documentation)}, o poder de compra projetado é de <b>${brl(c.purchasePower)}</b>.</p>
+        <p>O aluguel inicial projetado é de <b>${brl(c.initialRent)}</b>. Nos ${c.remainingFullYears} anos completos restantes, o imóvel poderá atingir <b>${brl(c.finalProperty)}</b> e gerar aluguel de <b>${brl(c.finalRent)}</b>.</p>
+        <div class="retirement-timeline-resume">Resumo: imóvel projetado em <b>${brl(c.finalProperty)}</b> e aluguel de <b>${brl(c.finalRent)}</b></div>
+      </div>
+    </article>`;
+  }
+
+  function renderEvolution(index){
+    if(!state.result) return;
+    const c=state.result.cotas[index]||state.result.cotas[0];
+    state.evolutionIndex=c.index;
+    get('patEvolutionSnapshot').innerHTML=`
+      <div><span>Crédito contratado</span><strong>${brl(c.credit)}</strong></div>
+      <div><span>Crédito na contemplação</span><strong>${brl(c.adjustedCredit)}</strong></div>
+      <div><span>Saldo após o lance</span><strong>${brl(Math.max(0,(c.rows.find(r=>r.contemplation)?.balance ?? 0)))}</strong></div>
+      <div><span>Total pago estimado</span><strong>${brl(c.totalPaid)}</strong></div>`;
+    get('patEvolutionBody').innerHTML=c.rows.map(r=>`<tr class="${r.contemplation?'contemplation-row':''}">
+      <td>${r.year} (${r.calendarYear})${r.contemplation?'<small>Contemplação</small>':''}</td>
+      <td>${brl(r.credit)}</td><td>${brl(r.payment)}</td><td>${brl(r.paid)}</td><td>${r.balance===null?'—':brl(r.balance)}</td>
+    </tr>`).join('');
+  }
+
+  function renderFinancing(){
+    if(!state.result) return;
+    const g=readGlobal();
+    const property=state.result.totals.purchasePower;
+    const entry=property*g.financingEntry;
+    const principal=Math.max(0,property-entry);
+    const rate=annualToMonthly(g.financingAnnual);
+    let first=0,totalInstallments=0,balance=principal;
+    if(g.financingSystem==='price'){
+      first=pricePayment(principal,rate,g.financingTerm);
+      totalInstallments=first*g.financingTerm;
+    }else{
+      const amort=principal/g.financingTerm;
+      for(let m=1;m<=g.financingTerm;m+=1){
+        const p=amort+balance*rate;if(m===1)first=p;totalInstallments+=p;balance=Math.max(0,balance-amort);
+      }
     }
+    const total=entry+totalInstallments;
+    get('patFinComparison').innerHTML=`<div class="retirement-financing-cards">
+      <div><span>Imóveis considerados</span><strong>${brl(property)}</strong></div>
+      <div><span>Aluguel inicial projetado</span><strong>${brl(state.result.totals.initialRent)}</strong></div>
+      <div><span>Parcela do consórcio</span><strong>${brl(state.result.totals.firstPayment)}</strong></div>
+      <div><span>Parcela do financiamento</span><strong>${brl(first)}</strong></div>
+      <div><span>Total pago no consórcio</span><strong>${brl(state.result.totals.totalPaid)}</strong></div>
+      <div><span>Total pago no financiamento</span><strong>${brl(total)}</strong></div>
+    </div>`;
+  }
 
-    const sharedMonthlyRent = input.propertyValue * input.rentalYield;
-    setText('patConsAluguel', brl(sharedMonthlyRent));
-    setText('patConsTotalPago', brl(consortium.totalPaid));
-    setText('patFinAluguel', brl(sharedMonthlyRent));
-    setText('patFinTotalPago', brl(financing.totalPaid));
-    setText('patConsPrazoBadge', `${input.consortiumTerm} meses`);
-    setText('patConsParcelaLabel', consortium.bidMode === 'sem' ? 'Parcela cheia estimada' : 'Parcela estimada após contemplação');
-    setText('patConsParcelaInicial', brl(consortium.paymentAtContemplation));
-    setText('patConsImovelFinal', brl(consortium.propertyValueAtEnd));
-
-    setText('patFinPrazoBadge', `${input.financingTerm} meses`);
-    setText('patFinPrazoDetalhe', `${input.financingTerm} meses`);
-    setText('patFinTaxaDetalhe', `${(input.financingAnnualRate * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.a.`);
-    setText('patFinIndexadorDetalhe', input.financingRateType === 'tr' ? 'Taxa + TR' : 'Prefixada');
-    setText('patFinTRDetalhe', input.financingRateType === 'tr'
-      ? `${(input.financingTRMonthly * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.m.`
-      : 'Não se aplica');
-    setText('patFinSistemaDetalhe', input.financingSystem === 'sac' ? 'SAC' : 'Price');
-    setText('patFinCustosDetalhe', brl(input.financingMonthlyCosts));
-    setText('patFinEntrada', brl(financing.entry));
-    setText('patFinValor', brl(financing.financedAmount));
-    setText('patFinParcela', brl(financing.payment));
-    setText('patFinImovelFinal', brl(financing.propertyValueAtEnd));
-
-    if(resultSection){
-      setTimeout(() => resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-    }
+  function renderResult(result){
+    state.result=result;
+    get('patResultSection').hidden=false;
+    get('patResCotas').textContent=result.cotas.length;
+    get('patResCreditoInicial').textContent=brl(result.totals.initialCredit);
+    get('patResCreditoLiberado').textContent=brl(result.totals.releasedCredit);
+    get('patResPrimeiraParcela').textContent=brl(result.totals.firstPayment);
+    get('patResAluguelInicial').textContent=brl(result.totals.initialRent);
+    get('patResAluguelFinal').textContent=brl(result.totals.finalRent);
+    get('patResAporteTotal').textContent=brl(result.totals.contribution);
+    get('patResPatrimonioFinal').textContent=brl(result.totals.finalProperty);
+    get('patResumoCotas').innerHTML=result.cotas.map(summaryCard).join('');
+    get('patTimeline').innerHTML=result.cotas.map(timelineCard).join('');
+    const select=get('patCotaEvolucao');
+    select.innerHTML=result.cotas.map(c=>`<option value="${c.index}">${c.index+1}ª cota · Grupo ${esc(c.group||'não informado')} · ${brl(c.credit)}</option>`).join('');
+    renderEvolution(0);renderFinancing();
+    setTimeout(()=>get('patResultSection').scrollIntoView({behavior:'smooth',block:'start'}),80);
   }
 
   function calculate(){
     try{
-      const input = readInput();
-      validate(input);
-      clearError();
-      const consortium = simulateConsortium(input);
-      const financing = simulateFinancing(input);
-      render(input, consortium, financing);
-    }catch(error){
-      console.error('Erro no comparativo patrimonial:', error);
-      showError(error.message || 'Não foi possível calcular o comparativo.');
+      get('patError').hidden=true;
+      state.cotas.forEach(normalizeCota);
+      savePlan();
+      renderResult(calculateResult());
+    }catch(e){
+      get('patError').textContent=e.message||'Não foi possível gerar o planejamento.';
+      get('patError').hidden=false;
     }
   }
 
+  function showAction(text){
+    const box=get('patActionMessage');box.textContent=text;box.hidden=false;clearTimeout(box._t);box._t=setTimeout(()=>box.hidden=true,3000);
+  }
+
+  function copySummary(){
+    if(!state.result) return;
+    const r=state.result;
+    const lines=[
+      'APOSENTADORIA IMOBILIÁRIA',
+      r.g.client?`Cliente: ${r.g.client}`:'',
+      `Cotas: ${r.cotas.length}`,
+      `Crédito inicial: ${brl(r.totals.initialCredit)}`,
+      `Crédito liberado planejado: ${brl(r.totals.releasedCredit)}`,
+      `Aluguel inicial projetado: ${brl(r.totals.initialRent)}`,
+      `Patrimônio estimado ao final: ${brl(r.totals.finalProperty)}`,
+      `Aluguel estimado ao final: ${brl(r.totals.finalRent)}`,
+      '',...r.cotas.map(c=>`${c.index+1}ª cota: ${brl(c.credit)} · ${c.strategyLabel} · contemplação no ${c.contemplationMonth}º mês · imóvel projetado em ${brl(c.finalProperty)}.`)
+    ].filter(Boolean).join('\n');
+    navigator.clipboard?.writeText(lines).then(()=>showAction('Resumo copiado.')).catch(()=>showAction('Não foi possível copiar automaticamente.'));
+  }
+
+  function pdfHTML(r){
+    const settings=global.Simulador?.Configuracoes?.load?.()||{};
+    const client=r.g.client||'Não informado';
+    const summaryRows=r.cotas.map(c=>`<tr><td>${c.index+1}º imóvel</td><td>${brl(c.credit)}</td><td>${c.strategyLabel}<br><small>${c.contemplationMonth}º mês</small></td><td>${brl(c.contributionUntilPurchase)}</td><td>${brl(c.releasedCredit)}</td><td>${brl(c.initialRent)}</td><td>${brl(c.finalProperty)}</td><td>${brl(c.finalRent)}</td></tr>`).join('');
+    const details=r.cotas.map(c=>`<section class="detail"><h3>${c.index+1}º imóvel <span>Grupo ${esc(c.group||'não informado')}</span></h3><p>Crédito planejado de <b>${brl(c.credit)}</b>, contemplação estimada no <b>${c.contemplationMonth}º mês</b> por <b>${c.strategyLabel}</b>. Crédito reajustado de <b>${brl(c.adjustedCredit)}</b> e crédito liberado de <b>${brl(c.releasedCredit)}</b>.</p><p>Após documentação estimada de <b>${brl(c.documentation)}</b>, o poder de compra é de <b>${brl(c.purchasePower)}</b>. Aluguel inicial de <b>${brl(c.initialRent)}</b>, imóvel projetado ao final em <b>${brl(c.finalProperty)}</b> e aluguel final de <b>${brl(c.finalRent)}</b>.</p><div class="resume">Parcela inicial ${brl(c.firstPayment)} · Parcela após contemplação ${brl(c.paymentAfterContemplation)} · Aporte até aquisição ${brl(c.contributionUntilPurchase)}</div></section>`).join('');
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Aposentadoria Imobiliária</title><style>
+      @page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#26323c;margin:0;font-size:10px}header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #f18a00;padding-bottom:10px;margin-bottom:12px}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#65727d}.brand{font-weight:800}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 14px}.kpis div{border:1px solid #d9e0e5;border-radius:8px;padding:9px}.kpis span{display:block;color:#6b7780;font-size:8px;text-transform:uppercase}.kpis b{display:block;font-size:15px;margin-top:4px}.kpis .green b{color:#159447}h2{font-size:16px;margin:16px 0 8px}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#eef2f4;text-align:left;padding:6px}td{border-bottom:1px solid #dfe5e9;padding:6px;vertical-align:top}.detail{border:1px solid #dbe2e7;border-radius:9px;padding:10px;margin:9px 0;break-inside:avoid}.detail h3{margin:0 0 7px;font-size:14px}.detail h3 span{float:right;color:#2484bd;font-size:9px}.detail p{line-height:1.5;margin:5px 0}.resume{background:#eff9f2;border:1px solid #b8dec4;color:#176f36;padding:7px;border-radius:6px;font-weight:700}.notes{margin-top:14px;border-top:1px solid #ccd4da;padding-top:8px;color:#68757e;font-size:8px;line-height:1.5}.signature{text-align:center;margin-top:20px}.signature b{font-size:13px}.page-break{break-before:page}@media print{button{display:none}}
+    </style></head><body>
+      <header><div><div class="brand">${esc(settings.company||'Aposentadoria Imobiliária')}</div><h1>Planejamento Patrimonial</h1><p>Cliente: ${esc(client)} · Início: ${dateBR(r.g.startDate)}</p></div><div><b>Emitido em</b><br>${new Date().toLocaleDateString('pt-BR')}</div></header>
+      <div class="kpis"><div><span>Cotas</span><b>${r.cotas.length}</b></div><div><span>Crédito inicial</span><b>${brl(r.totals.initialCredit)}</b></div><div class="green"><span>Crédito liberado</span><b>${brl(r.totals.releasedCredit)}</b></div><div><span>1ª parcela total</span><b>${brl(r.totals.firstPayment)}</b></div><div><span>Aluguel inicial</span><b>${brl(r.totals.initialRent)}</b></div><div class="green"><span>Patrimônio ao final</span><b>${brl(r.totals.finalProperty)}</b></div></div>
+      <h2>Planejamento resumido</h2><table><thead><tr><th>Imóvel</th><th>Crédito</th><th>Contemplação</th><th>Aporte</th><th>Crédito liberado</th><th>Aluguel inicial</th><th>Imóvel final</th><th>Aluguel final</th></tr></thead><tbody>${summaryRows}</tbody></table>
+      <div class="page-break"></div><h2>Planejamento detalhado</h2>${details}
+      <div class="notes"><b>Premissas:</b> reajuste de crédito e parcelas ${pct(r.g.adjustment*100,2)} a.a.; aluguel ${pct(r.g.rentalYield*100,2)} do imóvel ao mês; valorização do imóvel ${pct(r.g.appreciation*100,2)} a.a.; documentação ${pct(r.g.docsRate*100,2)} do crédito líquido. Projeção matemática sem garantia de contemplação, valorização, aluguel ou aprovação de crédito.</div>
+      <div class="signature"><b>${esc(settings.consultant||'Consultor')}</b><br>${esc(settings.phone||'')}</div>
+      <script>setTimeout(()=>window.print(),500)<\/script></body></html>`;
+  }
+
+  function generatePDF(){
+    if(!state.result) return;
+    const w=window.open('','_blank');
+    if(!w){ showAction('O navegador bloqueou a janela do relatório.');return; }
+    w.document.open();w.document.write(pdfHTML(state.result));w.document.close();
+  }
+
   function bind(){
-    applyVersionDefaults();
-    ['patValorImovel','patCredito','patCustosFinanciamento'].forEach(id => {
-      const element = get(id);
-      if(!element) return;
-      element.addEventListener('input', () => {
-        formatMoneyInput(element);
-        if(id === 'patValorImovel') updateRentPreview();
-      });
-      element.addEventListener('focus', event => event.target.select());
+    get('patCotasEditor').addEventListener('input',e=>updateCotaFromElement(e.target));
+    get('patCotasEditor').addEventListener('change',e=>{
+      updateCotaFromElement(e.target);
+      if(e.target.dataset.field==='strategy') renderCotas();
     });
-
-    document.querySelectorAll('[data-property-type]').forEach(button => {
-      button.addEventListener('click', () => setPropertyType(button.dataset.propertyType));
+    get('patCotasEditor').addEventListener('blur',e=>{
+      if(e.target.dataset.money){
+        const c=state.cotas.find(x=>x.id===e.target.closest('[data-cota-id]')?.dataset.cotaId);
+        if(c) e.target.value=moneyInput(c[e.target.dataset.field],e.target.dataset.field==='firstPayment');
+      }
+    },true);
+    get('patCotasEditor').addEventListener('click',e=>{
+      const action=e.target.dataset.action;if(!action)return;
+      const id=e.target.closest('[data-cota-id]')?.dataset.cotaId;
+      const index=state.cotas.findIndex(x=>x.id===id);if(index<0)return;
+      if(action==='remove'){state.cotas.splice(index,1);renderCotas();savePlanSoon();}
+      if(action==='recalculate-payment'){recalculateFirstPayment(state.cotas[index]);renderCotas();savePlanSoon();}
     });
-
-    const rentalYieldInput = get('patRentabilidadeAluguel');
-    if(rentalYieldInput) rentalYieldInput.addEventListener('input', updateRentPreview);
-
-    const bidMode = get('patModalidadeLance');
-    if(bidMode) bidMode.addEventListener('change', event => updateBidControls(event.target.value));
-
-    const consortiumTerm = get('patPrazoConsorcio');
-    if(consortiumTerm) consortiumTerm.addEventListener('input', () => {
-      if(state.bidMode === 'livre') updateBidControls('livre');
-      updateBidPreview();
-    });
-
-    ['patCredito','patTaxaAdmin','patReajusteConsorcio','patMesContemplacao','patParcelasLance','patPercentualEmbutidoLance'].forEach(id => {
-      const element = get(id);
-      if(element) element.addEventListener('input', updateBidPreview);
-    });
-
-    const rateType = get('patIndexadorFinanciamento');
-    if(rateType) rateType.addEventListener('change', event => toggleFinancingRateType(event.target.value));
-
-    const calculateButton = get('patCalcularBtn');
-    if(calculateButton) calculateButton.addEventListener('click', calculate);
+    get('patAdicionarCotaBtn').addEventListener('click',()=>{state.cotas.push(defaultCota(state.cotas.length));renderCotas();savePlanSoon();});
+    get('patCalcularBtn').addEventListener('click',calculate);
+    get('patCotaEvolucao').addEventListener('change',e=>renderEvolution(Number(e.target.value)||0));
+    get('patCompararFinBtn').addEventListener('click',renderFinancing);
+    get('patGerarPdfBtn').addEventListener('click',generatePDF);
+    get('patCopiarResumoBtn').addEventListener('click',copySummary);
+    ['patCliente','patDataInicio','patReajusteCredito','patRendimentoAluguel','patValorizacaoImovel','patDocumentacao','patTaxaAdmin','patPrazoOriginalLance'].forEach(id=>get(id)?.addEventListener('input',savePlanSoon));
   }
 
   function init(){
-    if(!get('patCalcularBtn')) return;
-    bind();
-    setPropertyType(state.propertyType);
-    updateBidControls(valueOf('patModalidadeLance', 'sem'));
-    toggleFinancingRateType(valueOf('patIndexadorFinanciamento', 'prefixada'));
-    updateRentPreview();
-    updateBidPreview();
+    if(!get('patCotasEditor')) return;
+    loadPlan();renderCotas();bind();
   }
-
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded',init);
 })(window);
