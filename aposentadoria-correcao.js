@@ -2,8 +2,8 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const STORAGE_KEY = 'simulador-aposentadoria-financeira-v6';
-  const MIGRATION_KEY = 'simulador-aposentadoria-financeira-v6-migrated';
+  const STORAGE_KEY = 'simulador-aposentadoria-financeira-v7';
+  const MIGRATION_KEY = 'simulador-aposentadoria-financeira-v7-migrated';
 
   function brl(value){
     return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value)||0);
@@ -70,8 +70,7 @@
       const reduced=adjustedReduced(input.reducedPayment,input.annual,m);
       const theoreticalFull=fullBasePayment*Math.pow(1+input.annual,cycle);
       const shortfall=Math.max(0,theoreticalFull-reduced);
-      const forwardFactor=Math.pow(1+input.annual,Math.max(0,contCycle-cycle));
-      deferredAtCont+=shortfall*forwardFactor;
+      deferredAtCont+=shortfall;
       paidUntilCont+=reduced;
       monthPayments[m]=reduced;
       cumulative[m]=paidUntilCont;
@@ -381,9 +380,9 @@
   }
 
   function injectStyles(){
-    if(document.getElementById('apos-v6-styles')) return;
+    if(document.getElementById('apos-v7-styles')) return;
     const style=document.createElement('style');
-    style.id='apos-v6-styles';
+    style.id='apos-v7-styles';
     style.textContent=`
       #view-aposentadoria .apos-parcela-principal{margin-top:10px;border:1px solid #42566b;background:linear-gradient(145deg,#101a24,#0d141c);border-radius:16px;padding:12px;grid-template-columns:1fr auto 1fr}
       #view-aposentadoria .apos-parcela-principal>div:not(.apos-arrow){background:#111b25}
@@ -397,8 +396,8 @@
   function wait(){
     const view=$('view-aposentadoria');
     if(!view || view.dataset.presentationPolished!=='1'){setTimeout(wait,70);return;}
-    if(view.dataset.calculationCorrected==='v6') return;
-    view.dataset.calculationCorrected='v6';
+    if(view.dataset.calculationCorrected==='v7') return;
+    view.dataset.calculationCorrected='v7';
     patchFields(view);
     migrateDefaults();
     patchButtons();
