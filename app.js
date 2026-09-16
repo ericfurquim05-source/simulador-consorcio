@@ -299,7 +299,7 @@
 
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
-      state.deferredInstall = null;
+      state.deferredInstall = event;
     });
   }
 
