@@ -271,7 +271,7 @@
           item.classList.toggle('active', item === button);
         });
         if(state.result){
-          S.Graficos.render($('comparisonChart'), result, state.chartMetric);
+          S.Graficos.render($('comparisonChart'), state.result, state.chartMetric);
         }
       });
     });
@@ -299,7 +299,7 @@
 
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
-      state.deferredInstall = event;
+      state.deferredInstall = null;
     });
   }
 
