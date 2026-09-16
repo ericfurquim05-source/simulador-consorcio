@@ -2,8 +2,8 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const STORAGE_KEY = 'simulador-aposentadoria-financeira-v12';
-  const MIGRATION_KEY = 'simulador-aposentadoria-financeira-v12-migrated';
+  const STORAGE_KEY = 'simulador-aposentadoria-financeira-v13';
+  const MIGRATION_KEY = 'simulador-aposentadoria-financeira-v13-migrated';
 
   function brl(value){
     return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value)||0);
@@ -79,25 +79,27 @@
     const finalCapital=capitalAtCont*Math.pow(1+input.monthly,investmentMonths);
     const projectedMonthlyIncome=finalCapital*input.monthly;
 
+    // Total do plano: soma a parcela cheia real da proposta em cada mês,
+    // aplicando o reajuste anual a cada bloco de 12 meses do grupo inteiro.
     let totalPaid=0;
+    let paidUntilCont=0;
     const monthPayments=[];
     const cumulative=[];
-
-    for(let m=1;m<=input.contemplation;m++){
-      const payment=input.reducedPayment*Math.pow(1+input.annual,annualCycle(m));
-      totalPaid+=payment;
-      monthPayments[m]=payment;
-      cumulative[m]=totalPaid;
-    }
-    const paidUntilCont=totalPaid;
-
     const contCycle=creditCycle(input.contemplation);
-    for(let m=input.contemplation+1;m<=input.term;m++){
-      const futureCycles=Math.max(0,annualCycle(m)-contCycle);
-      const payment=firstFullAfterCont*Math.pow(1+input.annual,futureCycles);
-      totalPaid+=payment;
-      monthPayments[m]=payment;
+
+    for(let m=1;m<=input.term;m++){
+      const fullProjected=input.fullPayment*Math.pow(1+input.annual,annualCycle(m));
+      totalPaid+=fullProjected;
       cumulative[m]=totalPaid;
+
+      if(m<=input.contemplation){
+        const reducedProjected=input.reducedPayment*Math.pow(1+input.annual,annualCycle(m));
+        paidUntilCont+=reducedProjected;
+        monthPayments[m]=reducedProjected;
+      }else{
+        const futureCycles=Math.max(0,annualCycle(m)-contCycle);
+        monthPayments[m]=firstFullAfterCont*Math.pow(1+input.annual,futureCycles);
+      }
     }
 
     const months=[];
@@ -182,7 +184,7 @@
     const kpi=out.querySelector('.apos-kpi');
     if(kpi){
       kpi.innerHTML=`
-        <div><span>Total pago em parcelas até o fim</span><strong>${brl(result.totalPaid)}</strong></div>
+        <div><span>Total pago em parcelas até o fim</span><strong>${brl(result.totalPaid)}</strong><small>Parcela cheia projetada com reajuste anual durante todo o prazo.</small></div>
         <div class="apos-highlight"><span>Saldo projetado da aplicação no encerramento</span><strong>${brl(result.finalCapital)}</strong></div>
         <div class="apos-highlight"><span>Renda mensal projetada a ${pct(result.input.monthly*100,2)} a.m.</span><strong>${brl(result.projectedMonthlyIncome)}/mês</strong></div>
         <div><span>Patrimônio que permanece aplicado</span><strong>${brl(result.finalCapital)}</strong><small>Se o rendimento continuar cobrindo a retirada.</small></div>`;
@@ -230,6 +232,10 @@
       if(cards[3]) cards[3].innerHTML=`<span>Reajuste anual projetado</span><strong>${pct(result.input.annual*100,1)} a.a.</strong>`;
     }
 
+    const headers=out.querySelectorAll('.apos-table thead th');
+    if(headers[2]) headers[2].textContent='Parcela do fluxo';
+    if(headers[3]) headers[3].textContent='Total das parcelas cheias';
+
     if($('aposTimelineBody')){
       $('aposTimelineBody').innerHTML=result.timeline.map(item=>`<tr class="${item.isCont?'apos-milestone':''} ${item.isEnd?'apos-end':''}">
         <td>${rowLabel(item)}</td><td>${brl(item.credit)}</td><td>${brl(item.payment)}</td><td>${brl(item.paid)}</td><td>${item.invested?brl(item.invested):'—'}</td>
@@ -259,6 +265,7 @@
       '',
       `Memória: diferença de ${brl(r.baseShortfall)} × ${r.input.contemplation} meses = ${brl(r.deferredAtCont)}; dividida por ${r.remainingMonths} meses = ${brl(r.redistributedPerMonth)}/mês.`,
       '',
+      'O total pago considera a parcela cheia informada, reajustada anualmente durante todo o prazo do grupo.',
       'Projeção matemática para planejamento. A contemplação e a rentabilidade futura não são garantidas.'
     ].filter(Boolean).join('\n');
     try{await navigator.clipboard.writeText(text);}catch(_e){}
@@ -281,7 +288,7 @@
     const date=new Date().toLocaleDateString('pt-BR');
     w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Projeto de Aposentadoria</title><style>
       @page{size:A4 portrait;margin:7mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;background:#e9edf1;color:#18222d;font-family:Arial,Helvetica,sans-serif}.report{width:196mm;margin:8px auto;background:#fff;box-shadow:0 10px 28px rgba(18,30,42,.12);overflow:hidden}.top{padding:9mm 10mm 7mm;background:#14202b;color:#fff;display:flex;justify-content:space-between;gap:18px;border-bottom:3px solid #ff8a00}.brand{display:flex;align-items:center;gap:10px}.logo{width:40px;height:40px;border-radius:10px;background:#ff8a00;display:grid;place-items:center;font-weight:900}.top h1{margin:0;font-size:21px}.top p{margin:3px 0 0;color:#b8c4cf;font-size:8px}.date{text-align:right;font-size:8px;color:#b8c4cf}.date b{color:#fff;font-size:10px}.body{padding:7mm 10mm}.intro{padding:8px 10px;border:1px solid #dce3e8;background:#f7f9fb;border-radius:9px;font-size:9px;line-height:1.4}.section{margin-top:9px}.title{font-size:12px;font-weight:800;margin-bottom:5px;border-left:4px solid #ff8a00;padding-left:6px}.flow{display:grid;grid-template-columns:1fr 28px 1fr;align-items:center;gap:6px}.credit{display:grid;grid-template-columns:1fr 20px 1fr 20px 1fr;align-items:center;gap:4px}.step{border:1px solid #dce3e8;border-radius:9px;padding:8px;text-align:center;min-height:55px;display:flex;flex-direction:column;justify-content:center}.step span,.card span,.premise span{font-size:7px;text-transform:uppercase;color:#687581;font-weight:700}.step b{margin-top:4px;font-size:15px}.arrow{text-align:center;color:#ff8a00;font-size:18px;font-weight:900}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{border:1px solid #dce3e8;border-radius:9px;padding:9px;background:#f9fbfc;min-height:60px}.card b{display:block;margin-top:4px;font-size:15px}.highlight{border-color:#92cfa3;background:#f0faf3}.highlight b{color:#218743;font-size:18px}.memory{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.premise{border:1px solid #e1e6ea;border-radius:7px;padding:6px 8px}.premise b{display:block;margin-top:2px;font-size:10px}.fine{margin-top:8px;padding-top:6px;border-top:1px solid #dfe5e9;color:#65717c;font-size:6.5px;line-height:1.35}.printbar{position:fixed;right:18px;bottom:18px;display:flex;gap:8px}.printbar button{border:0;border-radius:9px;padding:11px 14px;font-weight:800}.print{background:#ff8a00;color:#fff}.close{background:#27313b;color:#fff}@media(max-width:760px){body{background:#fff}.report{width:100%;margin:0}.top{padding:18px 14px}.body{padding:14px}.metrics,.memory,.flow,.credit{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.date{display:none}}@media print{body{background:#fff}.report{width:auto;margin:0;box-shadow:none}.printbar{display:none}.top,.intro,.section,.metrics,.flow,.credit,.memory,.fine{break-inside:avoid;page-break-inside:avoid}}
-    </style></head><body><div class="report"><div class="top"><div class="brand"><div class="logo">SC</div><div><h1>Projeto de Aposentadoria</h1><p>Projeção financeira com memória de cálculo</p></div></div><div class="date">Emitido em<br><b>${date}</b></div></div><div class="body"><div class="intro"><b>Cliente:</b> ${client} · <b>Carta:</b> ${brl(r.input.credit)} · <b>Prazo:</b> ${r.input.term} meses · <b>Contemplação simulada:</b> mês ${r.input.contemplation}. Parcela cheia informada: <b>${brl(r.input.fullPayment)}</b>.</div><div class="section"><div class="title">Fluxo da parcela</div><div class="flow"><div class="step"><span>Parcela reduzida após contratação</span><b>${brl(r.input.reducedPayment)}</b></div><div class="arrow">→</div><div class="step"><span>1ª parcela após contemplação</span><b>${brl(r.firstFullAfterCont)}</b></div></div></div><div class="section"><div class="title">Resumo do projeto</div><div class="metrics"><div class="card"><span>Total pago em parcelas até o fim</span><b>${brl(r.totalPaid)}</b></div><div class="card highlight"><span>Saldo da aplicação no encerramento</span><b>${brl(r.finalCapital)}</b></div><div class="card highlight"><span>Renda mensal projetada</span><b>${brl(r.projectedMonthlyIncome)}/mês</b></div><div class="card"><span>Crédito corrigido na contemplação</span><b>${brl(r.capitalAtCont)}</b></div></div></div><div class="section"><div class="title">Memória da parcela pós-contemplação</div><div class="memory"><div class="premise"><span>Parcela cheia</span><b>${brl(r.input.fullPayment)}</b></div><div class="premise"><span>Diferença mensal</span><b>${brl(r.baseShortfall)}</b></div><div class="premise"><span>Acumulado até contemplação</span><b>${brl(r.deferredAtCont)}</b></div><div class="premise"><span>Redistribuição mensal</span><b>${brl(r.redistributedPerMonth)}</b></div></div></div><div class="section"><div class="title">Caminho do crédito</div><div class="credit"><div class="step"><span>Carta contratada</span><b>${brl(r.input.credit)}</b></div><div class="arrow">→</div><div class="step"><span>Crédito no mês ${r.input.contemplation}</span><b>${brl(r.capitalAtCont)}</b></div><div class="arrow">→</div><div class="step"><span>Saldo da aplicação no fim</span><b>${brl(r.finalCapital)}</b></div></div></div><div class="fine"><b>Importante:</b> projeção matemática para planejamento. A parcela cheia utilizada é o valor informado da proposta, e não uma reconstrução por taxa. O reajuste anual informado é uma premissa para projetar o fluxo futuro. Contemplação e rentabilidade futura não são garantidas.</div></div></div><div class="printbar"><button class="close" onclick="window.close()">Fechar</button><button class="print" onclick="window.print()">Salvar como PDF / Imprimir</button></div></body></html>`);
+    </style></head><body><div class="report"><div class="top"><div class="brand"><div class="logo">SC</div><div><h1>Projeto de Aposentadoria</h1><p>Projeção financeira com memória de cálculo</p></div></div><div class="date">Emitido em<br><b>${date}</b></div></div><div class="body"><div class="intro"><b>Cliente:</b> ${client} · <b>Carta:</b> ${brl(r.input.credit)} · <b>Prazo:</b> ${r.input.term} meses · <b>Contemplação simulada:</b> mês ${r.input.contemplation}. Parcela cheia informada: <b>${brl(r.input.fullPayment)}</b>.</div><div class="section"><div class="title">Fluxo da parcela</div><div class="flow"><div class="step"><span>Parcela reduzida após contratação</span><b>${brl(r.input.reducedPayment)}</b></div><div class="arrow">→</div><div class="step"><span>1ª parcela após contemplação</span><b>${brl(r.firstFullAfterCont)}</b></div></div></div><div class="section"><div class="title">Resumo do projeto</div><div class="metrics"><div class="card"><span>Total pago em parcelas até o fim</span><b>${brl(r.totalPaid)}</b></div><div class="card highlight"><span>Saldo da aplicação no encerramento</span><b>${brl(r.finalCapital)}</b></div><div class="card highlight"><span>Renda mensal projetada</span><b>${brl(r.projectedMonthlyIncome)}/mês</b></div><div class="card"><span>Crédito corrigido na contemplação</span><b>${brl(r.capitalAtCont)}</b></div></div></div><div class="section"><div class="title">Memória da parcela pós-contemplação</div><div class="memory"><div class="premise"><span>Parcela cheia</span><b>${brl(r.input.fullPayment)}</b></div><div class="premise"><span>Diferença mensal</span><b>${brl(r.baseShortfall)}</b></div><div class="premise"><span>Acumulado até contemplação</span><b>${brl(r.deferredAtCont)}</b></div><div class="premise"><span>Redistribuição mensal</span><b>${brl(r.redistributedPerMonth)}</b></div></div></div><div class="section"><div class="title">Caminho do crédito</div><div class="credit"><div class="step"><span>Carta contratada</span><b>${brl(r.input.credit)}</b></div><div class="arrow">→</div><div class="step"><span>Crédito no mês ${r.input.contemplation}</span><b>${brl(r.capitalAtCont)}</b></div><div class="arrow">→</div><div class="step"><span>Saldo da aplicação no fim</span><b>${brl(r.finalCapital)}</b></div></div></div><div class="fine"><b>Importante:</b> o total pago considera a parcela cheia informada, reajustada anualmente durante todo o prazo. A parcela pós-contemplação usa a diferença acumulada dividida pelo prazo restante. Projeção matemática para planejamento; contemplação e rentabilidade futura não são garantidas.</div></div></div><div class="printbar"><button class="close" onclick="window.close()">Fechar</button><button class="print" onclick="window.print()">Salvar como PDF / Imprimir</button></div></body></html>`);
     w.document.close();
   }
 
@@ -307,14 +314,14 @@
 
     const ref=view.querySelector('.apos-reference');
     if(ref){
-      ref.innerHTML=`<div><span>Parcela cheia</span><strong>Valor real da proposta</strong></div><div><span>Regra pós-contemplação</span><strong>Diferença acumulada ÷ prazo restante</strong></div><div><span>Aplicação após contemplação</span><strong>${num('aposRendimento',1).toLocaleString('pt-BR',{maximumFractionDigits:2})}% a.m.</strong></div>`;
+      ref.innerHTML=`<div><span>Parcela cheia</span><strong>Valor real da proposta</strong></div><div><span>Total do plano</span><strong>Parcela cheia + reajustes anuais</strong></div><div><span>Aplicação após contemplação</span><strong>${num('aposRendimento',1).toLocaleString('pt-BR',{maximumFractionDigits:2})}% a.m.</strong></div>`;
     }
 
     const heroLead=view.querySelector('.apos-hero .lead');
-    if(heroLead) heroLead.textContent='Informe a parcela reduzida e a parcela cheia reais da proposta. O sistema calcula a redistribuição conforme o mês de contemplação.';
+    if(heroLead) heroLead.textContent='Informe a parcela reduzida e a parcela cheia reais da proposta. O total do plano soma a parcela cheia reajustada ano a ano até o fim.';
 
     const footer=view.querySelector('.assumption-footer');
-    if(footer) footer.textContent='O reajuste anual é usado para projetar o fluxo das parcelas ao longo do tempo. A parcela cheia base vem diretamente da proposta.';
+    if(footer) footer.textContent='O reajuste anual é aplicado à parcela cheia durante todo o prazo para calcular o total projetado do plano.';
   }
 
   function patchButtons(){
@@ -375,9 +382,9 @@
   }
 
   function injectStyles(){
-    if($('apos-v12-styles')) return;
+    if($('apos-v13-styles')) return;
     const style=document.createElement('style');
-    style.id='apos-v12-styles';
+    style.id='apos-v13-styles';
     style.textContent=`
       #view-aposentadoria .apos-parcela-principal{margin-top:10px;border:1px solid #42566b;background:linear-gradient(145deg,#101a24,#0d141c);border-radius:16px;padding:12px;grid-template-columns:1fr auto 1fr}
       #view-aposentadoria .apos-parcela-principal>div:not(.apos-arrow){background:#111b25}
@@ -398,8 +405,8 @@
   function wait(){
     const view=$('view-aposentadoria');
     if(!view||view.dataset.presentationPolished!=='1'){setTimeout(wait,70);return;}
-    if(view.dataset.calculationCorrected==='v12') return;
-    view.dataset.calculationCorrected='v12';
+    if(view.dataset.calculationCorrected==='v13') return;
+    view.dataset.calculationCorrected='v13';
     patchFields(view);
     migrateDefaults();
     patchButtons();
