@@ -219,6 +219,15 @@
     $('installDialog').showModal();
   }
 
+  function loadFinancialRetirementModule(){
+    if(document.querySelector('script[data-financial-retirement-module]')) return;
+    const script = document.createElement('script');
+    script.src = './aposentadoria-financeira.js?v=251';
+    script.dataset.financialRetirementModule = '1';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function bind(){
     $('credito').addEventListener('input', formatCredit);
     $('credito').addEventListener('focus', event => event.target.select());
@@ -294,6 +303,7 @@
     formatCredit();
     setStrategy('sem');
     bind();
+    loadFinancialRetirementModule();
     initPWA();
   }
 
