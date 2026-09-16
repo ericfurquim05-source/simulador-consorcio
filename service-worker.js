@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.5.1-aposentadoria-financeira-v8';
+const VERSION = 'simulador-consorcio-v2.5.1-aposentadoria-financeira-v9';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
