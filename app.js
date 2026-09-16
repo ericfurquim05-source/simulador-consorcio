@@ -222,15 +222,23 @@
   function loadFinancialRetirementModule(){
     if(document.querySelector('script[data-financial-retirement-module]')) return;
     const script = document.createElement('script');
-    script.src = './aposentadoria-financeira.js?v=252';
+    script.src = './aposentadoria-financeira.js?v=253';
     script.dataset.financialRetirementModule = '1';
     script.async = false;
     script.addEventListener('load', () => {
       if(document.querySelector('script[data-retirement-presentation]')) return;
       const presentation = document.createElement('script');
-      presentation.src = './aposentadoria-apresentacao.js?v=252';
+      presentation.src = './aposentadoria-apresentacao.js?v=253';
       presentation.dataset.retirementPresentation = '1';
       presentation.async = false;
+      presentation.addEventListener('load', () => {
+        if(document.querySelector('script[data-retirement-correction]')) return;
+        const correction = document.createElement('script');
+        correction.src = './aposentadoria-correcao.js?v=253';
+        correction.dataset.retirementCorrection = '1';
+        correction.async = false;
+        document.body.appendChild(correction);
+      });
       document.body.appendChild(presentation);
     });
     document.body.appendChild(script);
