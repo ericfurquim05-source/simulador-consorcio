@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.5.1-aposentadoria-financeira-v13';
+const VERSION = 'simulador-consorcio-v2.5.1-aposentadoria-financeira-v14';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
@@ -12,6 +12,10 @@ const ASSETS = [
   './app.js',
   './alavancagem.js',
   './sorteio.js',
+  './aposentadoria-financeira.js',
+  './aposentadoria-apresentacao.js',
+  './aposentadoria-correcao.js',
+  './aposentadoria-pdf-v14.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
