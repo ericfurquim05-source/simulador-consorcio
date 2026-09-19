@@ -1,0 +1,43 @@
+name: Teste aposentadoria parcelas automaticas
+
+on:
+  push:
+    branches:
+      - aposentadoria-parcelas-automaticas
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valida sintaxe JavaScript
+        run: |
+          node --check aposentadoria-correcao.js
+          node --check aposentadoria-pdf-v14.js
+          node --check app.js
+          node --check service-worker.js
+      - name: Valida formulas automaticas
+        run: |
+          node - <<'NODE'
+          function parcelas(credito,prazo,taxa){
+            return {
+              reduzida: credito*(0.50+taxa)/prazo,
+              cheia: credito*(1+taxa)/prazo
+            };
+          }
+          function perto(a,b){ return Math.abs(a-b)<0.005; }
+          const p100=parcelas(100000,220,0.242);
+          if(!perto(p100.reduzida,337.272727)||!perto(p100.cheia,564.545455)) throw new Error(JSON.stringify(p100));
+          const p250=parcelas(250000,220,0.242);
+          if(!perto(p250.reduzida,843.181818)||!perto(p250.cheia,1411.363636)) throw new Error(JSON.stringify(p250));
+          const p300=parcelas(300000,220,0.242);
+          if(!perto(p300.reduzida,1011.818182)||!perto(p300.cheia,1693.636364)) throw new Error(JSON.stringify(p300));
+          console.log("FORMULAS_OK", p100, p250, p300);
+          NODE
+      - name: Confere modo automatico
+        run: |
+          grep -q "function automaticPayments" aposentadoria-correcao.js
+          grep -q "reduced.readOnly=true" aposentadoria-correcao.js
+          grep -q "readonly aria-readonly" aposentadoria-correcao.js
+          grep -q "aposentadoria-correcao.js?v=15" app.js
+          grep -q "aposentadoria-financeira-v15" service-worker.js
