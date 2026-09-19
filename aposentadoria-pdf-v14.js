@@ -106,13 +106,13 @@
       <div class="content">
         <section class="client"><div><span>Cliente</span><b>${client}</b></div><div><span>Carta</span><b>${brl(r.credit)}</b></div><div><span>Prazo</span><b>${r.term} meses</b></div><div><span>Contemplação</span><b>Mês ${r.contemplation}</b></div></section>
 
-        <section class="section"><div class="section-title">Fluxo de pagamento</div><div class="payflow"><div class="paycard"><span>Parcela após contratação</span><b>${brl(r.reducedPayment)}</b></div><div class="arrow">→</div><div class="paycard"><span>1ª parcela após contemplação</span><b>${brl(r.firstAfterCont)}</b></div></div><div class="total"><span>Total projetado pago no grupo</span><b>${brl(r.totalPaid)}</b></div></section>
+        <section class="section"><div class="section-title">Fluxo de pagamento</div><div class="payflow"><div class="paycard"><span>Parcela reduzida automática</span><b>${brl(r.reducedPayment)}</b></div><div class="arrow">→</div><div class="paycard"><span>1ª parcela após contemplação</span><b>${brl(r.firstAfterCont)}</b></div></div><div class="total"><span>Total projetado pago no grupo</span><b>${brl(r.totalPaid)}</b></div></section>
 
         <section class="hero"><div class="hero-kicker">Resultado projetado ao fim do grupo</div><div class="hero-main"><div class="capital"><small>Patrimônio projetado</small><b>${brl(r.finalCapital)}</b></div><div class="income"><small>Renda mensal projetada</small><b>${brl(r.monthlyIncome)}/mês</b></div></div><p class="story">${story}</p></section>
 
         <section class="facts"><div class="fact"><span>Crédito na contemplação</span><b>${brl(r.capitalAtCont)}</b><small>Valor projetado no mês ${r.contemplation}</small></div><div class="fact"><span>Rentabilidade simulada</span><b>${pct(r.monthly*100,2)} a.m.</b><small>Aplicação após contemplação</small></div><div class="fact"><span>Reajuste projetado</span><b>${pct(r.annual*100,1)} a.a.</b><small>Aplicado à projeção do plano</small></div></section>
 
-        <footer class="footer"><div class="legal"><strong>Importante:</strong> projeção matemática para planejamento. A contemplação no mês informado e a rentabilidade futura não são garantidas. O total projetado considera a parcela cheia informada com reajustes anuais ao longo do prazo.</div><div class="tag">Simulação financeira</div></footer>
+        <footer class="footer"><div class="legal"><strong>Importante:</strong> projeção matemática para planejamento. A contemplação no mês informado e a rentabilidade futura não são garantidas. O total projetado considera a parcela cheia automática com reajustes anuais ao longo do prazo.</div><div class="tag">Simulação financeira</div></footer>
       </div>
     </main><div class="printbar"><button class="close" onclick="window.close()">Fechar</button><button class="print" onclick="window.print()">Salvar como PDF / Imprimir</button></div></body></html>`);
     w.document.close();
