@@ -1,37 +1,17 @@
 (function(global){
   'use strict';
 
-  const STORAGE_GROUPS = 'simulador-sorteio-grupos-v1';
-  const STORAGE_SELECTED = 'simulador-sorteio-grupo-selecionado-v1';
+  const STORAGE_KEY = 'simulador-sorteio-radar-v3';
+  const LEGACY_GROUPS = 'simulador-sorteio-grupos-v1';
   const LEGACY_CLIENTS = 'simulador-sorteio-clientes-v1';
-  const LEGACY_ASSEMBLIES = 'simulador-sorteio-assembleias-v2';
-  const LEGACY_BASE = 'simulador-sorteio-base-contempladas-v2';
   const MAX_QUOTA = 9999;
-
-  const DEFAULT_CLIENTS = [
-    { id: 'loreci-3446', nome: 'Loreci', cota: '3446' },
-    { id: 'angela-4559', nome: 'Angela', cota: '4559' },
-    { id: 'marcio-1665', nome: 'Marcio', cota: '1665' },
-    { id: 'fabio-5986', nome: 'Fábio', cota: '5986' },
-    { id: 'alan-6522', nome: 'Alan', cota: '6522' }
-  ];
-
-  const MODALITIES = {
-    sorteio: 'Sorteio',
-    sorteio_excluido: 'Sorteio de excluídos',
-    lance_fixo: 'Lance fixo',
-    lance_limitado: 'Lance limitado',
-    lance_livre: 'Lance livre',
-    lance_fidelidade: 'Lance fidelidade',
-    reposicao: 'Reposição / outra contemplação'
-  };
+  const ALERT_DISTANCE = 10;
 
   const state = {
-    groups: [],
-    selectedGroupId: null,
-    lastAssemblyId: null,
-    editingAssemblyId: null,
-    draftContempladas: []
+    clients: [],
+    history: [],
+    currentRecordId: null,
+    search: ''
   };
 
   const $ = id => document.getElementById(id);
@@ -46,809 +26,533 @@
   }
 
   function uid(prefix){
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   }
 
   function loadJSON(key, fallback){
     try{
-      const raw = JSON.parse(localStorage.getItem(key) || 'null');
-      return raw ?? fallback;
-    }catch{
+      const parsed = JSON.parse(localStorage.getItem(key) || 'null');
+      return parsed ?? fallback;
+    }catch(_error){
       return fallback;
     }
   }
 
-  function todayISO(){
-    const now = new Date();
-    const offset = now.getTimezoneOffset();
-    return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
-  }
-
-  function dateBR(value){
-    if(!value) return 'Data não informada';
-    const [year, month, day] = String(value).split('-');
-    if(!year || !month || !day) return value;
-    return `${day}/${month}/${year}`;
-  }
-
   function quota(value){
-    const digits = String(value ?? '').replace(/\D/g, '').slice(-4);
-    return digits ? digits.padStart(4, '0') : '';
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if(!digits) return '';
+    const lastFour = digits.slice(-4);
+    const number = Number(lastFour);
+    if(!Number.isInteger(number) || number < 1 || number > MAX_QUOTA) return '';
+    return String(number).padStart(4, '0');
   }
 
-  function quotaNumber(value){
-    return Number(quota(value));
-  }
+  function extractQuotaList(text){
+    const chunks = String(text || '')
+      .replace(/\u00a0/g, ' ')
+      .split(/[\s,;|/\\-]+/)
+      .map(part => part.replace(/\D/g, ''))
+      .filter(Boolean);
 
-  function formatInteger(value){
-    return Number(value || 0).toLocaleString('pt-BR');
-  }
-
-  function formatPercent(value){
-    const number = Number(value || 0);
-    const decimals = number < 0.1 ? 3 : 2;
-    return `${number.toLocaleString('pt-BR', {minimumFractionDigits: decimals, maximumFractionDigits: decimals})}%`;
-  }
-
-  function modalityKey(value){
-    const raw = String(value || '').toLowerCase();
-    if(MODALITIES[raw]) return raw;
-    if(raw.includes('sorteio') && raw.includes('exclu')) return 'sorteio_excluido';
-    if(raw.includes('sorteio')) return 'sorteio';
-    if(raw.includes('fixo')) return 'lance_fixo';
-    if(raw.includes('limitado')) return 'lance_limitado';
-    if(raw.includes('livre')) return 'lance_livre';
-    if(raw.includes('fidelidade')) return 'lance_fidelidade';
-    return 'reposicao';
-  }
-
-  function normalizeEntry(item, fallbackModality = 'reposicao'){
-    const number = quota(typeof item === 'object' ? item.cota : item);
-    if(!number) return null;
-    return {
-      id: String((typeof item === 'object' && item.id) || uid('contemplada')),
-      cota: number,
-      modalidade: modalityKey(typeof item === 'object' ? item.modalidade : fallbackModality)
-    };
-  }
-
-  function normalizeAssembly(item){
-    let entries = [];
-    if(Array.isArray(item?.contempladas)){
-      entries = item.contempladas.map(entry => normalizeEntry(entry)).filter(Boolean);
-    }else if(item){
-      if(item.sorteio) entries.push(normalizeEntry(item.sorteio, 'sorteio'));
-      (Array.isArray(item.fixos) ? item.fixos : []).forEach(value => entries.push(normalizeEntry(value, 'lance_fixo')));
-      if(item.limitado) entries.push(normalizeEntry(item.limitado, 'lance_limitado'));
-      if(item.livre) entries.push(normalizeEntry(item.livre, 'lance_livre'));
-      (Array.isArray(item.extras) ? item.extras : []).forEach(value => entries.push(normalizeEntry(value, 'reposicao')));
-    }
-
-    const unique = [];
+    const found = [];
     const seen = new Set();
-    entries.forEach(entry => {
-      if(seen.has(entry.cota)) return;
-      seen.add(entry.cota);
-      unique.push(entry);
+
+    chunks.forEach(chunk => {
+      const normalized = quota(chunk);
+      if(!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      found.push(normalized);
     });
 
+    return found.sort((a, b) => Number(a) - Number(b));
+  }
+
+  function normalizeDraw(value){
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if(!digits) return null;
+    const reference = quota(digits);
+    if(!reference) return null;
     return {
-      id: String(item?.id || uid('assembleia')),
-      numero: String(item?.numero || '').trim(),
-      data: String(item?.data || ''),
-      contempladas: unique,
-      createdAt: Number(item?.createdAt || Date.now())
+      raw: digits,
+      reference,
+      reduced: digits.length > 4
     };
   }
 
   function normalizeClient(item){
-    const name = String(item?.nome || '').trim();
-    const number = quota(item?.cota);
-    if(!name || !number) return null;
-    return { id: String(item?.id || uid('cliente')), nome: name, cota: number };
-  }
-
-  function normalizeGroup(item){
-    const total = Math.max(1, Math.min(MAX_QUOTA, Number(item?.totalCotas || item?.maxQuota || 9999) || 9999));
+    const nome = String(item?.nome || item?.name || '').trim();
+    let cotas = [];
+    if(Array.isArray(item?.cotas)) cotas = item.cotas.map(quota).filter(Boolean);
+    else if(item?.cota) cotas = [quota(item.cota)].filter(Boolean);
+    cotas = [...new Set(cotas)].sort((a, b) => Number(a) - Number(b));
+    if(!nome || !cotas.length) return null;
     return {
-      id: String(item?.id || uid('grupo')),
-      numero: String(item?.numero || item?.nome || 'Novo grupo').trim(),
-      totalCotas: total,
-      clients: (Array.isArray(item?.clients) ? item.clients : []).map(normalizeClient).filter(Boolean),
-      assemblies: (Array.isArray(item?.assemblies) ? item.assemblies : []).map(normalizeAssembly).filter(assembly => assembly.numero && assembly.data && assembly.contempladas.length),
-      baseline: [...new Set((Array.isArray(item?.baseline) ? item.baseline : []).map(quota).filter(Boolean))],
+      id: String(item?.id || uid('cliente')),
+      nome,
+      cotas,
       createdAt: Number(item?.createdAt || Date.now())
     };
   }
 
-  function currentGroup(){
-    return state.groups.find(group => group.id === state.selectedGroupId) || state.groups[0] || null;
+  function normalizeRecord(item){
+    const reference = quota(item?.reference || item?.numero || item?.cota || item?.raw);
+    if(!reference) return null;
+    const raw = String(item?.raw || item?.numero || reference).replace(/\D/g, '') || reference;
+    return {
+      id: String(item?.id || uid('sorteio')),
+      raw,
+      reference,
+      createdAt: Number(item?.createdAt || Date.now()),
+      migrated: Boolean(item?.migrated)
+    };
   }
 
-  function save(){
-    localStorage.setItem(STORAGE_GROUPS, JSON.stringify(state.groups));
-    localStorage.setItem(STORAGE_SELECTED, state.selectedGroupId || '');
+  function mergeClient(target, incoming){
+    const key = incoming.nome.trim().toLocaleLowerCase('pt-BR');
+    const existing = target.find(item => item.nome.trim().toLocaleLowerCase('pt-BR') === key);
+    if(existing){
+      existing.cotas = [...new Set(existing.cotas.concat(incoming.cotas))].sort((a, b) => Number(a) - Number(b));
+      return existing;
+    }
+    target.push(incoming);
+    return incoming;
   }
 
   function migrateLegacy(){
-    const clients = loadJSON(LEGACY_CLIENTS, null);
-    const assemblies = loadJSON(LEGACY_ASSEMBLIES, []);
-    const baseline = loadJSON(LEGACY_BASE, []);
-    return normalizeGroup({
-      id: 'grupo-012186',
-      numero: '012186',
-      totalCotas: 9999,
-      clients: Array.isArray(clients) && clients.length ? clients : DEFAULT_CLIENTS,
-      assemblies: Array.isArray(assemblies) ? assemblies : [],
-      baseline: Array.isArray(baseline) ? baseline : []
+    const clients = [];
+    const history = [];
+    const groups = loadJSON(LEGACY_GROUPS, null);
+
+    if(Array.isArray(groups)){
+      groups.forEach(group => {
+        (Array.isArray(group?.clients) ? group.clients : []).forEach(item => {
+          const normalized = normalizeClient(item);
+          if(normalized) mergeClient(clients, normalized);
+        });
+
+        (Array.isArray(group?.assemblies) ? group.assemblies : []).forEach(assembly => {
+          const dateTime = assembly?.data
+            ? new Date(String(assembly.data) + 'T12:00:00').getTime()
+            : Number(assembly?.createdAt || Date.now());
+          (Array.isArray(assembly?.contempladas) ? assembly.contempladas : [])
+            .filter(entry => String(entry?.modalidade || '').toLowerCase() === 'sorteio')
+            .forEach(entry => {
+              const reference = quota(entry?.cota);
+              if(reference){
+                history.push(normalizeRecord({
+                  id: uid('migrado'),
+                  raw: reference,
+                  reference,
+                  createdAt: Number.isFinite(dateTime) ? dateTime : Date.now(),
+                  migrated: true
+                }));
+              }
+            });
+        });
+      });
+    }
+
+    if(!clients.length){
+      const legacyClients = loadJSON(LEGACY_CLIENTS, []);
+      (Array.isArray(legacyClients) ? legacyClients : []).forEach(item => {
+        const normalized = normalizeClient(item);
+        if(normalized) mergeClient(clients, normalized);
+      });
+    }
+
+    const uniqueHistory = [];
+    const seen = new Set();
+    history.filter(Boolean).sort((a, b) => b.createdAt - a.createdAt).forEach(item => {
+      const key = item.reference + ':' + new Date(item.createdAt).toISOString().slice(0, 10);
+      if(seen.has(key)) return;
+      seen.add(key);
+      uniqueHistory.push(item);
     });
+
+    return { clients, history: uniqueHistory };
   }
 
   function load(){
-    const stored = loadJSON(STORAGE_GROUPS, null);
-    state.groups = Array.isArray(stored) && stored.length ? stored.map(normalizeGroup) : [migrateLegacy()];
-    const selected = localStorage.getItem(STORAGE_SELECTED);
-    state.selectedGroupId = state.groups.some(group => group.id === selected) ? selected : state.groups[0].id;
-    save();
+    const stored = loadJSON(STORAGE_KEY, null);
+    if(stored && Array.isArray(stored.clients) && Array.isArray(stored.history)){
+      state.clients = stored.clients.map(normalizeClient).filter(Boolean);
+      state.history = stored.history.map(normalizeRecord).filter(Boolean).sort((a, b) => b.createdAt - a.createdAt);
+    }else{
+      const migrated = migrateLegacy();
+      state.clients = migrated.clients;
+      state.history = migrated.history;
+      save();
+    }
+    state.currentRecordId = state.history[0]?.id || null;
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      clients: state.clients,
+      history: state.history
+    }));
   }
 
   function showMessage(id, text, type = 'success'){
     const element = $(id);
     if(!element) return;
     element.textContent = text;
-    element.className = `message ${type}`;
+    element.className = 'message ' + type;
     element.hidden = false;
     clearTimeout(element._timer);
-    element._timer = setTimeout(() => { element.hidden = true; }, 5000);
+    element._timer = setTimeout(() => { element.hidden = true; }, 5200);
   }
 
-  function isValidQuota(value, group = currentGroup()){
-    const number = quotaNumber(value);
-    return /^\d{4}$/.test(quota(value)) && number >= 1 && number <= Number(group?.totalCotas || MAX_QUOTA);
+  function directionLabel(cotaNumber, referenceNumber){
+    if(cotaNumber === referenceNumber) return 'exata';
+    const distance = Math.abs(cotaNumber - referenceNumber);
+    return cotaNumber < referenceNumber ? distance + ' abaixo' : distance + ' acima';
   }
 
-  function extractQuotaList(text, group = currentGroup()){
-    const matches = String(text || '').match(/(^|\D)(\d{1,4})(?=\D|$)/g) || [];
-    return [...new Set(matches.map(item => quota(item)).filter(item => isValidQuota(item, group)))];
-  }
+  function computeMatches(reference){
+    const ref = Number(reference);
+    const matches = [];
 
-  function assemblyNumberValue(value){
-    const numeric = Number(String(value || '').replace(/\D/g, ''));
-    return Number.isFinite(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
-  }
-
-  function sortAssembliesAsc(group = currentGroup()){
-    return [...(group?.assemblies || [])].sort((a, b) => {
-      if(a.data !== b.data) return a.data.localeCompare(b.data);
-      const diff = assemblyNumberValue(a.numero) - assemblyNumberValue(b.numero);
-      return diff || a.createdAt - b.createdAt;
-    });
-  }
-
-  function sortAssembliesDesc(group = currentGroup()){
-    return sortAssembliesAsc(group).reverse();
-  }
-
-  function winnersDetailed(assembly){
-    return (assembly?.contempladas || []).map(entry => ({
-      id: entry.id,
-      cota: entry.cota,
-      modalidadeKey: entry.modalidade,
-      modalidade: MODALITIES[entry.modalidade] || 'Outra contemplação'
-    }));
-  }
-
-  function referenceQuotas(assembly){
-    return (assembly?.contempladas || []).filter(entry => entry.modalidade === 'sorteio').map(entry => entry.cota);
-  }
-
-  function allContemplated(group = currentGroup(), beforeAssemblyId = null){
-    const set = new Set(group?.baseline || []);
-    for(const assembly of sortAssembliesAsc(group)){
-      if(beforeAssemblyId && assembly.id === beforeAssemblyId) break;
-      winnersDetailed(assembly).forEach(entry => set.add(entry.cota));
-    }
-    return set;
-  }
-
-  function activeQuotaNumbers(group = currentGroup()){
-    if(!group) return [];
-    const removed = allContemplated(group);
-    const active = [];
-    for(let number = 1; number <= group.totalCotas; number += 1){
-      const key = String(number).padStart(4, '0');
-      if(!removed.has(key)) active.push(number);
-    }
-    return active;
-  }
-
-  // O contrato usa a cota ativa mais próxima da referência. Em empate, a cota acima vence.
-  // Assim, cada cota ativa recebe uma "zona de captura" entre os pontos médios dos vizinhos.
-  function captureZones(group = currentGroup()){
-    const active = activeQuotaNumbers(group);
-    const max = Number(group?.totalCotas || 0);
-    if(!active.length || !max) return [];
-    return active.map((number, index) => {
-      const previous = active[index - 1];
-      const next = active[index + 1];
-      const start = previous === undefined ? 1 : Math.ceil((previous + number) / 2);
-      const end = next === undefined ? max : Math.ceil((number + next) / 2) - 1;
-      return { cota: number, start, end, possibilities: Math.max(0, end - start + 1) };
-    });
-  }
-
-  function calculateRangeStats(group = currentGroup()){
-    if(!group) return [];
-    const removed = allContemplated(group);
-    const ranges = [];
-    for(let start = 1; start <= group.totalCotas; start += 500){
-      const end = Math.min(group.totalCotas, start + 499);
-      let contemplated = 0;
-      removed.forEach(value => {
-        const number = Number(value);
-        if(number >= start && number <= end) contemplated += 1;
-      });
-      const totalInRange = end - start + 1;
-      ranges.push({
-        start,
-        end,
-        total: totalInRange,
-        contemplated,
-        active: Math.max(0, totalInRange - contemplated)
-      });
-    }
-    return ranges;
-  }
-
-  function rangeLabel(start, end){
-    return `${formatInteger(start)} a ${formatInteger(end)}`;
-  }
-
-  function modalityTotals(group = currentGroup()){
-    const totals = Object.fromEntries(Object.keys(MODALITIES).map(key => [key, 0]));
-    (group?.assemblies || []).forEach(assembly => {
-      winnersDetailed(assembly).forEach(entry => { totals[entry.modalidadeKey] = (totals[entry.modalidadeKey] || 0) + 1; });
-    });
-    return totals;
-  }
-
-  function renderGroupSelector(){
-    const group = currentGroup();
-    $('sorteioGrupoSelect').innerHTML = state.groups.map(item => `<option value="${escapeHTML(item.id)}"${item.id === state.selectedGroupId ? ' selected' : ''}>Grupo ${escapeHTML(item.numero)}</option>`).join('');
-    $('sorteioGrupoTitulo').textContent = group ? `Grupo ${group.numero}` : 'Nenhum grupo';
-    $('sorteioGrupoResumo').textContent = group ? `${formatInteger(group.totalCotas)} cotas` : '—';
-    if(group){
-      const contemplated = allContemplated(group).size;
-      const active = Math.max(0, group.totalCotas - contemplated);
-      $('sorteioGroupSnapshot').innerHTML = `
-        <div><span>Assembleias</span><strong>${group.assemblies.length}</strong></div>
-        <div><span>Contempladas</span><strong>${formatInteger(contemplated)}</strong></div>
-        <div><span>Ainda ativas</span><strong>${formatInteger(active)}</strong></div>`;
-    }else $('sorteioGroupSnapshot').innerHTML = '';
-  }
-
-  function renderGroupList(){
-    $('sorteioGroupList').innerHTML = state.groups.map(group => `
-      <div class="group-edit-row${group.id === state.selectedGroupId ? ' active' : ''}" data-group-id="${escapeHTML(group.id)}">
-        <div><strong>Grupo ${escapeHTML(group.numero)}</strong><span>${formatInteger(group.totalCotas)} cotas · ${group.assemblies.length} assembleias · ${group.clients.length} clientes</span></div>
-        <div class="group-edit-actions">
-          <button type="button" data-action="select">Selecionar</button>
-          <button type="button" data-action="edit">Editar</button>
-          <button type="button" data-action="delete" class="danger">Excluir</button>
-        </div>
-      </div>`).join('');
-
-    $('sorteioGroupList').querySelectorAll('.group-edit-row').forEach(row => {
-      const id = row.dataset.groupId;
-      row.querySelector('[data-action="select"]').addEventListener('click', () => selectGroup(id));
-      row.querySelector('[data-action="edit"]').addEventListener('click', () => editGroup(id));
-      row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteGroup(id));
-    });
-  }
-
-  function selectGroup(id){
-    if(!state.groups.some(group => group.id === id)) return;
-    state.selectedGroupId = id;
-    state.lastAssemblyId = null;
-    state.editingAssemblyId = null;
-    state.draftContempladas = [];
-    save();
-    clearAssemblyForm();
-    renderAll();
-  }
-
-  function addGroup(){
-    const number = $('sorteioNewGroupNumber').value.trim();
-    const total = Number($('sorteioNewGroupSize').value);
-    if(!number){
-      showMessage('sorteioGroupMessage', 'Informe o número do grupo.', 'error');
-      return;
-    }
-    if(!Number.isInteger(total) || total < 1 || total > MAX_QUOTA){
-      showMessage('sorteioGroupMessage', 'Informe uma quantidade de cotas entre 1 e 9.999.', 'error');
-      return;
-    }
-    if(state.groups.some(group => group.numero.toLowerCase() === number.toLowerCase())){
-      showMessage('sorteioGroupMessage', 'Esse grupo já está cadastrado.', 'error');
-      return;
-    }
-    const group = normalizeGroup({ id: uid('grupo'), numero: number, totalCotas: total, clients: [], assemblies: [], baseline: [] });
-    state.groups.push(group);
-    state.selectedGroupId = group.id;
-    $('sorteioNewGroupNumber').value = '';
-    save();
-    clearAssemblyForm();
-    renderAll();
-    showMessage('sorteioGroupMessage', `Grupo ${number} adicionado.`);
-  }
-
-  function editGroup(id){
-    const group = state.groups.find(item => item.id === id);
-    if(!group) return;
-    const number = prompt('Número do grupo:', group.numero);
-    if(number === null) return;
-    const totalRaw = prompt('Quantidade total de cotas:', String(group.totalCotas));
-    if(totalRaw === null) return;
-    const total = Number(totalRaw);
-    if(!number.trim() || !Number.isInteger(total) || total < 1 || total > MAX_QUOTA){
-      showMessage('sorteioGroupMessage', 'Dados inválidos. Use de 1 a 9.999 cotas.', 'error');
-      return;
-    }
-    const highestUsed = Math.max(0, ...group.baseline.map(Number), ...group.clients.map(item => Number(item.cota)), ...group.assemblies.flatMap(item => item.contempladas.map(entry => Number(entry.cota))));
-    if(total < highestUsed){
-      showMessage('sorteioGroupMessage', `O grupo já possui a cota ${String(highestUsed).padStart(4, '0')}. O total não pode ficar abaixo dela.`, 'error');
-      return;
-    }
-    group.numero = number.trim();
-    group.totalCotas = total;
-    save();
-    renderAll();
-    showMessage('sorteioGroupMessage', 'Grupo atualizado.');
-  }
-
-  function deleteGroup(id){
-    if(state.groups.length === 1){
-      showMessage('sorteioGroupMessage', 'Mantenha pelo menos um grupo cadastrado.', 'error');
-      return;
-    }
-    const group = state.groups.find(item => item.id === id);
-    if(!group || !confirm(`Excluir o grupo ${group.numero} e todo o histórico salvo nele?`)) return;
-    state.groups = state.groups.filter(item => item.id !== id);
-    if(state.selectedGroupId === id) state.selectedGroupId = state.groups[0].id;
-    save();
-    clearAssemblyForm();
-    renderAll();
-  }
-
-  function renderDraft(){
-    $('sorteioDraftCount').textContent = `${state.draftContempladas.length} ${state.draftContempladas.length === 1 ? 'cota' : 'cotas'}`;
-    $('sorteioDraftList').innerHTML = state.draftContempladas.length ? state.draftContempladas.map(entry => `
-      <div class="assembly-draft-item" data-entry-id="${escapeHTML(entry.id)}">
-        <div><strong>${entry.cota}</strong><span>${escapeHTML(MODALITIES[entry.modalidade])}</span></div>
-        <button type="button" aria-label="Remover cota">×</button>
-      </div>`).join('') : '<div class="empty-state compact">Nenhuma cota adicionada.</div>';
-    $('sorteioDraftList').querySelectorAll('.assembly-draft-item button').forEach(button => {
-      button.addEventListener('click', () => {
-        state.draftContempladas = state.draftContempladas.filter(entry => entry.id !== button.closest('.assembly-draft-item').dataset.entryId);
-        renderDraft();
+    state.clients.forEach(client => {
+      client.cotas.forEach(cotaValue => {
+        const number = Number(cotaValue);
+        const distance = Math.abs(number - ref);
+        if(distance > ALERT_DISTANCE) return;
+        matches.push({
+          clientId: client.id,
+          nome: client.nome,
+          cota: cotaValue,
+          distance,
+          direction: directionLabel(number, ref)
+        });
       });
     });
+
+    return matches.sort((a, b) =>
+      a.distance - b.distance ||
+      a.nome.localeCompare(b.nome, 'pt-BR') ||
+      Number(a.cota) - Number(b.cota)
+    );
   }
 
-  function addDraftEntry(){
-    const group = currentGroup();
-    const number = quota($('sorteioNovaCota').value);
-    const modality = modalityKey($('sorteioNovaModalidade').value);
-    if(!isValidQuota(number, group)){
-      showMessage('sorteioFormMessage', `Informe uma cota entre 0001 e ${String(group.totalCotas).padStart(4, '0')}.`, 'error');
-      return;
-    }
-    if(state.draftContempladas.some(entry => entry.cota === number)){
-      showMessage('sorteioFormMessage', 'Essa cota já foi adicionada nesta assembleia.', 'error');
-      return;
-    }
-    if(allContemplated(group, state.editingAssemblyId).has(number)){
-      showMessage('sorteioFormMessage', 'Essa cota já estava contemplada antes desta assembleia.', 'error');
-      return;
-    }
-    state.draftContempladas.push({ id: uid('contemplada'), cota: number, modalidade: modality });
-    $('sorteioNovaCota').value = '';
-    $('sorteioNovaCota').focus();
-    renderDraft();
-  }
-
-  function collectAssemblyForm(){
-    return normalizeAssembly({
-      id: state.editingAssemblyId || uid('assembleia'),
-      numero: $('sorteioAssembleia').value.trim(),
-      data: $('sorteioData').value,
-      contempladas: state.draftContempladas,
-      createdAt: state.editingAssemblyId ? (currentGroup().assemblies.find(item => item.id === state.editingAssemblyId)?.createdAt || Date.now()) : Date.now()
+  function recordsForClient(client){
+    const quotaNumbers = client.cotas.map(Number);
+    return state.history.filter(record => {
+      const ref = Number(record.reference);
+      return quotaNumbers.some(number => Math.abs(number - ref) <= ALERT_DISTANCE);
     });
   }
 
-  function validateAssembly(assembly){
-    const group = currentGroup();
-    if(!assembly.numero) return 'Informe o número da assembleia.';
-    if(!assembly.data) return 'Informe a data da assembleia.';
-    if(!assembly.contempladas.length) return 'Adicione pelo menos uma cota contemplada.';
-    const invalid = assembly.contempladas.find(entry => !isValidQuota(entry.cota, group));
-    if(invalid) return `A cota ${invalid.cota} não pertence ao intervalo deste grupo.`;
-    const duplicates = group.assemblies.filter(item => item.id !== assembly.id).flatMap(item => item.contempladas.map(entry => entry.cota));
-    const duplicated = assembly.contempladas.find(entry => group.baseline.includes(entry.cota) || duplicates.includes(entry.cota));
-    if(duplicated) return `A cota ${duplicated.cota} já foi contemplada anteriormente neste grupo.`;
-    return '';
-  }
-
-  function clearAssemblyForm(){
-    state.editingAssemblyId = null;
-    state.draftContempladas = [];
-    $('sorteioAssembleia').value = '';
-    $('sorteioData').value = todayISO();
-    $('sorteioNovaCota').value = '';
-    $('sorteioConferirBtn').textContent = 'Salvar assembleia';
-    renderDraft();
-  }
-
-  function fillAssemblyForm(assembly){
-    state.editingAssemblyId = assembly.id;
-    state.draftContempladas = assembly.contempladas.map(entry => ({...entry}));
-    $('sorteioAssembleia').value = assembly.numero;
-    $('sorteioData').value = assembly.data;
-    $('sorteioConferirBtn').textContent = 'Salvar alterações';
-    renderDraft();
-    document.getElementById('view-sorteio').scrollIntoView({behavior: 'smooth', block: 'start'});
-  }
-
-  function submitAssembly(){
-    const group = currentGroup();
-    const assembly = collectAssemblyForm();
-    const error = validateAssembly(assembly);
-    if(error){
-      showMessage('sorteioFormMessage', error, 'error');
+  function renderParsedPreview(){
+    const preview = $('sorteioParsedPreview');
+    const values = extractQuotaList($('sorteioClientQuotas')?.value || '');
+    if(!values.length){
+      preview.className = 'radar-parsed-preview';
+      preview.textContent = 'Cole as cotas para visualizar antes de salvar.';
       return;
     }
-    const index = group.assemblies.findIndex(item => item.id === assembly.id);
-    if(index >= 0) group.assemblies.splice(index, 1, assembly);
-    else group.assemblies.push(assembly);
-    state.lastAssemblyId = assembly.id;
-    save();
-    renderLatest(assembly);
-    clearAssemblyForm();
-    renderAll();
-    showMessage('sorteioFormMessage', index >= 0 ? 'Assembleia atualizada.' : 'Assembleia salva.');
+    preview.className = 'radar-parsed-preview ready';
+    preview.innerHTML = '<strong>' + values.length + (values.length === 1 ? ' cota identificada' : ' cotas identificadas') + '</strong><div>' +
+      values.map(value => '<span>' + value + '</span>').join('') + '</div>';
   }
 
-  function renderLatest(assembly){
-    if(!assembly){
-      $('sorteioResultado').hidden = true;
+  function renderAlert(record){
+    const wrap = $('sorteioAlerta');
+    if(!record){
+      wrap.hidden = true;
       return;
     }
-    $('sorteioResultado').hidden = false;
-    $('sorteioResultadoTitulo').textContent = `Assembleia ${assembly.numero}`;
-    $('sorteioResultadoData').textContent = dateBR(assembly.data);
-    const winners = winnersDetailed(assembly);
-    const references = referenceQuotas(assembly);
-    $('sorteioDestaque').innerHTML = `
-      <div><span>Grupo</span><strong>${escapeHTML(currentGroup().numero)}</strong></div>
-      <div><span>Total contemplado</span><strong>${winners.length}</strong></div>
-      <div><span>Por sorteio</span><strong>${references.length}</strong></div>`;
-    $('sorteioContemplados').innerHTML = winners.map(item => `
-      <div class="assembly-winner-card"><span>${escapeHTML(item.modalidade)}</span><strong>${item.cota}</strong></div>`).join('');
+
+    const matches = computeMatches(record.reference);
+    const exact = matches.filter(item => item.distance === 0);
+    const card = $('sorteioAlertCard');
+    wrap.hidden = false;
+
+    card.classList.remove('safe', 'warning', 'exact');
+
+    let title;
+    let text;
+    let badge;
+    let eyebrow;
+
+    if(exact.length){
+      card.classList.add('exact');
+      eyebrow = 'Conferência prioritária';
+      title = exact.length === 1 ? 'Cota exata encontrada' : exact.length + ' cotas exatas encontradas';
+      badge = 'EXATA';
+      text = 'Confira imediatamente no aplicativo oficial da administradora. Além da coincidência exata, o radar também mostra outras cotas dentro da faixa de ±10.';
+    }else if(matches.length){
+      card.classList.add('warning');
+      eyebrow = 'Zona de atenção';
+      title = matches.length === 1 ? '1 cota está muito próxima' : matches.length + ' cotas estão muito próximas';
+      badge = '±10';
+      text = 'Existe cliente com cota até 10 números abaixo ou acima do número sorteado. Vale conferir o resultado oficial do grupo.';
+    }else{
+      card.classList.add('safe');
+      eyebrow = 'Conferência concluída';
+      title = 'Nenhuma cota na faixa de ±10';
+      badge = 'OK';
+      text = 'O número foi salvo no histórico. Nenhuma cota cadastrada está entre 10 números abaixo e 10 números acima.';
+    }
+
+    $('sorteioAlertEyebrow').textContent = eyebrow;
+    $('sorteioAlertTitle').textContent = title;
+    $('sorteioAlertBadge').textContent = badge;
+
+    const rawNote = record.raw !== record.reference
+      ? ' Número informado: ' + record.raw + ' → referência usada: ' + record.reference + ' (4 últimos dígitos).'
+      : ' Número conferido: ' + record.reference + '.';
+    $('sorteioAlertText').textContent = text + rawNote;
+
+    $('sorteioAlertList').innerHTML = matches.length
+      ? matches.map(item => {
+          const cls = item.distance === 0 ? ' exact' : item.distance <= 3 ? ' hot' : '';
+          return '<div class="radar-match-row' + cls + '">' +
+            '<div><strong>' + escapeHTML(item.nome) + '</strong><span>Cota ' + item.cota + '</span></div>' +
+            '<div class="radar-match-distance"><b>' + (item.distance === 0 ? 'EXATA' : item.distance) + '</b><span>' + escapeHTML(item.direction) + '</span></div>' +
+          '</div>';
+        }).join('')
+      : '<div class="radar-empty">Tudo certo neste sorteio.</div>';
   }
 
   function renderClients(){
-    const group = currentGroup();
-    $('sorteioClientesCount').textContent = `${group.clients.length} ${group.clients.length === 1 ? 'cliente' : 'clientes'}`;
-    $('sorteioClientList').innerHTML = group.clients.length ? group.clients.map(client => `
-      <div class="client-edit-row" data-client-id="${escapeHTML(client.id)}">
-        <div><strong>${escapeHTML(client.nome)}</strong><span>Cota ${client.cota}</span></div>
-        <div class="client-edit-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div>
-      </div>`).join('') : '<div class="empty-state">Nenhum cliente cadastrado neste grupo.</div>';
+    const list = $('sorteioClientList');
+    $('sorteioClientesCount').textContent = state.clients.length + (state.clients.length === 1 ? ' cliente' : ' clientes');
 
-    $('sorteioClientList').querySelectorAll('.client-edit-row').forEach(row => {
-      const client = group.clients.find(item => item.id === row.dataset.clientId);
-      row.querySelector('[data-action="edit"]').addEventListener('click', () => {
-        const name = prompt('Nome do cliente:', client.nome);
-        if(name === null) return;
-        const number = quota(prompt('Número da cota:', client.cota));
-        if(!name.trim() || !isValidQuota(number, group)){
-          showMessage('sorteioClientesMessage', 'Nome ou cota inválidos.', 'error');
-          return;
-        }
-        if(group.clients.some(item => item.id !== client.id && item.cota === number)){
-          showMessage('sorteioClientesMessage', 'Essa cota já pertence a outro cliente deste grupo.', 'error');
-          return;
-        }
-        client.nome = name.trim();
-        client.cota = number;
-        save();
-        renderClients();
-        renderReportSelect();
-      });
-      row.querySelector('[data-action="delete"]').addEventListener('click', () => {
-        if(!confirm(`Excluir ${client.nome} deste grupo?`)) return;
-        group.clients = group.clients.filter(item => item.id !== client.id);
-        save();
-        renderClients();
-        renderReportSelect();
-      });
+    const query = state.search.trim().toLocaleLowerCase('pt-BR');
+    const filtered = state.clients
+      .filter(client => {
+        if(!query) return true;
+        return client.nome.toLocaleLowerCase('pt-BR').includes(query) ||
+          client.cotas.some(cotaValue => cotaValue.includes(query.replace(/\D/g, '')));
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if(!filtered.length){
+      list.innerHTML = '<div class="radar-empty">' + (state.clients.length ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.') + '</div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(client => {
+      const hits = recordsForClient(client).length;
+      const visible = client.cotas.slice(0, 8);
+      const rest = client.cotas.slice(8);
+      return '<article class="radar-client-row" data-client-id="' + escapeHTML(client.id) + '">' +
+        '<div class="radar-client-head">' +
+          '<div><strong>' + escapeHTML(client.nome) + '</strong><span>' + client.cotas.length + (client.cotas.length === 1 ? ' cota' : ' cotas') + '</span></div>' +
+          (hits ? '<b class="radar-history-hit">' + hits + (hits === 1 ? ' alerta no histórico' : ' alertas no histórico') + '</b>' : '') +
+        '</div>' +
+        '<div class="radar-quota-chips">' + visible.map(value => '<span>' + value + '</span>').join('') + '</div>' +
+        (rest.length ? '<details class="radar-more-quotas"><summary>Ver todas as ' + client.cotas.length + ' cotas</summary><div class="radar-quota-chips">' + client.cotas.map(value => '<span>' + value + '</span>').join('') + '</div></details>' : '') +
+        '<div class="radar-client-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div>' +
+      '</article>';
+    }).join('');
+
+    list.querySelectorAll('.radar-client-row').forEach(row => {
+      const id = row.dataset.clientId;
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => editClient(id));
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteClient(id));
     });
-  }
-
-  function addClient(){
-    const group = currentGroup();
-    const name = $('sorteioNewClientName').value.trim();
-    const number = quota($('sorteioNewClientQuota').value);
-    if(!name || !isValidQuota(number, group)){
-      showMessage('sorteioClientesMessage', `Informe nome e uma cota entre 0001 e ${String(group.totalCotas).padStart(4, '0')}.`, 'error');
-      return;
-    }
-    if(group.clients.some(item => item.cota === number)){
-      showMessage('sorteioClientesMessage', 'Essa cota já está cadastrada neste grupo.', 'error');
-      return;
-    }
-    group.clients.push({ id: uid('cliente'), nome: name, cota: number });
-    $('sorteioNewClientName').value = '';
-    $('sorteioNewClientQuota').value = '';
-    save();
-    renderClients();
-    renderReportSelect();
-    showMessage('sorteioClientesMessage', 'Cliente adicionado.');
   }
 
   function renderHistory(){
-    const group = currentGroup();
-    const assemblies = sortAssembliesDesc(group);
-    $('sorteioHistoryCount').textContent = `${assemblies.length} ${assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
-    $('sorteioHistoryList').innerHTML = assemblies.length ? assemblies.map(assembly => {
-      const winners = winnersDetailed(assembly);
-      return `
-        <div class="draw-history-item" data-assembly-id="${escapeHTML(assembly.id)}">
-          <div class="draw-history-head"><div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><span>${dateBR(assembly.data)} · ${winners.length} contemplações</span></div><div class="draw-history-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div></div>
-          <div class="draw-history-winners">${winners.map(item => `<span><b>${escapeHTML(item.modalidade)}</b>${item.cota}</span>`).join('')}</div>
-        </div>`;
-    }).join('') : '<div class="empty-state">Nenhuma assembleia cadastrada neste grupo.</div>';
+    const list = $('sorteioHistoryList');
+    $('sorteioHistoryCount').textContent = state.history.length + (state.history.length === 1 ? ' sorteio' : ' sorteios');
 
-    $('sorteioHistoryList').querySelectorAll('.draw-history-item').forEach(row => {
-      const assembly = group.assemblies.find(item => item.id === row.dataset.assemblyId);
-      row.querySelector('[data-action="edit"]').addEventListener('click', () => fillAssemblyForm(assembly));
-      row.querySelector('[data-action="delete"]').addEventListener('click', () => {
-        if(!confirm(`Excluir a assembleia ${assembly.numero}?`)) return;
-        group.assemblies = group.assemblies.filter(item => item.id !== assembly.id);
-        if(state.lastAssemblyId === assembly.id) state.lastAssemblyId = null;
-        save();
-        renderAll();
-        showMessage('sorteioHistoryMessage', 'Assembleia excluída.');
-      });
-    });
-  }
-
-  function renderRangeStats(){
-    const group = currentGroup();
-    const ranges = calculateRangeStats(group);
-    const contemplated = allContemplated(group).size;
-    const active = Math.max(0, group.totalCotas - contemplated);
-    const select = $('sorteioRangeSelect');
-    const previous = select?.value || '';
-    if(select){
-      select.innerHTML = ranges.map(item => {
-        const value = `${item.start}-${item.end}`;
-        return `<option value="${value}">${rangeLabel(item.start, item.end)} — ${formatInteger(item.active)} cotas ativas</option>`;
-      }).join('');
-      if(ranges.some(item => `${item.start}-${item.end}` === previous)) select.value = previous;
-    }
-    $('sorteioRangeCount').textContent = `${formatInteger(active)} ${active === 1 ? 'cota ativa' : 'cotas ativas'}`;
-  }
-
-  function renderModalityStats(){
-    const group = currentGroup();
-    const totals = modalityTotals(group);
-    const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
-    $('sorteioModalityAssemblies').textContent = `${group.assemblies.length} ${group.assemblies.length === 1 ? 'assembleia' : 'assembleias'}`;
-    $('sorteioModalityGrid').innerHTML = `
-      <div class="modality-stat-card total"><span>Total de contemplações</span><strong>${formatInteger(total)}</strong></div>
-      ${Object.entries(MODALITIES).map(([key, label]) => `<div class="modality-stat-card"><span>${escapeHTML(label)}</span><strong>${formatInteger(totals[key] || 0)}</strong></div>`).join('')}`;
-  }
-
-  function renderBaseline(){
-    const group = currentGroup();
-    $('sorteioBaseCount').textContent = `${group.baseline.length} ${group.baseline.length === 1 ? 'cota anterior' : 'cotas anteriores'}`;
-    $('sorteioBaseContempladas').value = group.baseline.join('\n');
-  }
-
-  function saveBaseConfiguration(){
-    const group = currentGroup();
-    const base = extractQuotaList($('sorteioBaseContempladas').value, group);
-    const assemblyWinners = new Set(group.assemblies.flatMap(item => item.contempladas.map(entry => entry.cota)));
-    const repeated = base.find(number => assemblyWinners.has(number));
-    if(repeated){
-      showMessage('sorteioBaseMessage', `A cota ${repeated} já está registrada em uma assembleia.`, 'error');
-      return;
-    }
-    group.baseline = base;
-    save();
-    renderAll();
-    showMessage('sorteioBaseMessage', 'Configuração salva e mapa recalculado.');
-  }
-
-  function renderReportSelect(){
-    const group = currentGroup();
-    $('sorteioReportClient').innerHTML = group.clients.length ? group.clients.map(client => `<option value="${escapeHTML(client.id)}">${escapeHTML(client.nome)} · ${client.cota}</option>`).join('') : '<option value="">Nenhum cliente cadastrado</option>';
-  }
-
-  function clientAssemblyData(client, assembly, group){
-    const references = referenceQuotas(assembly).map(Number);
-    const clientNumber = Number(client.cota);
-    const priorRemoved = allContemplated(group, assembly.id);
-    const activeBefore = [];
-    for(let number = 1; number <= group.totalCotas; number += 1){
-      if(!priorRemoved.has(String(number).padStart(4, '0'))) activeBefore.push(number);
-    }
-    if(!references.length) return { reference: null, rawDistance: null, activeBetween: null };
-    const reference = references.reduce((best, value) => Math.abs(value - clientNumber) < Math.abs(best - clientNumber) ? value : best, references[0]);
-    const min = Math.min(reference, clientNumber);
-    const max = Math.max(reference, clientNumber);
-    const activeBetween = activeBefore.filter(number => number > min && number < max).length;
-    return { reference: String(reference).padStart(4, '0'), rawDistance: Math.abs(reference - clientNumber), activeBetween };
-  }
-
-  function generateReport(){
-    const group = currentGroup();
-    const client = group.clients.find(item => item.id === $('sorteioReportClient').value);
-    if(!client){
-      showMessage('sorteioReportMessage', 'Selecione um cliente.', 'error');
-      return;
-    }
-    if(!group.assemblies.length){
-      showMessage('sorteioReportMessage', 'Salve pelo menos uma assembleia neste grupo.', 'error');
+    if(!state.history.length){
+      list.innerHTML = '<div class="radar-empty">Nenhum número sorteado foi salvo ainda.</div>';
       return;
     }
 
-    const settings = global.Simulador?.Configuracoes?.load?.() || {};
-    const totals = modalityTotals(group);
-    const totalContemplations = Object.values(totals).reduce((sum, value) => sum + value, 0);
-    const contemplatedUnique = allContemplated(group).size;
-    const active = Math.max(0, group.totalCotas - contemplatedUnique);
-
-    const modalityCards = Object.entries(MODALITIES).map(([key, label]) => `
-      <div class="modality-card">
-        <span>${escapeHTML(label)}</span>
-        <strong>${formatInteger(totals[key] || 0)}</strong>
-      </div>`).join('');
-
-    const assemblyCards = sortAssembliesDesc(group).map(assembly => {
-      const winners = winnersDetailed(assembly);
-      const currentWin = winners.find(item => item.cota === client.cota);
-      const grouped = Object.entries(MODALITIES).map(([key, label]) => {
-        const quotas = winners.filter(item => item.modalidadeKey === key).map(item => item.cota);
-        if(!quotas.length) return '';
-        return `<div class="assembly-line"><b>${escapeHTML(label)}</b><span>${quotas.map(number => `<i class="${number === client.cota ? 'client-quota' : ''}">${number}</i>`).join('')}</span></div>`;
-      }).join('');
-
-      return `
-        <article class="assembly-card${currentWin ? ' client-contemplated' : ''}">
-          <header>
-            <div><strong>Assembleia ${escapeHTML(assembly.numero)}</strong><small>${dateBR(assembly.data)}</small></div>
-            <b>${winners.length} ${winners.length === 1 ? 'contemplação' : 'contemplações'}</b>
-          </header>
-          <div class="assembly-lines">${grouped || '<p>Nenhuma contemplação registrada.</p>'}</div>
-          ${currentWin ? `<div class="client-note">A cota ${client.cota} foi contemplada por ${escapeHTML(currentWin.modalidade.toLowerCase())} nesta assembleia.</div>` : ''}
-        </article>`;
+    list.innerHTML = state.history.map(record => {
+      const matches = computeMatches(record.reference);
+      const exact = matches.some(item => item.distance === 0);
+      const date = new Date(record.createdAt);
+      const when = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('pt-BR');
+      const status = exact ? 'COTA EXATA' : matches.length ? matches.length + (matches.length === 1 ? ' alerta' : ' alertas') : 'sem alertas';
+      const statusClass = exact ? ' exact' : matches.length ? ' warning' : ' safe';
+      const raw = record.raw !== record.reference ? '<span>Federal ' + escapeHTML(record.raw) + ' → ref. ' + record.reference + '</span>' : '<span>Referência ' + record.reference + '</span>';
+      return '<div class="radar-history-row' + statusClass + '" data-record-id="' + escapeHTML(record.id) + '">' +
+        '<div class="radar-history-number"><strong>' + record.reference + '</strong>' + raw + '</div>' +
+        '<div class="radar-history-meta"><b>' + escapeHTML(status) + '</b><span>' + escapeHTML(when) + '</span></div>' +
+        '<div class="radar-history-actions"><button type="button" data-action="view">Ver</button><button type="button" data-action="delete" class="danger">Excluir</button></div>' +
+      '</div>';
     }).join('');
 
-    const report = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acompanhamento — ${escapeHTML(client.nome)}</title><style>
-      @page{size:A4;margin:10mm}
-      *{box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;color:#17232e;margin:0;font-size:9px;background:#fff}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #f28a16;padding-bottom:10px;margin-bottom:10px}
-      .brand{display:flex;gap:10px;align-items:center}.mark{width:40px;height:40px;border-radius:12px;background:#f28a16;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px}
-      .header h1{font-size:18px;margin:0}.header p,.meta{margin:3px 0 0;color:#66737f}.meta{text-align:right;line-height:1.5}
-      .client-hero{display:grid;grid-template-columns:1.55fr .75fr .75fr;gap:8px;margin-bottom:10px}
-      .hero-card{border:1px solid #d8e0e7;border-radius:10px;padding:9px;background:#f7f9fb}
-      .hero-card span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.05em;color:#6b7782}
-      .hero-card strong{display:block;font-size:14px;margin-top:4px}
-      .hero-card.primary{background:#fff2e1;border-color:#f0ae5f}.hero-card.primary strong{font-size:25px;color:#c96500}
-      .section-title{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:12px 0 7px}
-      .section-title h2{font-size:12px;margin:0}.section-title span{font-size:7px;color:#74808a}
-      .snapshot{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-      .snapshot>div{border:1px solid #dce3e9;border-radius:9px;padding:8px;background:#f8fafb}
-      .snapshot span,.modality-card span{display:block;color:#6b7782;font-size:7px;text-transform:uppercase;line-height:1.3}
-      .snapshot strong,.modality-card strong{display:block;margin-top:4px;font-size:15px}
-      .modalities{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-      .modality-card{border:1px solid #dce3e9;border-radius:9px;padding:8px;background:#f8fafb;min-height:54px}
-      .modality-card:first-child{background:#fff2e1;border-color:#f0ae5f}
-      .assemblies{display:grid;gap:7px}
-      .assembly-card{border:1px solid #dce3e9;border-radius:10px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-      .assembly-card>header{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#edf2f5;padding:7px 9px}
-      .assembly-card>header strong{font-size:10px}.assembly-card>header small{display:block;color:#6b7782;font-size:7px;margin-top:2px}.assembly-card>header>b{font-size:7px;color:#66737f;text-transform:uppercase}
-      .assembly-lines{padding:7px 9px;display:grid;gap:5px}.assembly-line{display:grid;grid-template-columns:105px 1fr;gap:8px;align-items:start}
-      .assembly-line>b{font-size:7px;color:#64717d}.assembly-line span{display:flex;flex-wrap:wrap;gap:4px}
-      .assembly-line i{font-style:normal;font-weight:800;font-size:8px;background:#f1f4f6;border:1px solid #dce3e9;border-radius:5px;padding:3px 5px}
-      .assembly-line i.client-quota{background:#fff0db;border-color:#f28a16;color:#b75b00}
-      .client-contemplated{border-color:#f28a16}.client-note{padding:6px 9px;background:#fff4e5;color:#a95200;font-weight:700;font-size:7px}
-      .footer{margin-top:9px;border-top:1px solid #d8e0e7;padding-top:7px;color:#68747e;font-size:7px;line-height:1.45}
-      @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.assembly-card{break-inside:avoid;page-break-inside:avoid}}
-    </style></head><body>
-      <header class="header">
-        <div class="brand"><div class="mark">SC</div><div><h1>Acompanhamento de assembleias</h1><p>${escapeHTML(settings.company || 'Acompanhamento de Consórcio')}</p></div></div>
-        <div class="meta">Grupo ${escapeHTML(group.numero)}<br>Emitido em ${new Date().toLocaleString('pt-BR')}${settings.consultant ? `<br>Consultor: ${escapeHTML(settings.consultant)}` : ''}</div>
-      </header>
-
-      <section class="client-hero">
-        <div class="hero-card primary"><span>Cota de ${escapeHTML(client.nome)}</span><strong>${client.cota}</strong></div>
-        <div class="hero-card"><span>Grupo</span><strong>${escapeHTML(group.numero)}</strong></div>
-        <div class="hero-card"><span>Assembleias registradas</span><strong>${group.assemblies.length}</strong></div>
-      </section>
-
-      <div class="section-title"><h2>Resumo atual do grupo</h2><span>Dados acumulados até a assembleia mais recente cadastrada</span></div>
-      <section class="snapshot">
-        <div><span>Cotas previstas</span><strong>${formatInteger(group.totalCotas)}</strong></div>
-        <div><span>Cotas contempladas</span><strong>${formatInteger(contemplatedUnique)}</strong></div>
-        <div><span>Cotas ainda ativas</span><strong>${formatInteger(active)}</strong></div>
-        <div><span>Total de contemplações registradas</span><strong>${formatInteger(totalContemplations)}</strong></div>
-      </section>
-
-      <div class="section-title"><h2>Contemplações por modalidade</h2><span>Somatória de todas as assembleias cadastradas</span></div>
-      <section class="modalities">${modalityCards}</section>
-
-      <div class="section-title"><h2>Histórico das assembleias</h2><span>Assembleia mais recente primeiro</span></div>
-      <section class="assemblies">${assemblyCards}</section>
-
-      <div class="footer"><b>Importante:</b> este relatório reúne os registros manuais lançados no aplicativo. Ele apresenta o histórico do grupo e não representa previsão ou garantia de contemplação. Confira os dados com os resultados oficiais da administradora.</div>
-      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),350));<\/script>
-    </body></html>`;
-
-    const reportWindow = window.open('', '_blank');
-    if(!reportWindow){
-      showMessage('sorteioReportMessage', 'Permita pop-ups no navegador e tente novamente.', 'error');
-      return;
-    }
-    reportWindow.document.open();
-    reportWindow.document.write(report);
-    reportWindow.document.close();
+    list.querySelectorAll('.radar-history-row').forEach(row => {
+      const id = row.dataset.recordId;
+      row.querySelector('[data-action="view"]').addEventListener('click', () => {
+        state.currentRecordId = id;
+        renderAlert(state.history.find(item => item.id === id) || null);
+        $('sorteioAlerta')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+      });
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteHistory(id));
+    });
   }
 
   function renderAll(){
-    renderGroupSelector();
-    renderGroupList();
-    renderDraft();
+    renderParsedPreview();
     renderClients();
-    renderReportSelect();
     renderHistory();
-    renderRangeStats();
-    renderModalityStats();
-    renderBaseline();
-    const group = currentGroup();
-    const latest = state.lastAssemblyId ? group.assemblies.find(item => item.id === state.lastAssemblyId) : null;
-    renderLatest(latest || null);
+    const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
+    state.currentRecordId = record?.id || null;
+    renderAlert(record);
   }
 
-  function bindQuotaInput(id){
-    const input = $(id);
-    if(!input) return;
-    input.addEventListener('input', event => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4); });
+  function saveDraw(){
+    const parsed = normalizeDraw($('sorteioNumero').value);
+    if(!parsed){
+      showMessage('sorteioDrawMessage', 'Informe um número válido. Ex.: 5010 ou 35.010.', 'error');
+      return;
+    }
+
+    const record = normalizeRecord({
+      id: uid('sorteio'),
+      raw: parsed.raw,
+      reference: parsed.reference,
+      createdAt: Date.now()
+    });
+
+    state.history.unshift(record);
+    state.currentRecordId = record.id;
+    save();
+    renderAll();
+
+    const matches = computeMatches(record.reference);
+    if(matches.length && navigator.vibrate){
+      try{ navigator.vibrate([180, 80, 180]); }catch(_error){}
+    }
+
+    showMessage(
+      'sorteioDrawMessage',
+      matches.length
+        ? 'Número salvo. Atenção: encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
+        : 'Número salvo. Nenhuma cota ficou na faixa de ±10.',
+      matches.length ? 'warning' : 'success'
+    );
+
+    $('sorteioNumero').value = '';
+    $('sorteioNumero').focus();
+    setTimeout(() => $('sorteioAlerta')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 80);
+  }
+
+  function addClient(){
+    const nome = $('sorteioClientName').value.trim();
+    const cotas = extractQuotaList($('sorteioClientQuotas').value);
+
+    if(!nome){
+      showMessage('sorteioClientMessage', 'Informe o nome do cliente.', 'error');
+      return;
+    }
+    if(!cotas.length){
+      showMessage('sorteioClientMessage', 'Cole pelo menos uma cota válida.', 'error');
+      return;
+    }
+
+    const key = nome.toLocaleLowerCase('pt-BR');
+    let client = state.clients.find(item => item.nome.toLocaleLowerCase('pt-BR') === key);
+    let merged = false;
+
+    if(client){
+      client.cotas = [...new Set(client.cotas.concat(cotas))].sort((a, b) => Number(a) - Number(b));
+      merged = true;
+    }else{
+      client = normalizeClient({id: uid('cliente'), nome, cotas, createdAt: Date.now()});
+      state.clients.push(client);
+    }
+
+    save();
+    $('sorteioClientName').value = '';
+    $('sorteioClientQuotas').value = '';
+    renderAll();
+
+    const hits = recordsForClient(client);
+    if(hits.length){
+      state.currentRecordId = hits[0].id;
+      renderAlert(hits[0]);
+      showMessage(
+        'sorteioClientMessage',
+        'Cliente salvo. Atenção: encontrei ' + hits.length + (hits.length === 1 ? ' sorteio antigo próximo dessas cotas.' : ' sorteios antigos próximos dessas cotas.'),
+        'warning'
+      );
+      setTimeout(() => $('sorteioAlerta')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 120);
+    }else{
+      showMessage('sorteioClientMessage', merged ? 'Cotas adicionadas ao cliente existente.' : 'Cliente adicionado com todas as cotas.');
+    }
+  }
+
+  function editClient(id){
+    const client = state.clients.find(item => item.id === id);
+    if(!client) return;
+
+    const nome = prompt('Nome do cliente:', client.nome);
+    if(nome === null) return;
+    const quotasText = prompt('Cotas do cliente (separe por vírgula, espaço ou linha):', client.cotas.join(', '));
+    if(quotasText === null) return;
+
+    const cleanName = nome.trim();
+    const cotas = extractQuotaList(quotasText);
+
+    if(!cleanName || !cotas.length){
+      showMessage('sorteioClientMessage', 'Para editar, mantenha um nome e pelo menos uma cota válida.', 'error');
+      return;
+    }
+
+    client.nome = cleanName;
+    client.cotas = cotas;
+    save();
+    renderAll();
+
+    const hits = recordsForClient(client);
+    showMessage(
+      'sorteioClientMessage',
+      hits.length
+        ? 'Cliente atualizado. O histórico encontrou ' + hits.length + (hits.length === 1 ? ' sorteio próximo.' : ' sorteios próximos.')
+        : 'Cliente atualizado.',
+      hits.length ? 'warning' : 'success'
+    );
+  }
+
+  function deleteClient(id){
+    const client = state.clients.find(item => item.id === id);
+    if(!client) return;
+    if(!confirm('Excluir ' + client.nome + ' e todas as cotas dele?')) return;
+    state.clients = state.clients.filter(item => item.id !== id);
+    save();
+    renderAll();
+    showMessage('sorteioClientMessage', 'Cliente excluído.');
+  }
+
+  function deleteHistory(id){
+    const record = state.history.find(item => item.id === id);
+    if(!record) return;
+    if(!confirm('Excluir o número ' + record.reference + ' do histórico?')) return;
+    state.history = state.history.filter(item => item.id !== id);
+    if(state.currentRecordId === id) state.currentRecordId = state.history[0]?.id || null;
+    save();
+    renderAll();
   }
 
   function bind(){
-    $('sorteioData').value = todayISO();
-    ['sorteioNovaCota', 'sorteioNewClientQuota'].forEach(bindQuotaInput);
-    $('sorteioGrupoSelect').addEventListener('change', event => selectGroup(event.target.value));
-    $('sorteioAddGroupBtn').addEventListener('click', addGroup);
-    $('sorteioAddContempladaBtn').addEventListener('click', addDraftEntry);
-    $('sorteioNovaCota').addEventListener('keydown', event => {
+    $('sorteioCheckBtn').addEventListener('click', saveDraw);
+    $('sorteioNumero').addEventListener('keydown', event => {
       if(event.key === 'Enter'){
         event.preventDefault();
-        addDraftEntry();
+        saveDraw();
       }
     });
-    $('sorteioConferirBtn').addEventListener('click', submitAssembly);
+
+    $('sorteioClientQuotas').addEventListener('input', renderParsedPreview);
     $('sorteioAddClientBtn').addEventListener('click', addClient);
-    $('sorteioGenerateReportBtn').addEventListener('click', generateReport);
-    $('sorteioSaveBaseBtn').addEventListener('click', saveBaseConfiguration);
+
+    $('sorteioClientSearch').addEventListener('input', event => {
+      state.search = event.target.value;
+      renderClients();
+    });
   }
 
   function init(){
+    if(!$('view-sorteio')) return;
     load();
     bind();
     renderAll();
