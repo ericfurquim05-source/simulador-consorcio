@@ -535,3 +535,21 @@ button{cursor:pointer}
   .radar-history-actions{margin-top:10px;flex-direction:row}
   .radar-history-actions button{flex:1}
 }
+
+/* v2.7.0 — cotas livres com dispersão mínima de 21 números */
+.radar-free-panel{border-color:#3e5a4a}
+.radar-free-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.radar-free-summary>div{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#0b1219}
+.radar-free-summary span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.04em}
+.radar-free-summary strong{display:block;margin-top:5px;font-size:14px;color:#fff}
+.radar-free-help{margin:12px 0 0;color:var(--muted);font-size:9px;line-height:1.55}
+.radar-free-actions{display:flex;gap:8px;margin-top:12px}
+.radar-free-actions .secondary-button{margin:0;flex:1}
+.radar-free-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.radar-free-chip{min-width:54px;padding:8px 9px;border:1px solid #355443;border-radius:10px;background:#0d1b14;color:#9ee0b6;font:900 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.03em}
+.radar-free-chip:active{transform:scale(.97);background:#163021}
+@media(max-width:520px){
+  .radar-free-summary{grid-template-columns:1fr}
+  .radar-free-actions{display:grid;grid-template-columns:1fr 1fr}
+  .radar-free-chip{min-width:52px}
+}
