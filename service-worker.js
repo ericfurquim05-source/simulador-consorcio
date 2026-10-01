@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v3.4.0-empresarial-pdf';
+const VERSION = 'simulador-consorcio-v3.5.0-cobertura-probabilidade';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
