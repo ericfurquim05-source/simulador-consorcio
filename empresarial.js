@@ -498,14 +498,14 @@
     ];
     let y = 57;
     rows.forEach(function(row,idx){
-      if(idx % 2 === 0){ doc.setFillColor(248,250,251); doc.rect(12,y-5,186,9,'F'); }
-      doc.setFont('helvetica','normal'); doc.setFontSize(8.4); doc.setTextColor(95,105,115); doc.text(row[0],15,y);
+      if(idx % 2 === 0){ doc.setFillColor(248,250,251); doc.rect(12,y-4.2,186,7.2,'F'); }
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.6); doc.setTextColor(95,105,115); doc.text(row[0],15,y);
       doc.setFont('helvetica','bold'); doc.setTextColor(35,45,55); doc.text(row[1],195,y,{align:'right'});
-      y += 9;
+      y += 7.2;
     });
 
-    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Fórmulas principais',12,y+7);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.4); doc.setTextColor(65,75,85);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Fórmulas principais',12,y+6);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(65,75,85);
     const formulas = [
       'Quantidade de cotas = teto(projeto ÷ valor da carta). Cota quebrada sempre sobe para a próxima cota inteira.',
       'Parcela reduzida por cota = carta × (percentual reduzido + taxa administrativa total) ÷ prazo, salvo valor manual informado.',
@@ -518,16 +518,16 @@
       'Cobertura teórica ±10 = mínimo(cotas do grupo, quantidade de cotas × 21) ÷ cotas do grupo. Pressupõe espaçamento mínimo de 21 e não sobreposição.',
       'Probabilidade mensal teórica = 1 − (1 − participação direta)^(média de contemplações do grupo). É um modelo uniforme aproximado; não é uma garantia nem multiplica a média mensal como se fossem sorteios independentes da Federal.'
     ];
-    y += 14;
+    y += 13;
     formulas.forEach(function(line){
       const parts = doc.splitTextToSize('• ' + line,182);
       doc.text(parts,15,y);
-      y += parts.length * 4.5 + 2;
+      y += parts.length * 3.8 + 1.5;
     });
 
-    doc.setDrawColor(225,229,233); doc.line(12,259,198,259);
-    doc.setFontSize(7.3); doc.setTextColor(100,110,120);
-    doc.text(doc.splitTextToSize('Documento de simulação matemática para apoio à reunião. Não substitui proposta, contrato, análise de crédito, avaliação de garantia ou confirmação formal da administradora.',186),12,266);
+    doc.setDrawColor(225,229,233); doc.line(12,Math.min(y+2,282),198,Math.min(y+2,282));
+    doc.setFontSize(6.8); doc.setTextColor(100,110,120);
+    doc.text(doc.splitTextToSize('Documento de simulação matemática para apoio à reunião. Não substitui proposta, contrato, análise de crédito, avaliação de garantia ou confirmação formal da administradora.',186),12,Math.min(y+8,288));
 
 
     doc.addPage();
