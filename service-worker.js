@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v3.1.0-federal-60m';
+const VERSION = 'simulador-consorcio-v3.2.0-base-federal-canonica';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
@@ -12,6 +12,7 @@ const ASSETS = [
   './app.js',
   './alavancagem.js',
   './sorteio.js',
+  './federal-history.js',
   './aposentadoria-financeira.js',
   './aposentadoria-apresentacao.js',
   './aposentadoria-correcao.js',
