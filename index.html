@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v3.4.0</title>
-  <link rel="manifest" href="./manifest.json?v=340">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=340">
-  <link rel="stylesheet" href="./estilos.css?v=340">
+  <title>Simulador de Consórcio — v3.5.0</title>
+  <link rel="manifest" href="./manifest.json?v=350">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=350">
+  <link rel="stylesheet" href="./estilos.css?v=350">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v3.4.0</p>
+          <p>Simulações claras para apresentar ao cliente · v3.5.0</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -408,6 +408,38 @@
           <div id="sorteioDrawMessage" class="message success" hidden></div>
         </article>
 
+        <article class="panel radar-probability-panel">
+          <div class="result-topline">
+            <div>
+              <div class="eyebrow">Matemática do grupo</div>
+              <h2>Cobertura e probabilidade teórica</h2>
+            </div>
+            <span class="pill">MODELO</span>
+          </div>
+          <p class="lead">Defina o tamanho e o prazo do grupo. O radar calcula a cobertura real das cotas cadastradas e uma referência matemática mensal, sem transformar isso em garantia de contemplação.</p>
+
+          <div class="form-grid radar-group-math-form">
+            <div class="field">
+              <label for="sorteioGroupSize">Quantidade de cotas do grupo</label>
+              <div class="control"><input id="sorteioGroupSize" type="number" value="5000" min="1" max="9999" step="1"><span>cotas</span></div>
+            </div>
+            <div class="field">
+              <label for="sorteioGroupTerm">Prazo total do grupo</label>
+              <div class="control"><input id="sorteioGroupTerm" type="number" value="220" min="1" max="360" step="1"><span>meses</span></div>
+            </div>
+          </div>
+
+          <div class="radar-group-math-kpis">
+            <div><span>Universo do grupo</span><strong id="sorteioMathUniverse">5.000 posições</strong></div>
+            <div><span>Média necessária no grupo</span><strong id="sorteioAvgContemplations">22,73 cotas/mês</strong></div>
+            <div><span>Faixa de cobertura por cota</span><strong id="sorteioRadarRange">21 números por cota</strong></div><div><span>Máx. sem sobreposição</span><strong id="sorteioMaxSeparated">239 cotas</strong></div>
+          </div>
+
+          <div class="radar-math-note">
+            <b>Como ler:</b> uma cota cobre a referência exata e até 10 números para cada lado, ou até 21 referências quando não existe sobreposição. A “chance mensal teórica” dos clientes usa um modelo uniforme de distribuição das contemplações do grupo. Ela é uma aproximação matemática, não uma previsão do sorteio. A média de 22,73 contemplações não é tratada como 22,73 sorteios independentes da Federal.
+          </div>
+        </article>
+
         <section id="sorteioAlerta" class="radar-alert-wrap" hidden>
           <article id="sorteioAlertCard" class="panel radar-alert-card">
             <div class="radar-alert-head">
@@ -478,7 +510,7 @@
 
         <details class="panel draw-collapsible radar-free-panel" open>
           <summary>
-            <span><b>Cotas livres</b><small>Sugestões entre 0001 e 5000 com distância mínima de 21 números</small></span>
+            <span><b>Cotas livres</b><small>Sugestões dentro da faixa configurada do grupo, com distância mínima de 21 números</small></span>
             <strong id="sorteioFreeCount">0 livres</strong>
           </summary>
           <div class="draw-details-body">
@@ -487,7 +519,7 @@
               <div><span>Cobertura do radar ±10</span><strong id="sorteioCoveragePct">0%</strong></div>
               <div><span>Números cobertos</span><strong id="sorteioCoverageCount">0 / 5000</strong></div>
             </div>
-            <p class="radar-free-help">Os números abaixo não repetem nenhuma cota cadastrada e ficam a pelo menos 21 números das cotas já usadas e também entre si. A margem de ±10 funciona como uma zona de cobertura para reduzir sobreposição entre clientes quando a régua do grupo busca cotas próximas do resultado da Federal. Toque em um número para adicioná-lo ao campo de cotas do cliente.</p>
+            <p class="radar-free-help">Os números abaixo não repetem nenhuma cota cadastrada e ficam a pelo menos 21 números das cotas já usadas e também entre si. A margem de ±10 cria a zona de cobertura usada no cálculo matemático do radar. Toque em um número para adicioná-lo ao campo de cotas do cliente.</p>
             <div class="radar-free-actions">
               <button id="sorteioUseNextFreeBtn" class="secondary-button" type="button">Usar próxima livre</button>
               <button id="sorteioCopyFreeBtn" class="secondary-button" type="button">Copiar todas</button>
@@ -564,16 +596,16 @@
     </form>
   </dialog>
 
-  <script src="./calculos.js?v=340" defer></script>
-  <script src="./graficos.js?v=340" defer></script>
-  <script src="./configuracoes.js?v=340" defer></script>
-  <script src="./pdf.js?v=340" defer></script>
-  <script src="./app.js?v=340" defer></script>
-  <script src="./alavancagem.js?v=340" defer></script>
+  <script src="./calculos.js?v=350" defer></script>
+  <script src="./graficos.js?v=350" defer></script>
+  <script src="./configuracoes.js?v=350" defer></script>
+  <script src="./pdf.js?v=350" defer></script>
+  <script src="./app.js?v=350" defer></script>
+  <script src="./alavancagem.js?v=350" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
-  <script src="./pdf-profissional.js?v=340" defer></script>
-  <script src="./empresarial.js?v=340" defer></script>
+  <script src="./pdf-profissional.js?v=350" defer></script>
+  <script src="./empresarial.js?v=350" defer></script>
   <script src="./federal-history.js?v=330" defer></script>
-  <script src="./sorteio.js?v=330" defer></script>
+  <script src="./sorteio.js?v=350" defer></script>
 </body>
 </html>

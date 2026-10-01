@@ -6,7 +6,8 @@
   const LEGACY_CLIENTS = 'simulador-sorteio-clientes-v1';
   const MAX_QUOTA = 9999;
   const ALERT_DISTANCE = 10;
-  const FREE_QUOTA_MAX = 5000;
+  const DEFAULT_GROUP_SIZE = 5000;
+  const DEFAULT_GROUP_TERM = 220;
   const MIN_QUOTA_DISTANCE = 21;
   const FEDERAL_DB = global.FEDERAL_HISTORY_DB || null;
   const FEDERAL_60_MONTHS = Array.isArray(FEDERAL_DB?.records) ? FEDERAL_DB.records : [];
@@ -67,10 +68,91 @@
     clients: [],
     history: [],
     currentRecordId: null,
-    search: ''
+    search: '',
+    groupSize: DEFAULT_GROUP_SIZE,
+    groupTerm: DEFAULT_GROUP_TERM
   };
 
   const $ = id => document.getElementById(id);
+
+  function activeGroupSize(){
+    return Math.min(MAX_QUOTA, Math.max(1, Math.round(Number(state.groupSize) || DEFAULT_GROUP_SIZE)));
+  }
+
+  function activeGroupTerm(){
+    return Math.min(360, Math.max(1, Math.round(Number(state.groupTerm) || DEFAULT_GROUP_TERM)));
+  }
+
+  function formatDecimal(value, digits = 2){
+    return (Number(value) || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
+  function percent(value, digits = 2){
+    return formatDecimal(value, digits) + '%';
+  }
+
+  function coverageForNumbers(numbers){
+    const groupSize = activeGroupSize();
+    const covered = new Set();
+    (numbers || []).forEach(value => {
+      const number = Number(value);
+      if(!Number.isInteger(number) || number < 1 || number > groupSize) return;
+      const from = Math.max(1, number - ALERT_DISTANCE);
+      const to = Math.min(groupSize, number + ALERT_DISTANCE);
+      for(let item = from; item <= to; item += 1) covered.add(item);
+    });
+    return {
+      count: covered.size,
+      percentage: groupSize ? (covered.size / groupSize) * 100 : 0
+    };
+  }
+
+  function mathForQuotaCount(quotaCount){
+    const groupSize = activeGroupSize();
+    const term = activeGroupTerm();
+    const q = Math.max(0, Math.min(groupSize, Number(quotaCount) || 0));
+    const share = groupSize ? q / groupSize : 0;
+    const averageGroupContemplations = term ? groupSize / term : 0;
+    const expectedProjectContemplations = term ? q / term : 0;
+    const monthlyProbability = share > 0
+      ? (1 - Math.pow(1 - share, averageGroupContemplations)) * 100
+      : 0;
+    return {
+      groupSize,
+      term,
+      sharePercentage: share * 100,
+      averageGroupContemplations,
+      expectedProjectContemplations,
+      monthlyProbability,
+      monthsPerExpected: expectedProjectContemplations > 0 ? 1 / expectedProjectContemplations : 0
+    };
+  }
+
+  function clientMath(client){
+    const groupSize = activeGroupSize();
+    const validNumbers = (client?.cotas || []).map(Number).filter(number => number >= 1 && number <= groupSize);
+    const coverage = coverageForNumbers(validNumbers);
+    return {
+      validQuotaCount: validNumbers.length,
+      coverage,
+      ...mathForQuotaCount(validNumbers.length)
+    };
+  }
+
+  function renderGroupMath(){
+    const groupSize = activeGroupSize();
+    const term = activeGroupTerm();
+    const average = term ? groupSize / term : 0;
+    if($('sorteioGroupSize')) $('sorteioGroupSize').value = groupSize;
+    if($('sorteioGroupTerm')) $('sorteioGroupTerm').value = term;
+    if($('sorteioAvgContemplations')) $('sorteioAvgContemplations').textContent = formatDecimal(average, 2) + ' cotas/mês';
+    if($('sorteioRadarRange')) $('sorteioRadarRange').textContent = (ALERT_DISTANCE * 2 + 1) + ' números por cota';
+    if($('sorteioMathUniverse')) $('sorteioMathUniverse').textContent = formatDecimal(groupSize, 0) + ' posições';
+    if($('sorteioMaxSeparated')) $('sorteioMaxSeparated').textContent = formatDecimal(Math.ceil(groupSize / MIN_QUOTA_DISTANCE), 0) + ' cotas';
+  }
 
   function escapeHTML(value){
     return String(value ?? '')
@@ -249,6 +331,8 @@
     const stored = loadJSON(STORAGE_KEY, null);
     if(stored && Array.isArray(stored.clients)){
       state.clients = stored.clients.map(normalizeClient).filter(Boolean);
+      state.groupSize = Math.min(MAX_QUOTA, Math.max(1, Math.round(Number(stored.groupSize) || DEFAULT_GROUP_SIZE)));
+      state.groupTerm = Math.min(360, Math.max(1, Math.round(Number(stored.groupTerm) || DEFAULT_GROUP_TERM)));
     }else{
       const migrated = migrateLegacy();
       state.clients = migrated.clients;
@@ -267,7 +351,9 @@
   function save(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       clients: state.clients,
-      history: []
+      history: [],
+      groupSize: activeGroupSize(),
+      groupTerm: activeGroupTerm()
     }));
   }
 
@@ -342,7 +428,7 @@
     if(!textarea) return [];
     return extractQuotaList(textarea.value)
       .map(Number)
-      .filter(number => number >= 1 && number <= FREE_QUOTA_MAX);
+      .filter(number => number >= 1 && number <= activeGroupSize());
   }
 
   function federalHistoryWindow(){
@@ -366,17 +452,7 @@
   }
 
   function computeCoverage(){
-    const covered = new Set();
-    registeredQuotaEntries().forEach(entry => {
-      if(entry.number < 1 || entry.number > FREE_QUOTA_MAX) return;
-      const from = Math.max(1, entry.number - ALERT_DISTANCE);
-      const to = Math.min(FREE_QUOTA_MAX, entry.number + ALERT_DISTANCE);
-      for(let number = from; number <= to; number += 1) covered.add(number);
-    });
-    return {
-      count: covered.size,
-      percentage: FREE_QUOTA_MAX ? (covered.size / FREE_QUOTA_MAX) * 100 : 0
-    };
+    return coverageForNumbers(registeredQuotaEntries().map(entry => entry.number));
   }
 
   function unifiedHistoryRows(){
@@ -400,7 +476,8 @@
 
     const rows = unifiedHistoryRows();
     const officialCount = federalHistoryWindow().length;
-    const inRange = rows.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
+    const groupSize = activeGroupSize();
+    const inRange = rows.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= groupSize).length;
 
     $('sorteioUnifiedHistoryCount').textContent = rows.length + (rows.length === 1 ? ' sorteio' : ' sorteios');
     $('sorteioOfficialHistoryCount').textContent = officialCount;
@@ -451,13 +528,14 @@
   function freeQuotaSuggestions(){
     const occupied = registeredQuotaEntries()
       .map(entry => entry.number)
-      .filter(number => number >= 1 && number <= FREE_QUOTA_MAX)
+      .filter(number => number >= 1 && number <= activeGroupSize())
       .concat(pendingQuotaNumbers())
       .sort((a, b) => a - b);
 
     const historical = historicalReferenceSet();
     const selected = [];
-    for(let number = 1; number <= FREE_QUOTA_MAX; number += 1){
+    const groupSize = activeGroupSize();
+    for(let number = 1; number <= groupSize; number += 1){
       const formatted = String(number).padStart(4, '0');
       if(avoidHistoricalEnabled() && historical.has(formatted)) continue;
       const farFromOccupied = occupied.every(used => Math.abs(number - used) >= MIN_QUOTA_DISTANCE);
@@ -535,17 +613,17 @@
     const used = new Set(
       registeredQuotaEntries()
         .map(entry => entry.number)
-        .filter(number => number >= 1 && number <= FREE_QUOTA_MAX)
+        .filter(number => number >= 1 && number <= activeGroupSize())
     );
 
     $('sorteioFreeCount').textContent = free.length + (free.length === 1 ? ' livre' : ' livres');
     $('sorteioUsedQuotaCount').textContent = used.size;
     const coverage = computeCoverage();
     if($('sorteioCoveragePct')) $('sorteioCoveragePct').textContent = coverage.percentage.toFixed(1).replace('.', ',') + '%';
-    if($('sorteioCoverageCount')) $('sorteioCoverageCount').textContent = coverage.count + ' / ' + FREE_QUOTA_MAX;
+    if($('sorteioCoverageCount')) $('sorteioCoverageCount').textContent = coverage.count + ' / ' + activeGroupSize();
 
     if(!free.length){
-      list.innerHTML = '<div class="radar-empty">Não há outra posição livre que mantenha 21 números de distância dentro de 0001–5000.</div>';
+      list.innerHTML = '<div class="radar-empty">Não há outra posição livre que mantenha 21 números de distância dentro de 0001–' + String(activeGroupSize()).padStart(4,'0') + '.</div>';
       return;
     }
 
@@ -685,10 +763,17 @@
       const hits = recordsForClient(client).length;
       const visible = client.cotas.slice(0, 8);
       const rest = client.cotas.slice(8);
+      const math = clientMath(client);
       return '<article class="radar-client-row" data-client-id="' + escapeHTML(client.id) + '">' +
         '<div class="radar-client-head">' +
           '<div><strong>' + escapeHTML(client.nome) + '</strong><span>' + client.cotas.length + (client.cotas.length === 1 ? ' cota' : ' cotas') + '</span></div>' +
           (hits ? '<b class="radar-history-hit">' + hits + (hits === 1 ? ' alerta no histórico' : ' alertas no histórico') + '</b>' : '') +
+        '</div>' +
+        '<div class="radar-client-probability">' +
+          '<div><span>Cobertura exata ±10</span><strong>' + percent(math.coverage.percentage,2) + '</strong><small>' + math.coverage.count + ' / ' + math.groupSize + ' referências</small></div>' +
+          '<div><span>Participação direta</span><strong>' + percent(math.sharePercentage,3) + '</strong><small>' + math.validQuotaCount + ' / ' + math.groupSize + ' cotas</small></div>' +
+          '<div><span>Média linear da carteira</span><strong>' + formatDecimal(math.expectedProjectContemplations,3) + '/mês</strong><small>' + (math.monthsPerExpected ? '1 a cada ' + formatDecimal(math.monthsPerExpected,2) + ' meses' : '—') + '</small></div>' +
+          '<div><span>Chance mensal teórica*</span><strong>' + percent(math.monthlyProbability,2) + '</strong><small>modelo uniforme</small></div>' +
         '</div>' +
         '<div class="radar-quota-chips">' + visible.map(value => '<span>' + value + '</span>').join('') + '</div>' +
         (rest.length ? '<details class="radar-more-quotas"><summary>Ver todas as ' + client.cotas.length + ' cotas</summary><div class="radar-quota-chips">' + client.cotas.map(value => '<span>' + value + '</span>').join('') + '</div></details>' : '') +
@@ -704,6 +789,7 @@
   }
 
   function renderAll(){
+    renderGroupMath();
     renderParsedPreview();
     renderClients();
     renderUnifiedHistory();
@@ -868,6 +954,17 @@
     $('sorteioUseNextFreeBtn')?.addEventListener('click', useNextFreeQuota);
     $('sorteioCopyFreeBtn')?.addEventListener('click', copyFreeQuotas);
     $('sorteioAvoidHistorical')?.addEventListener('change', renderFreeQuotas);
+
+    const updateGroupMath = () => {
+      const size = Math.min(MAX_QUOTA, Math.max(1, Math.round(Number($('sorteioGroupSize')?.value) || DEFAULT_GROUP_SIZE)));
+      const term = Math.min(360, Math.max(1, Math.round(Number($('sorteioGroupTerm')?.value) || DEFAULT_GROUP_TERM)));
+      state.groupSize = size;
+      state.groupTerm = term;
+      save();
+      renderAll();
+    };
+    $('sorteioGroupSize')?.addEventListener('change', updateGroupMath);
+    $('sorteioGroupTerm')?.addEventListener('change', updateGroupMath);
 
     $('sorteioClientSearch').addEventListener('input', event => {
       state.search = event.target.value;
