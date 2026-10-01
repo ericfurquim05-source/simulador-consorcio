@@ -65,6 +65,8 @@
     const reducedFundPercent = clamp(numberValue('empParcelaReduzidaPct', 50), 0, 100) / 100;
     const reducedOverride = parseMoney($('empParcelaReduzidaManual').value);
     const fullOverride = parseMoney($('empParcelaCheiaManual').value);
+    const reducedProjectOverride = parseMoney($('empParcelaReduzidaProjetoManual').value);
+    const fullProjectOverride = parseMoney($('empParcelaCheiaProjetoManual').value);
     const contemplations = Math.round(numberValue('empContemplacoes', 0));
     const assetValue = parseMoney($('empBem').value);
     const collateralPercent = clamp(numberValue('empPercentualBem', 80), 0, 100) / 100;
@@ -80,7 +82,7 @@
 
     return {
       client, projectValue, quotaValue, term, analysisMonths, adminRate, reducedFundPercent,
-      reducedOverride, fullOverride, contemplations, assetValue, collateralPercent, assetOwner, purpose
+      reducedOverride, fullOverride, reducedProjectOverride, fullProjectOverride, contemplations, assetValue, collateralPercent, assetOwner, purpose
     };
   }
 
@@ -90,11 +92,12 @@
 
     const calculatedReducedPerQuota = input.quotaValue * (input.reducedFundPercent + input.adminRate) / input.term;
     const calculatedFullPerQuota = input.quotaValue * (1 + input.adminRate) / input.term;
-    const reducedPerQuota = input.reducedOverride > 0 ? input.reducedOverride : calculatedReducedPerQuota;
-    const fullPerQuota = input.fullOverride > 0 ? input.fullOverride : calculatedFullPerQuota;
-
-    const reducedProjectPayment = reducedPerQuota * quotaCount;
-    const fullProjectPayment = fullPerQuota * quotaCount;
+    let reducedPerQuota = input.reducedOverride > 0 ? input.reducedOverride : calculatedReducedPerQuota;
+    let fullPerQuota = input.fullOverride > 0 ? input.fullOverride : calculatedFullPerQuota;
+    let reducedProjectPayment = reducedPerQuota * quotaCount;
+    let fullProjectPayment = fullPerQuota * quotaCount;
+    if(input.reducedProjectOverride > 0){ reducedProjectPayment = input.reducedProjectOverride; reducedPerQuota = reducedProjectPayment / quotaCount; }
+    if(input.fullProjectOverride > 0){ fullProjectPayment = input.fullProjectOverride; fullPerQuota = fullProjectPayment / quotaCount; }
     const averageContemplationsMonthly = quotaCount / input.term;
     const averageMonthsPerContemplation = averageContemplationsMonthly > 0 ? 1 / averageContemplationsMonthly : 0;
     const linearContemplationsRaw = averageContemplationsMonthly * input.analysisMonths;
@@ -492,6 +495,8 @@
       '<div class="field"><label for="empParcelaReduzidaPct">Fundo comum na parcela reduzida</label><div class="control"><input id="empParcelaReduzidaPct" type="number" value="50" min="0" max="100" step="1"><span>%</span></div></div>',
       '<div class="field"><label for="empParcelaReduzidaManual">Parcela reduzida por cota <span class="optional">opcional</span></label><div class="control money-control"><span>R$</span><input id="empParcelaReduzidaManual" type="text" inputmode="decimal" placeholder="Calculada automaticamente"></div></div>',
       '<div class="field"><label for="empParcelaCheiaManual">Parcela cheia por cota <span class="optional">opcional</span></label><div class="control money-control"><span>R$</span><input id="empParcelaCheiaManual" type="text" inputmode="decimal" placeholder="Calculada automaticamente"></div></div>',
+      '<div class="field"><label for="empParcelaReduzidaProjetoManual">Parcela reduzida total do projeto <span class="optional">opcional</span></label><div class="control money-control"><span>R$</span><input id="empParcelaReduzidaProjetoManual" type="text" inputmode="decimal" placeholder="Ex.: 33.380"></div></div>',
+      '<div class="field"><label for="empParcelaCheiaProjetoManual">Parcela cheia total do projeto <span class="optional">opcional</span></label><div class="control money-control"><span>R$</span><input id="empParcelaCheiaProjetoManual" type="text" inputmode="decimal" placeholder="Se houver valor consolidado"></div></div>',
       '</div><div class="assumption-footer"><span>Se tu informar a parcela real da cota, ela prevalece sobre a fórmula. Isso deixa a apresentação auditável pelo contrato daquele grupo.</span></div></details>',
       '<div id="empError" class="message error" hidden></div><button id="empCalcularBtn" class="primary-button" type="button">Calcular projeto empresarial</button>',
       '</article>',
@@ -536,7 +541,7 @@
   }
 
   function bind(){
-    ['empProjeto','empCarta','empBem','empParcelaReduzidaManual','empParcelaCheiaManual'].forEach(function(id){
+    ['empProjeto','empCarta','empBem','empParcelaReduzidaManual','empParcelaCheiaManual','empParcelaReduzidaProjetoManual','empParcelaCheiaProjetoManual'].forEach(function(id){
       const el = $(id);
       if(!el) return;
       el.addEventListener('blur',function(event){ event.target.value = moneyInput(event.target.value); });
