@@ -6,6 +6,8 @@
   const LEGACY_CLIENTS = 'simulador-sorteio-clientes-v1';
   const MAX_QUOTA = 9999;
   const ALERT_DISTANCE = 10;
+  const FREE_QUOTA_MAX = 5000;
+  const MIN_QUOTA_DISTANCE = 21;
   const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
 
   const IMPORT_RUI_HARI = [
@@ -274,6 +276,167 @@
     });
   }
 
+  function registeredQuotaEntries(excludeClientId = null){
+    const entries = [];
+    state.clients.forEach(client => {
+      if(excludeClientId && client.id === excludeClientId) return;
+      client.cotas.forEach(cotaValue => {
+        entries.push({
+          clientId: client.id,
+          nome: client.nome,
+          cota: cotaValue,
+          number: Number(cotaValue)
+        });
+      });
+    });
+    return entries;
+  }
+
+  function pendingQuotaNumbers(){
+    const textarea = $('sorteioClientQuotas');
+    if(!textarea) return [];
+    return extractQuotaList(textarea.value)
+      .map(Number)
+      .filter(number => number >= 1 && number <= FREE_QUOTA_MAX);
+  }
+
+  function freeQuotaSuggestions(){
+    const occupied = registeredQuotaEntries()
+      .map(entry => entry.number)
+      .filter(number => number >= 1 && number <= FREE_QUOTA_MAX)
+      .concat(pendingQuotaNumbers())
+      .sort((a, b) => a - b);
+
+    const selected = [];
+    for(let number = 1; number <= FREE_QUOTA_MAX; number += 1){
+      const farFromOccupied = occupied.every(used => Math.abs(number - used) >= MIN_QUOTA_DISTANCE);
+      if(!farFromOccupied) continue;
+      const previousSuggested = selected[selected.length - 1];
+      if(previousSuggested !== undefined && number - previousSuggested < MIN_QUOTA_DISTANCE) continue;
+      selected.push(number);
+    }
+    return selected.map(number => String(number).padStart(4, '0'));
+  }
+
+  function nearestConflict(cotas, excludeClientId = null, existingSameClient = []){
+    const candidates = cotas.map(Number);
+    const existing = registeredQuotaEntries(excludeClientId);
+    existingSameClient.forEach(cotaValue => {
+      existing.push({clientId: excludeClientId || '', nome: 'este cliente', cota: cotaValue, number: Number(cotaValue)});
+    });
+
+    for(let i = 0; i < candidates.length; i += 1){
+      for(let j = i + 1; j < candidates.length; j += 1){
+        const distance = Math.abs(candidates[i] - candidates[j]);
+        if(distance === 0){
+          return {type:'duplicate', cota:String(candidates[i]).padStart(4,'0'), other:'na própria lista', distance:0};
+        }
+        if(distance < MIN_QUOTA_DISTANCE){
+          return {
+            type:'near',
+            cota:String(candidates[i]).padStart(4,'0'),
+            other:String(candidates[j]).padStart(4,'0'),
+            distance
+          };
+        }
+      }
+    }
+
+    for(const cotaNumber of candidates){
+      for(const item of existing){
+        const distance = Math.abs(cotaNumber - item.number);
+        if(distance === 0){
+          return {
+            type:'duplicate',
+            cota:String(cotaNumber).padStart(4,'0'),
+            other:item.nome + ' · ' + item.cota,
+            distance
+          };
+        }
+        if(distance < MIN_QUOTA_DISTANCE){
+          return {
+            type:'near',
+            cota:String(cotaNumber).padStart(4,'0'),
+            other:item.nome + ' · ' + item.cota,
+            distance
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  function appendFreeQuota(value){
+    const textarea = $('sorteioClientQuotas');
+    if(!textarea) return;
+    const current = extractQuotaList(textarea.value);
+    if(!current.includes(value)) current.push(value);
+    textarea.value = current.join(', ');
+    renderParsedPreview();
+    renderFreeQuotas();
+    textarea.focus();
+  }
+
+  function renderFreeQuotas(){
+    const list = $('sorteioFreeList');
+    if(!list) return;
+    const free = freeQuotaSuggestions();
+    const used = new Set(
+      registeredQuotaEntries()
+        .map(entry => entry.number)
+        .filter(number => number >= 1 && number <= FREE_QUOTA_MAX)
+    );
+
+    $('sorteioFreeCount').textContent = free.length + (free.length === 1 ? ' livre' : ' livres');
+    $('sorteioUsedQuotaCount').textContent = used.size;
+
+    if(!free.length){
+      list.innerHTML = '<div class="radar-empty">Não há outra posição livre que mantenha 21 números de distância dentro de 0001–5000.</div>';
+      return;
+    }
+
+    list.innerHTML = free.map(value =>
+      '<button class="radar-free-chip" type="button" data-free-quota="' + value + '" title="Adicionar cota ' + value + '">' + value + '</button>'
+    ).join('');
+
+    list.querySelectorAll('[data-free-quota]').forEach(button => {
+      button.addEventListener('click', () => appendFreeQuota(button.dataset.freeQuota));
+    });
+  }
+
+  async function copyFreeQuotas(){
+    const free = freeQuotaSuggestions();
+    if(!free.length){
+      showMessage('sorteioFreeMessage', 'Não há cotas livres para copiar.', 'error');
+      return;
+    }
+    const text = free.join(', ');
+    try{
+      await navigator.clipboard.writeText(text);
+      showMessage('sorteioFreeMessage', free.length + ' cotas livres copiadas.');
+    }catch(_error){
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+      showMessage('sorteioFreeMessage', free.length + ' cotas livres copiadas.');
+    }
+  }
+
+  function useNextFreeQuota(){
+    const free = freeQuotaSuggestions();
+    if(!free.length){
+      showMessage('sorteioFreeMessage', 'Não há outra cota livre nessa faixa.', 'error');
+      return;
+    }
+    appendFreeQuota(free[0]);
+    showMessage('sorteioFreeMessage', 'Cota ' + free[0] + ' adicionada ao cliente. Salve o cliente para confirmar.');
+  }
+
   function renderParsedPreview(){
     const preview = $('sorteioParsedPreview');
     const values = extractQuotaList($('sorteioClientQuotas')?.value || '');
@@ -424,6 +587,7 @@
   function renderAll(){
     renderParsedPreview();
     renderClients();
+    renderFreeQuotas();
     renderHistory();
     const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
     state.currentRecordId = record?.id || null;
@@ -484,6 +648,18 @@
     let client = state.clients.find(item => item.nome.toLocaleLowerCase('pt-BR') === key);
     let merged = false;
 
+    const existingSameClient = client ? client.cotas : [];
+    const onlyNew = client ? cotas.filter(value => !client.cotas.includes(value)) : cotas;
+    const conflict = nearestConflict(onlyNew, client?.id || null, existingSameClient);
+    if(conflict){
+      if(conflict.type === 'duplicate'){
+        showMessage('sorteioClientMessage', 'A cota ' + conflict.cota + ' já está usada por ' + conflict.other + '. Escolha uma cota livre.', 'error');
+      }else{
+        showMessage('sorteioClientMessage', 'A cota ' + conflict.cota + ' ficou só ' + conflict.distance + ' números de ' + conflict.other + '. Use uma cota com distância mínima de 21.', 'error');
+      }
+      return;
+    }
+
     if(client){
       client.cotas = [...new Set(client.cotas.concat(cotas))].sort((a, b) => Number(a) - Number(b));
       merged = true;
@@ -526,6 +702,13 @@
 
     if(!cleanName || !cotas.length){
       showMessage('sorteioClientMessage', 'Para editar, mantenha um nome e pelo menos uma cota válida.', 'error');
+      return;
+    }
+
+    const duplicateOther = cotas.find(value => registeredQuotaEntries(client.id).some(entry => entry.cota === value));
+    if(duplicateOther){
+      const owner = registeredQuotaEntries(client.id).find(entry => entry.cota === duplicateOther);
+      showMessage('sorteioClientMessage', 'A cota ' + duplicateOther + ' já pertence a ' + owner.nome + '. Nenhum cliente pode repetir a mesma cota.', 'error');
       return;
     }
 
@@ -573,8 +756,13 @@
       }
     });
 
-    $('sorteioClientQuotas').addEventListener('input', renderParsedPreview);
+    $('sorteioClientQuotas').addEventListener('input', () => {
+      renderParsedPreview();
+      renderFreeQuotas();
+    });
     $('sorteioAddClientBtn').addEventListener('click', addClient);
+    $('sorteioUseNextFreeBtn')?.addEventListener('click', useNextFreeQuota);
+    $('sorteioCopyFreeBtn')?.addEventListener('click', copyFreeQuotas);
 
     $('sorteioClientSearch').addEventListener('input', event => {
       state.search = event.target.value;
