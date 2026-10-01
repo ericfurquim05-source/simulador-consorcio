@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.6.1-radar-clientes-rui-hari';
+const VERSION = 'simulador-consorcio-v2.7.0-cotas-livres';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
