@@ -452,7 +452,7 @@
           <div id="sorteioClientList" class="radar-client-list"></div>
         </article>
 
-        <details class="panel draw-collapsible radar-federal-history-panel">
+        <details class="panel draw-collapsible radar-federal-history-panel" open>
           <summary>
             <span><b>Histórico de números sorteados</b><small>Somente os 60 registros oficiais da Federal usados como base</small></span>
             <strong id="sorteioUnifiedHistoryCount">60 sorteios</strong>
@@ -471,7 +471,7 @@
               
               <div><span>Dentro de 0001–5000</span><strong id="sorteioFederalInRangeCount">0</strong></div>
             </div>
-            <div id="sorteioUnifiedHistoryList" class="radar-unified-history-list"></div>
+            <div id="sorteioUnifiedHistoryList" class="radar-unified-history-list"><div class="radar-empty">Carregando os 60 registros oficiais…</div></div>
             <p class="radar-source-note">Os 60 registros abaixo são a única base histórica usada pelo sistema.</p>
           </div>
         </details>
@@ -495,7 +495,6 @@
             <div id="sorteioFreeMessage" class="message success" hidden></div>
             <div id="sorteioFreeList" class="radar-free-list"></div>
           </div>
-        </details>
         </details>
       </section>
 
@@ -571,7 +570,7 @@
   <script src="./pdf.js?v=250" defer></script>
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
-  <script src="./federal-history.js?v=320" defer></script>
-  <script src="./sorteio.js?v=321" defer></script>
+  <script src="./federal-history.js?v=330" defer></script>
+  <script src="./sorteio.js?v=330" defer></script>
 </body>
 </html>
