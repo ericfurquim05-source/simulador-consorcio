@@ -8,7 +8,7 @@
   const ALERT_DISTANCE = 10;
   const FREE_QUOTA_MAX = 5000;
   const MIN_QUOTA_DISTANCE = 21;
-  const FEDERAL_24_MONTHS = [
+  const FEDERAL_36_MONTHS = [
     {date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
     {date:'19/08/2026', contest:6093, raw:'080574', reference:'0574'},
     {date:'19/07/2026', contest:6084, raw:'017667', reference:'7667'},
@@ -32,7 +32,19 @@
     {date:'18/01/2025', contest:5934, raw:'025472', reference:'5472'},
     {date:'21/12/2024', contest:5928, raw:'081282', reference:'1282'},
     {date:'16/11/2024', contest:5919, raw:'026609', reference:'6609'},
-    {date:'19/10/2024', contest:5911, raw:'035189', reference:'5189'}
+    {date:'19/10/2024', contest:5911, raw:'035189', reference:'5189'},
+    {date:'18/09/2024', contest:5902, raw:'045525', reference:'5525'},
+    {date:'17/08/2024', contest:5893, raw:'041547', reference:'1547'},
+    {date:'17/07/2024', contest:5884, raw:'012630', reference:'2630'},
+    {date:'19/06/2024', contest:5876, raw:'052749', reference:'2749'},
+    {date:'18/05/2024', contest:5867, raw:'035181', reference:'5181'},
+    {date:'17/04/2024', contest:5858, raw:'067610', reference:'7610'},
+    {date:'16/03/2024', contest:5849, raw:'007542', reference:'7542'},
+    {date:'17/02/2024', contest:5841, raw:'017178', reference:'7178'},
+    {date:'17/01/2024', contest:5833, raw:'060541', reference:'0541'},
+    {date:'16/12/2023', contest:5826, raw:'030255', reference:'0255'},
+    {date:'18/11/2023', contest:5818, raw:'060687', reference:'0687'},
+    {date:'18/10/2023', contest:5809, raw:'072525', reference:'2525'}
   ];
   const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
 
@@ -327,7 +339,7 @@
   }
 
   function historicalReferenceSet(){
-    return new Set(FEDERAL_24_MONTHS.map(item => item.reference));
+    return new Set(FEDERAL_36_MONTHS.map(item => item.reference));
   }
 
   function avoidHistoricalEnabled(){
@@ -335,14 +347,15 @@
     return control ? control.checked : true;
   }
 
-  function renderFederal24History(){
-    const list = $('sorteioFederal24List');
+  function renderFederal36History(){
+    const list = $('sorteioFederal36List');
     if(!list) return;
+    if($('sorteioFederal36Count')) $('sorteioFederal36Count').textContent = FEDERAL_36_MONTHS.length + ' meses';
 
     const counts = new Map();
-    FEDERAL_24_MONTHS.forEach(item => counts.set(item.reference, (counts.get(item.reference) || 0) + 1));
+    FEDERAL_36_MONTHS.forEach(item => counts.set(item.reference, (counts.get(item.reference) || 0) + 1));
     const repeated = [...counts.values()].filter(count => count > 1).reduce((sum, count) => sum + (count - 1), 0);
-    const inRange = FEDERAL_24_MONTHS.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
+    const inRange = FEDERAL_36_MONTHS.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
 
     $('sorteioFederalRepeatCount').textContent = repeated;
     $('sorteioFederalInRangeCount').textContent = inRange;
@@ -353,7 +366,7 @@
       registered.get(entry.cota).push(entry.nome);
     });
 
-    list.innerHTML = FEDERAL_24_MONTHS.map(item => {
+    list.innerHTML = FEDERAL_36_MONTHS.map(item => {
       const owners = registered.get(item.reference) || [];
       const rangeClass = Number(item.reference) <= FREE_QUOTA_MAX ? ' in-range' : ' out-range';
       const owner = owners.length
@@ -656,7 +669,7 @@
   function renderAll(){
     renderParsedPreview();
     renderClients();
-    renderFederal24History();
+    renderFederal36History();
     renderFreeQuotas();
     renderHistory();
     const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
