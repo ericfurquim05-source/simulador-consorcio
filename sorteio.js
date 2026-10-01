@@ -148,9 +148,9 @@
     const average = term ? groupSize / term : 0;
     if($('sorteioGroupSize')) $('sorteioGroupSize').value = groupSize;
     if($('sorteioGroupTerm')) $('sorteioGroupTerm').value = term;
-    if($('sorteioAvgContemplations')) $('sorteioAvgContemplations').textContent = formatDecimal(average, 2) + ' cotas/mês';
-    if($('sorteioRadarRange')) $('sorteioRadarRange').textContent = (ALERT_DISTANCE * 2 + 1) + ' números por cota';
-    if($('sorteioMathUniverse')) $('sorteioMathUniverse').textContent = formatDecimal(groupSize, 0) + ' posições';
+    if($('sorteioAvgContemplations')) $('sorteioAvgContemplations').textContent = formatDecimal(average, 2) + ' por mês';
+    if($('sorteioRadarRange')) $('sorteioRadarRange').textContent = 'até ' + (ALERT_DISTANCE * 2 + 1) + ' números';
+    if($('sorteioMathUniverse')) $('sorteioMathUniverse').textContent = formatDecimal(groupSize, 0);
     if($('sorteioMaxSeparated')) $('sorteioMaxSeparated').textContent = formatDecimal(Math.ceil(groupSize / MIN_QUOTA_DISTANCE), 0) + ' cotas';
   }
 
@@ -769,12 +769,17 @@
           '<div><strong>' + escapeHTML(client.nome) + '</strong><span>' + client.cotas.length + (client.cotas.length === 1 ? ' cota' : ' cotas') + '</span></div>' +
           (hits ? '<b class="radar-history-hit">' + hits + (hits === 1 ? ' alerta no histórico' : ' alertas no histórico') + '</b>' : '') +
         '</div>' +
-        '<div class="radar-client-probability">' +
-          '<div><span>Cobertura exata ±10</span><strong>' + percent(math.coverage.percentage,2) + '</strong><small>' + math.coverage.count + ' / ' + math.groupSize + ' referências</small></div>' +
-          '<div><span>Participação direta</span><strong>' + percent(math.sharePercentage,3) + '</strong><small>' + math.validQuotaCount + ' / ' + math.groupSize + ' cotas</small></div>' +
-          '<div><span>Média linear da carteira</span><strong>' + formatDecimal(math.expectedProjectContemplations,3) + '/mês</strong><small>' + (math.monthsPerExpected ? '1 a cada ' + formatDecimal(math.monthsPerExpected,2) + ' meses' : '—') + '</small></div>' +
-          '<div><span>Chance mensal teórica*</span><strong>' + percent(math.monthlyProbability,2) + '</strong><small>modelo uniforme</small></div>' +
+        '<div class="radar-client-simple">' +
+          '<div class="radar-client-main-number"><span>Quanto do grupo essas cotas cobrem</span><strong>' + percent(math.coverage.percentage,1) + '</strong><small>' + math.coverage.count + ' dos ' + math.groupSize + ' números ficam dentro da faixa ±10</small></div>' +
+          '<div class="radar-client-main-number"><span>Chance matemática de contemplar no mês*</span><strong>' + percent(math.monthlyProbability,1) + '</strong><small>considerando ' + math.validQuotaCount + ' cotas dentro de um grupo de ' + math.groupSize + '</small></div>' +
         '</div>' +
+        '<div class="radar-client-plainline"><b>Em média matemática:</b> essa carteira representa ' + formatDecimal(math.expectedProjectContemplations,2) + ' contemplação por mês' + (math.monthsPerExpected ? ' — equivalente a 1 contemplação a cada ' + formatDecimal(math.monthsPerExpected,1) + ' meses.' : '.') + '</div>' +
+        '<details class="radar-client-math-details"><summary>Ver como a conta foi feita</summary><div>' +
+          '<p><b>Cotas do cliente:</b> ' + math.validQuotaCount + ' de ' + math.groupSize + '.</p>' +
+          '<p><b>Participação direta:</b> ' + percent(math.sharePercentage,3) + ' do grupo.</p>' +
+          '<p><b>Média do grupo:</b> ' + formatDecimal(math.averageGroupContemplations,2) + ' contemplações por mês.</p>' +
+          '<p><b>Importante:</b> a cobertura ±10 e a chance mensal são duas leituras diferentes. Nenhuma delas garante contemplação.</p>' +
+        '</div></details>' +
         '<div class="radar-quota-chips">' + visible.map(value => '<span>' + value + '</span>').join('') + '</div>' +
         (rest.length ? '<details class="radar-more-quotas"><summary>Ver todas as ' + client.cotas.length + ' cotas</summary><div class="radar-quota-chips">' + client.cotas.map(value => '<span>' + value + '</span>').join('') + '</div></details>' : '') +
         '<div class="radar-client-actions"><button type="button" data-action="edit">Editar</button><button type="button" data-action="delete" class="danger">Excluir</button></div>' +
