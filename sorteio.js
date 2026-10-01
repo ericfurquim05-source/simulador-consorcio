@@ -8,8 +8,8 @@
   const ALERT_DISTANCE = 10;
   const FREE_QUOTA_MAX = 5000;
   const MIN_QUOTA_DISTANCE = 21;
-  const FEDERAL_36_MONTHS = [
-    {date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
+  const FEDERAL_60_MONTHS = [
+{date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
     {date:'19/08/2026', contest:6093, raw:'080574', reference:'0574'},
     {date:'19/07/2026', contest:6084, raw:'017667', reference:'7667'},
     {date:'17/06/2026', contest:6075, raw:'053952', reference:'3952'},
@@ -44,7 +44,31 @@
     {date:'17/01/2024', contest:5833, raw:'060541', reference:'0541'},
     {date:'16/12/2023', contest:5826, raw:'030255', reference:'0255'},
     {date:'18/11/2023', contest:5818, raw:'060687', reference:'0687'},
-    {date:'18/10/2023', contest:5809, raw:'072525', reference:'2525'}
+    {date:'18/10/2023', contest:5809, raw:'072525', reference:'2525'},
+    {date:'19/09/2023', contest:5792, raw:'012593', reference:'2593'},
+    {date:'16/08/2023', contest:5791, raw:'027413', reference:'7413'},
+    {date:'19/07/2023', contest:5783, raw:'021712', reference:'1712'},
+    {date:'17/06/2023', contest:5774, raw:'077129', reference:'7129'},
+    {date:'17/05/2023', contest:5765, raw:'033770', reference:'3770'},
+    {date:'19/04/2023', contest:5757, raw:'034125', reference:'4125'},
+    {date:'18/03/2023', contest:5748, raw:'085850', reference:'5850'},
+    {date:'18/02/2023', contest:5741, raw:'088869', reference:'8869'},
+    {date:'18/01/2023', contest:5732, raw:'050366', reference:'0366'},
+    {date:'17/12/2022', contest:5725, raw:'058657', reference:'8657'},
+    {date:'19/11/2022', contest:5717, raw:'045928', reference:'5928'},
+    {date:'19/10/2022', contest:5708, raw:'097990', reference:'7990'},
+    {date:'17/09/2022', contest:5699, raw:'049645', reference:'9645'},
+    {date:'17/08/2022', contest:5690, raw:'065426', reference:'5426'},
+    {date:'16/07/2022', contest:5681, raw:'047844', reference:'7844'},
+    {date:'18/06/2022', contest:5673, raw:'037325', reference:'7325'},
+    {date:'18/05/2022', contest:5664, raw:'070279', reference:'0279'},
+    {date:'16/04/2022', contest:5655, raw:'000871', reference:'0871'},
+    {date:'19/03/2022', contest:5646, raw:'082051', reference:'2051'},
+    {date:'19/02/2022', contest:5640, raw:'032646', reference:'2646'},
+    {date:'19/01/2022', contest:5631, raw:'005146', reference:'5146'},
+    {date:'18/12/2021', contest:5623, raw:'010118', reference:'0118'},
+    {date:'20/11/2021', contest:5615, raw:'014162', reference:'4162'},
+    {date:'16/10/2021', contest:5606, raw:'079603', reference:'9603'}
   ];
   const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
 
@@ -338,8 +362,18 @@
       .filter(number => number >= 1 && number <= FREE_QUOTA_MAX);
   }
 
+  function federalHistoryWindow(){
+    return FEDERAL_60_MONTHS.slice()
+      .sort((a, b) => {
+        const [da, ma, ya] = a.date.split('/').map(Number);
+        const [db, mb, yb] = b.date.split('/').map(Number);
+        return new Date(yb, mb - 1, db) - new Date(ya, ma - 1, da);
+      })
+      .slice(0, 60);
+  }
+
   function historicalReferenceSet(){
-    return new Set(FEDERAL_36_MONTHS.map(item => item.reference));
+    return new Set(federalHistoryWindow().map(item => item.reference));
   }
 
   function avoidHistoricalEnabled(){
@@ -362,7 +396,7 @@
   }
 
   function unifiedHistoryRows(){
-    const official = FEDERAL_36_MONTHS.map(item => ({
+    const official = federalHistoryWindow().map(item => ({
       id: 'official-' + item.contest,
       source: 'official',
       date: item.date,
@@ -393,7 +427,7 @@
     if(!list) return;
 
     const rows = unifiedHistoryRows();
-    const officialCount = FEDERAL_36_MONTHS.length;
+    const officialCount = federalHistoryWindow().length;
     const manualCount = state.history.length;
     const inRange = rows.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
 
