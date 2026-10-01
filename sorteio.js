@@ -6,6 +6,18 @@
   const LEGACY_CLIENTS = 'simulador-sorteio-clientes-v1';
   const MAX_QUOTA = 9999;
   const ALERT_DISTANCE = 10;
+  const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
+
+  const IMPORT_RUI_HARI = [
+    {
+      nome: 'Rui',
+      cotas: ['1755','4874','4890','4828','4498','4343','3322','3609','3880','2448','2269','1644','1550','1949','3177','3257','1199','0909']
+    },
+    {
+      nome: 'Hari',
+      cotas: ['1652','3783','2153','2009','4927','3935','3221','3915','4079','0840','2893','1220']
+    }
+  ];
 
   const state = {
     clients: [],
@@ -172,6 +184,23 @@
     return { clients, history: uniqueHistory };
   }
 
+  function applyRuiHariImport(){
+    if(localStorage.getItem(IMPORT_RUI_HARI_KEY) === '1') return;
+
+    IMPORT_RUI_HARI.forEach(seed => {
+      const incoming = normalizeClient({
+        id: uid('cliente'),
+        nome: seed.nome,
+        cotas: seed.cotas,
+        createdAt: Date.now()
+      });
+      if(incoming) mergeClient(state.clients, incoming);
+    });
+
+    save();
+    localStorage.setItem(IMPORT_RUI_HARI_KEY, '1');
+  }
+
   function load(){
     const stored = loadJSON(STORAGE_KEY, null);
     if(stored && Array.isArray(stored.clients) && Array.isArray(stored.history)){
@@ -183,6 +212,8 @@
       state.history = migrated.history;
       save();
     }
+
+    applyRuiHariImport();
     state.currentRecordId = state.history[0]?.id || null;
   }
 
