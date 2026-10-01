@@ -603,3 +603,8 @@ button{cursor:pointer}
 }
 
 /* v3.1.0 — janela móvel Federal 60 meses */
+
+/* v3.2.0 — status da base Federal canônica */
+.radar-db-status{margin-top:10px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#0b1219;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.02em}
+.radar-db-status.ok{border-color:#355443;color:#91d5aa;background:#0d1b14}
+.radar-db-status.error{border-color:#74383d;color:#ff9d9d;background:#28171a}
