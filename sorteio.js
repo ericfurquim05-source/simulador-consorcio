@@ -308,7 +308,7 @@
 
   function recordsForClient(client){
     const quotaNumbers = client.cotas.map(Number);
-    return state.history.filter(record => {
+    return unifiedHistoryRows().filter(record => {
       const ref = Number(record.reference);
       return quotaNumbers.some(number => Math.abs(number - ref) <= ALERT_DISTANCE);
     });
@@ -347,17 +347,59 @@
     return control ? control.checked : true;
   }
 
-  function renderFederal36History(){
-    const list = $('sorteioFederal36List');
+  function computeCoverage(){
+    const covered = new Set();
+    registeredQuotaEntries().forEach(entry => {
+      if(entry.number < 1 || entry.number > FREE_QUOTA_MAX) return;
+      const from = Math.max(1, entry.number - ALERT_DISTANCE);
+      const to = Math.min(FREE_QUOTA_MAX, entry.number + ALERT_DISTANCE);
+      for(let number = from; number <= to; number += 1) covered.add(number);
+    });
+    return {
+      count: covered.size,
+      percentage: FREE_QUOTA_MAX ? (covered.size / FREE_QUOTA_MAX) * 100 : 0
+    };
+  }
+
+  function unifiedHistoryRows(){
+    const official = FEDERAL_36_MONTHS.map(item => ({
+      id: 'official-' + item.contest,
+      source: 'official',
+      date: item.date,
+      contest: item.contest,
+      raw: item.raw,
+      reference: item.reference,
+      createdAt: (() => {
+        const [day, month, year] = item.date.split('/').map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0).getTime();
+      })()
+    }));
+
+    const manual = state.history.map(record => ({
+      id: record.id,
+      source: 'manual',
+      date: '',
+      contest: null,
+      raw: record.raw,
+      reference: record.reference,
+      createdAt: record.createdAt
+    }));
+
+    return official.concat(manual).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  function renderUnifiedHistory(){
+    const list = $('sorteioUnifiedHistoryList');
     if(!list) return;
-    if($('sorteioFederal36Count')) $('sorteioFederal36Count').textContent = FEDERAL_36_MONTHS.length + ' sorteios';
 
-    const counts = new Map();
-    FEDERAL_36_MONTHS.forEach(item => counts.set(item.reference, (counts.get(item.reference) || 0) + 1));
-    const repeated = [...counts.values()].filter(count => count > 1).reduce((sum, count) => sum + (count - 1), 0);
-    const inRange = FEDERAL_36_MONTHS.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
+    const rows = unifiedHistoryRows();
+    const officialCount = FEDERAL_36_MONTHS.length;
+    const manualCount = state.history.length;
+    const inRange = rows.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
 
-    $('sorteioFederalRepeatCount').textContent = repeated;
+    $('sorteioUnifiedHistoryCount').textContent = rows.length + (rows.length === 1 ? ' sorteio' : ' sorteios');
+    $('sorteioOfficialHistoryCount').textContent = officialCount;
+    $('sorteioManualHistoryCount').textContent = manualCount;
     $('sorteioFederalInRangeCount').textContent = inRange;
 
     const registered = new Map();
@@ -366,17 +408,33 @@
       registered.get(entry.cota).push(entry.nome);
     });
 
-    list.innerHTML = FEDERAL_36_MONTHS.map(item => {
+    list.innerHTML = rows.map(item => {
       const owners = registered.get(item.reference) || [];
-      const rangeClass = Number(item.reference) <= FREE_QUOTA_MAX ? ' in-range' : ' out-range';
+      const matches = computeMatches(item.reference);
+      const exact = matches.some(match => match.distance === 0);
+      const sourceLabel = item.source === 'official' ? 'OFICIAL' : 'MANUAL';
+      const date = item.source === 'official'
+        ? item.date + ' · concurso ' + item.contest
+        : new Date(item.createdAt).toLocaleString('pt-BR');
       const owner = owners.length
         ? '<span class="radar-federal-owner">Cota cadastrada: ' + escapeHTML(owners.join(', ')) + '</span>'
         : '';
-      return '<div class="radar-federal-history-row' + rangeClass + '">' +
-        '<div><strong>' + item.reference + '</strong><span>' + item.date + ' · concurso ' + item.contest + '</span></div>' +
-        '<div><b>1º prêmio ' + item.raw + '</b>' + owner + '</div>' +
+      const matchLabel = exact ? 'cota exata' : matches.length ? matches.length + (matches.length === 1 ? ' alerta' : ' alertas') : 'sem alerta';
+
+      return '<div class="radar-unified-history-row ' + item.source + '" data-record-id="' + escapeHTML(item.id) + '">' +
+        '<div class="radar-unified-history-main">' +
+          '<div><strong>' + item.reference + '</strong><span>' + escapeHTML(date) + '</span></div>' +
+          '<div><b>' + sourceLabel + '</b><span>1º prêmio/ref. ' + escapeHTML(item.raw) + '</span>' + owner + '</div>' +
+        '</div>' +
+        '<div class="radar-unified-history-side"><span>' + matchLabel + '</span>' +
+          (item.source === 'manual' ? '<button type="button" data-action="delete" class="danger">Excluir</button>' : '') +
+        '</div>' +
       '</div>';
     }).join('');
+
+    list.querySelectorAll('.radar-unified-history-row.manual').forEach(row => {
+      row.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteHistory(row.dataset.recordId));
+    });
   }
 
   function freeQuotaSuggestions(){
@@ -471,6 +529,9 @@
 
     $('sorteioFreeCount').textContent = free.length + (free.length === 1 ? ' livre' : ' livres');
     $('sorteioUsedQuotaCount').textContent = used.size;
+    const coverage = computeCoverage();
+    if($('sorteioCoveragePct')) $('sorteioCoveragePct').textContent = coverage.percentage.toFixed(1).replace('.', ',') + '%';
+    if($('sorteioCoverageCount')) $('sorteioCoverageCount').textContent = coverage.count + ' / ' + FREE_QUOTA_MAX;
 
     if(!free.length){
       list.innerHTML = '<div class="radar-empty">Não há outra posição livre que mantenha 21 números de distância dentro de 0001–5000.</div>';
@@ -631,47 +692,11 @@
     });
   }
 
-  function renderHistory(){
-    const list = $('sorteioHistoryList');
-    $('sorteioHistoryCount').textContent = state.history.length + (state.history.length === 1 ? ' conferência' : ' conferências');
-
-    if(!state.history.length){
-      list.innerHTML = '<div class="radar-empty">Nenhuma conferência manual foi salva ainda.</div>';
-      return;
-    }
-
-    list.innerHTML = state.history.map(record => {
-      const matches = computeMatches(record.reference);
-      const exact = matches.some(item => item.distance === 0);
-      const date = new Date(record.createdAt);
-      const when = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('pt-BR');
-      const status = exact ? 'COTA EXATA' : matches.length ? matches.length + (matches.length === 1 ? ' alerta' : ' alertas') : 'sem alertas';
-      const statusClass = exact ? ' exact' : matches.length ? ' warning' : ' safe';
-      const raw = record.raw !== record.reference ? '<span>Federal ' + escapeHTML(record.raw) + ' → ref. ' + record.reference + '</span>' : '<span>Referência ' + record.reference + '</span>';
-      return '<div class="radar-history-row' + statusClass + '" data-record-id="' + escapeHTML(record.id) + '">' +
-        '<div class="radar-history-number"><strong>' + record.reference + '</strong>' + raw + '</div>' +
-        '<div class="radar-history-meta"><b>' + escapeHTML(status) + '</b><span>' + escapeHTML(when) + '</span></div>' +
-        '<div class="radar-history-actions"><button type="button" data-action="view">Ver</button><button type="button" data-action="delete" class="danger">Excluir</button></div>' +
-      '</div>';
-    }).join('');
-
-    list.querySelectorAll('.radar-history-row').forEach(row => {
-      const id = row.dataset.recordId;
-      row.querySelector('[data-action="view"]').addEventListener('click', () => {
-        state.currentRecordId = id;
-        renderAlert(state.history.find(item => item.id === id) || null);
-        $('sorteioAlerta')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-      });
-      row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteHistory(id));
-    });
-  }
-
   function renderAll(){
     renderParsedPreview();
     renderClients();
-    renderFederal36History();
+    renderUnifiedHistory();
     renderFreeQuotas();
-    renderHistory();
     const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
     state.currentRecordId = record?.id || null;
     renderAlert(record);
@@ -704,8 +729,8 @@
     showMessage(
       'sorteioDrawMessage',
       matches.length
-        ? 'Número salvo. Atenção: encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
-        : 'Número salvo. Nenhuma cota ficou na faixa de ±10.',
+        ? 'Número adicionado ao histórico. Atenção: encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
+        : 'Número adicionado ao histórico. Nenhuma cota ficou na faixa de ±10.',
       matches.length ? 'warning' : 'success'
     );
 
