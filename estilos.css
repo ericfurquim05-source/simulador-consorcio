@@ -632,3 +632,16 @@ button{cursor:pointer}
   .radar-group-math-kpis,.radar-client-probability{grid-template-columns:1fr}
   .radar-group-math-kpis>div:last-child{grid-column:auto}
 }
+
+
+/* v3.5.1 — leitura simplificada da cobertura */
+.radar-client-simple{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}
+.radar-client-main-number{border:1px solid var(--line);border-radius:13px;background:#0b1219;padding:12px}
+.radar-client-main-number span{display:block;color:var(--muted);font-size:8px;line-height:1.35}
+.radar-client-main-number strong{display:block;margin-top:6px;font-size:22px;color:var(--orange-2)}
+.radar-client-main-number small{display:block;margin-top:5px;color:#a6b0ba;font-size:8px;line-height:1.4}
+.radar-client-plainline{margin:8px 0 10px;padding:10px 11px;border-radius:11px;background:#111820;border:1px solid var(--line);font-size:9px;line-height:1.5;color:#d7dee5}
+.radar-client-math-details{margin:4px 0 10px;border-top:1px dashed var(--line);padding-top:7px}
+.radar-client-math-details summary{cursor:pointer;color:#a9b4be;font-size:8px;font-weight:800}
+.radar-client-math-details p{margin:6px 0;font-size:8px;line-height:1.45;color:#aeb7c0}
+@media(max-width:680px){.radar-client-simple{grid-template-columns:1fr}}
