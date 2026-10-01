@@ -350,7 +350,7 @@
   function renderFederal36History(){
     const list = $('sorteioFederal36List');
     if(!list) return;
-    if($('sorteioFederal36Count')) $('sorteioFederal36Count').textContent = FEDERAL_36_MONTHS.length + ' meses';
+    if($('sorteioFederal36Count')) $('sorteioFederal36Count').textContent = FEDERAL_36_MONTHS.length + ' sorteios';
 
     const counts = new Map();
     FEDERAL_36_MONTHS.forEach(item => counts.set(item.reference, (counts.get(item.reference) || 0) + 1));
@@ -633,10 +633,10 @@
 
   function renderHistory(){
     const list = $('sorteioHistoryList');
-    $('sorteioHistoryCount').textContent = state.history.length + (state.history.length === 1 ? ' sorteio' : ' sorteios');
+    $('sorteioHistoryCount').textContent = state.history.length + (state.history.length === 1 ? ' conferência' : ' conferências');
 
     if(!state.history.length){
-      list.innerHTML = '<div class="radar-empty">Nenhum número sorteado foi salvo ainda.</div>';
+      list.innerHTML = '<div class="radar-empty">Nenhuma conferência manual foi salva ainda.</div>';
       return;
     }
 
