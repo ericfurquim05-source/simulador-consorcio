@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.7.0-cotas-livres';
+const VERSION = 'simulador-consorcio-v2.8.0-federal-24m';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
