@@ -60,6 +60,7 @@
     const projectValue = parseMoney($('empProjeto').value);
     const quotaValue = parseMoney($('empCarta').value);
     const term = Math.round(numberValue('empPrazo', 220));
+    const groupSize = Math.round(numberValue('empGroupSize', 5000));
     const analysisMonths = Math.round(numberValue('empMeses', 3));
     const adminRate = clamp(numberValue('empTaxaAdmin', 24.2), 0, 300) / 100;
     const reducedFundPercent = clamp(numberValue('empParcelaReduzidaPct', 50), 0, 100) / 100;
@@ -77,11 +78,12 @@
     if(projectValue < 100000 || projectValue > 30000000) throw new Error('Informe um projeto entre R$ 100 mil e R$ 30 milhões.');
     if(quotaValue <= 0) throw new Error('Informe o valor da carta.');
     if(term < 1 || term > 360) throw new Error('Informe um prazo entre 1 e 360 meses.');
+    if(groupSize < 1 || groupSize > 9999) throw new Error('Informe um grupo entre 1 e 9.999 cotas.');
     if(analysisMonths < 1 || analysisMonths > term) throw new Error('O período analisado precisa ficar dentro do prazo do grupo.');
     if(contemplations < 0) throw new Error('A quantidade de contemplações não pode ser negativa.');
 
     return {
-      client, projectValue, quotaValue, term, analysisMonths, adminRate, reducedFundPercent,
+      client, projectValue, quotaValue, term, groupSize, analysisMonths, adminRate, reducedFundPercent,
       reducedOverride, fullOverride, reducedProjectOverride, fullProjectOverride, contemplations, assetValue, collateralPercent, assetOwner, purpose
     };
   }
@@ -100,6 +102,14 @@
     if(input.fullProjectOverride > 0){ fullProjectPayment = input.fullProjectOverride; fullPerQuota = fullProjectPayment / quotaCount; }
     const averageContemplationsMonthly = quotaCount / input.term;
     const averageMonthsPerContemplation = averageContemplationsMonthly > 0 ? 1 / averageContemplationsMonthly : 0;
+    const groupAverageContemplationsMonthly = input.groupSize / input.term;
+    const quotaShare = Math.min(1, quotaCount / input.groupSize);
+    const theoreticalCoverageCount = Math.min(input.groupSize, quotaCount * 21);
+    const theoreticalCoveragePercentage = input.groupSize ? theoreticalCoverageCount / input.groupSize * 100 : 0;
+    const monthlyProbabilityUniform = quotaShare > 0
+      ? (1 - Math.pow(1 - quotaShare, groupAverageContemplationsMonthly)) * 100
+      : 0;
+    const expectedProjectContemplationsMonthly = input.term ? quotaCount / input.term : 0;
     const linearContemplationsRaw = averageContemplationsMonthly * input.analysisMonths;
     const linearContemplationsRounded = Math.min(quotaCount, ceilQuota(linearContemplationsRaw));
     const scenarioContemplations = Math.min(quotaCount, Math.max(0, Math.round(input.contemplations)));
@@ -122,11 +132,33 @@
     const projectOverage = contractedCredit - input.projectValue;
     const guaranteeUsage = eligibleCollateral > 0 ? activatedCredit / eligibleCollateral * 100 : 0;
 
+    const comparisonValues = [80000,100000,120000,130000,150000,200000,250000,300000,500000,1000000];
+    const quotaComparisons = comparisonValues.map(value => {
+      const count = ceilQuota(input.projectValue / value);
+      const coverageCount = Math.min(input.groupSize, count * 21);
+      const coveragePercentage = input.groupSize ? coverageCount / input.groupSize * 100 : 0;
+      const share = Math.min(1, count / input.groupSize);
+      const monthlyProbability = share > 0
+        ? (1 - Math.pow(1 - share, groupAverageContemplationsMonthly)) * 100
+        : 0;
+      return {
+        quotaValue:value,
+        quotaCount:count,
+        coverageCount,
+        coveragePercentage,
+        monthlyProbability,
+        averageProjectMonthly: input.term ? count / input.term : 0
+      };
+    });
+
     return {
       input, quotaCount, contractedCredit, projectOverage,
       calculatedReducedPerQuota, calculatedFullPerQuota, reducedPerQuota, fullPerQuota,
       reducedProjectPayment, fullProjectPayment,
       averageContemplationsMonthly, averageMonthsPerContemplation,
+      groupAverageContemplationsMonthly, quotaShare, theoreticalCoverageCount,
+      theoreticalCoveragePercentage, monthlyProbabilityUniform, expectedProjectContemplationsMonthly,
+      quotaComparisons,
       linearContemplationsRaw, linearContemplationsRounded, scenarioContemplations,
       eligibleCollateral, collateralQuotaCapacity, alignedQuotaCapacity, alignedCreditCapacity,
       usableContemplations, activatedCredit, contributedCapital, incrementalLiquidity,
@@ -158,6 +190,12 @@
     $('empResStatus').className = 'emp-status ' + (result.incrementalLiquidity >= 0 ? 'positive' : 'negative');
 
     $('empResMediaMes').textContent = nfmt(result.averageContemplationsMonthly,3) + ' cota/mês';
+    $('empResGrupoMedia').textContent = nfmt(result.groupAverageContemplationsMonthly,2) + ' cotas/mês';
+    $('empResCobertura').textContent = pct(result.theoreticalCoveragePercentage,2);
+    $('empResTerritorio').textContent = nfmt(result.theoreticalCoverageCount) + ' / ' + nfmt(result.input.groupSize) + ' referências';
+    $('empResParticipacao').textContent = pct(result.quotaShare * 100,3);
+    $('empResProbMensal').textContent = pct(result.monthlyProbabilityUniform,2);
+    $('empResEsperadoProjeto').textContent = nfmt(result.expectedProjectContemplationsMonthly,3) + ' cota/mês';
     $('empResIntervalo').textContent = result.averageMonthsPerContemplation > 0 ? '1 a cada ' + nfmt(result.averageMonthsPerContemplation,2) + ' meses' : '—';
     $('empResMediaPeriodo').textContent = nfmt(result.linearContemplationsRaw,2) + ' ≈ ' + nfmt(result.linearContemplationsRounded) + ' cotas inteiras';
     $('empResContemplacoes').textContent = nfmt(result.usableContemplations) + ' cotas';
@@ -173,6 +211,21 @@
     $('empResCotasEquilibrio').textContent = nfmt(result.coverageContemplations) + ' cotas';
     $('empResCapital100').textContent = result.activatedCredit > 0 ? brl(result.capitalPer100k) : '—';
     $('empResTaxaAnual').textContent = pct(result.annualAdminSimple,2) + ' a.a. simples';
+
+
+    const compareBody = $('empCoverageCompareBody');
+    if(compareBody){
+      compareBody.innerHTML = result.quotaComparisons.map(item => {
+        const active = Math.abs(item.quotaValue - result.input.quotaValue) < 1 ? ' class="active"' : '';
+        return '<tr' + active + '>' +
+          '<td>' + brl(item.quotaValue) + '</td>' +
+          '<td>' + nfmt(item.quotaCount) + '</td>' +
+          '<td>' + pct(item.coveragePercentage,2) + '</td>' +
+          '<td>' + pct(item.monthlyProbability,2) + '</td>' +
+          '<td>' + nfmt(item.averageProjectMonthly,3) + '/mês</td>' +
+        '</tr>';
+      }).join('');
+    }
 
     const guaranteeWarning = $('empGuaranteeWarning');
     if(result.input.assetValue > 0 && result.scenarioContemplations > result.alignedQuotaCapacity){
@@ -215,7 +268,7 @@
   function save(input){
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        projectValue:input.projectValue, quotaValue:input.quotaValue, term:input.term,
+        projectValue:input.projectValue, quotaValue:input.quotaValue, term:input.term, groupSize:input.groupSize,
         analysisMonths:input.analysisMonths, adminRate:input.adminRate,
         reducedFundPercent:input.reducedFundPercent, collateralPercent:input.collateralPercent
       }));
@@ -229,6 +282,7 @@
     if(saved.projectValue) $('empProjeto').value = moneyInput(saved.projectValue);
     if(saved.quotaValue) $('empCarta').value = moneyInput(saved.quotaValue);
     if(saved.term) $('empPrazo').value = saved.term;
+    if(saved.groupSize) $('empGroupSize').value = saved.groupSize;
     if(saved.analysisMonths) $('empMeses').value = saved.analysisMonths;
     if(Number.isFinite(saved.adminRate)) $('empTaxaAdmin').value = (saved.adminRate*100).toFixed(2);
     if(Number.isFinite(saved.reducedFundPercent)) $('empParcelaReduzidaPct').value = String(Math.round(saved.reducedFundPercent*100));
@@ -253,6 +307,9 @@
       'Estrutura: ' + r.quotaCount + ' cotas de ' + brl(r.input.quotaValue),
       'Crédito contratado: ' + brl(r.contractedCredit),
       'Prazo: ' + r.input.term + ' meses',
+      'Grupo considerado: ' + nfmt(r.input.groupSize) + ' cotas',
+      'Cobertura teórica máxima ±10: ' + pct(r.theoreticalCoveragePercentage,2) + ' (' + nfmt(r.theoreticalCoverageCount) + '/' + nfmt(r.input.groupSize) + ' referências)',
+      'Probabilidade mensal teórica — modelo uniforme: ' + pct(r.monthlyProbabilityUniform,2),
       'Parcela reduzida estimada do projeto: ' + brl(r.reducedProjectPayment) + '/mês',
       'Período analisado: ' + r.input.analysisMonths + ' meses',
       'Capital próprio aportado no período: ' + brl(r.contributedCapital),
@@ -378,21 +435,33 @@
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(11);
-    doc.text('Referência matemática de contemplação',12,190);
+    doc.text('Cobertura e probabilidade teórica',12,190);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8.4);
+    doc.text('Grupo considerado: ' + nfmt(r.input.groupSize) + ' cotas · prazo ' + r.input.term + ' meses',12,198);
+    doc.text('Média necessária do grupo: ' + nfmt(r.groupAverageContemplationsMonthly,2) + ' contemplações/mês',12,204);
+    doc.text('Cobertura máxima ±10: ' + pct(r.theoreticalCoveragePercentage,2) + ' · ' + nfmt(r.theoreticalCoverageCount) + '/' + nfmt(r.input.groupSize) + ' referências',12,210);
+    doc.text('Probabilidade mensal teórica (modelo uniforme): ' + pct(r.monthlyProbabilityUniform,2),12,216);
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.text('Referência matemática de contemplação da carteira',12,228);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.8);
-    doc.text('Média linear do grupo: ' + nfmt(r.averageContemplationsMonthly,3) + ' cota/mês',12,198);
-    doc.text('Intervalo linear equivalente: 1 contemplação a cada ' + nfmt(r.averageMonthsPerContemplation,2) + ' meses',12,204);
-    doc.text('No período de ' + r.input.analysisMonths + ' meses: ' + nfmt(r.linearContemplationsRaw,2) + ' cotas equivalentes, arredondadas para ' + nfmt(r.linearContemplationsRounded) + ' cotas inteiras.',12,210);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8.4);
+    doc.text('Média linear da carteira: ' + nfmt(r.averageContemplationsMonthly,3) + ' cota/mês',12,236);
+    doc.text('Intervalo equivalente: 1 contemplação a cada ' + nfmt(r.averageMonthsPerContemplation,2) + ' meses',12,242);
+    doc.text('No período de ' + r.input.analysisMonths + ' meses: ' + nfmt(r.linearContemplationsRaw,2) + ' cotas equivalentes, arredondadas para ' + nfmt(r.linearContemplationsRounded) + ' cotas inteiras.',12,248);
 
     doc.setDrawColor(225,229,233);
-    doc.line(12,221,198,221);
-    doc.setFontSize(7.4);
+    doc.line(12,256,198,256);
+    doc.setFontSize(7.1);
     doc.setTextColor(105,115,125);
     const note1 = 'Liquidez incremental não é lucro: representa crédito ativado menos o capital próprio aportado até o marco analisado. A conta usa a parcela reduzida do projeto até esse marco e mostra separadamente a parcela projetada após as contemplações do cenário.';
-    doc.text(doc.splitTextToSize(note1,186),12,228);
+    doc.text(doc.splitTextToSize(note1,186),12,262);
     const note2 = 'Contemplação, utilização do crédito, garantias próprias ou de terceiros, percentuais de garantia, liberação e demais condições dependem das regras do grupo, contrato e análise da administradora. A média de contemplação exibida é uma referência matemática linear, não uma previsão ou garantia.';
-    doc.text(doc.splitTextToSize(note2,186),12,244);
+    doc.text(doc.splitTextToSize(note2,186),12,274);
 
     doc.addPage();
     addPdfHeader(doc,'Memória de cálculo','Premissas auditáveis da simulação',profile);
@@ -405,6 +474,10 @@
       ['Projeto desejado', brl(r.input.projectValue)],
       ['Valor da carta', brl(r.input.quotaValue)],
       ['Prazo total do grupo', r.input.term + ' meses'],
+      ['Quantidade de cotas do grupo', nfmt(r.input.groupSize)],
+      ['Média necessária do grupo', nfmt(r.groupAverageContemplationsMonthly,2) + '/mês'],
+      ['Cobertura teórica ±10', pct(r.theoreticalCoveragePercentage,2)],
+      ['Probabilidade mensal teórica', pct(r.monthlyProbabilityUniform,2)],
       ['Taxa administrativa total', pct(r.input.adminRate*100,2)],
       ['Equivalência média simples', pct(r.annualAdminSimple,2) + ' a.a.'],
       ['Parcela reduzida do fundo comum', pct(r.input.reducedFundPercent*100,0)],
@@ -432,7 +505,9 @@
       'Crédito ativado = cotas contempladas utilizáveis × valor da carta, limitado pela capacidade matemática do bem quando informado.',
       'Liquidez incremental = crédito ativado − capital próprio aportado.',
       'Multiplicador de ativação = crédito ativado ÷ capital próprio aportado.',
-      'Média linear de contemplação = quantidade de cotas ÷ prazo do grupo.'
+      'Média linear de contemplação da carteira = quantidade de cotas ÷ prazo do grupo.',
+      'Cobertura teórica ±10 = mínimo(cotas do grupo, quantidade de cotas × 21) ÷ cotas do grupo. Pressupõe espaçamento mínimo de 21 e não sobreposição.',
+      'Probabilidade mensal teórica = 1 − (1 − participação direta)^(média de contemplações do grupo). É um modelo uniforme aproximado; não é uma garantia nem multiplica a média mensal como se fossem sorteios independentes da Federal.'
     ];
     y += 14;
     formulas.forEach(function(line){
@@ -466,7 +541,7 @@
     if($('empresarial-styles')) return;
     const style = document.createElement('style');
     style.id = 'empresarial-styles';
-    style.textContent = '.app-shell .bottom-nav{grid-template-columns:repeat(6,1fr)!important}.emp-hero{border-color:#5a4624;background:linear-gradient(145deg,#17140f,#101820)}.emp-presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.emp-presets button{border:1px solid var(--line);border-radius:999px;background:#101820;color:#d8e0e7;padding:7px 10px;font-size:8px;font-weight:850}.emp-presets button:active{transform:scale(.97)}.emp-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.emp-kpi>div,.emp-detail-grid>div,.emp-math-grid>div{border:1px solid var(--line);background:#0b1219;border-radius:14px;padding:12px;min-width:0}.emp-kpi span,.emp-detail-grid span,.emp-math-grid span{display:block;color:var(--muted);font-size:8px;line-height:1.35}.emp-kpi strong,.emp-detail-grid strong,.emp-math-grid strong{display:block;margin-top:6px;font-size:16px;overflow-wrap:anywhere}.emp-kpi .highlight{border-color:#6a4d22;background:#21170b}.emp-kpi .highlight strong{color:var(--orange-2);font-size:20px}.emp-kpi .green{border-color:#326948;background:#0e2015}.emp-kpi .green strong{color:var(--green);font-size:20px}.emp-status{display:inline-block;margin-top:10px;padding:7px 10px;border-radius:999px;font-size:8px;font-weight:900}.emp-status.positive{background:#0e2015;color:#7fd39a;border:1px solid #326948}.emp-status.negative{background:#28171a;color:#ff9d9d;border:1px solid #74383d}.emp-detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.emp-math-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.emp-math-grid strong{font-size:14px}.emp-method{margin-top:12px;border:1px solid #665523;background:#292313;color:#e8dba9;border-radius:14px;padding:12px;font-size:9px;line-height:1.55}.emp-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.emp-inline-action{margin-top:9px}.emp-inline-action .secondary-button{margin:0;width:100%}.emp-warning{margin-top:12px}.emp-section-title{margin-top:16px;font-size:12px;color:#dce4eb}.emp-subline{margin-top:5px;color:var(--muted);font-size:9px;line-height:1.5}@media(max-width:760px){.app-shell .bottom-nav{grid-template-columns:repeat(6,1fr)!important;width:calc(100% - 12px)}.bottom-nav button{padding:7px 2px!important;font-size:6.8px!important}.bottom-nav button span{font-size:14px!important}.emp-kpi{grid-template-columns:1fr 1fr}.emp-detail-grid,.emp-math-grid{grid-template-columns:1fr 1fr}}@media(max-width:430px){.emp-kpi,.emp-detail-grid,.emp-math-grid,.emp-actions{grid-template-columns:1fr}.emp-presets{gap:5px}.emp-presets button{padding:6px 8px;font-size:7.5px}}';
+    style.textContent = '.app-shell .bottom-nav{grid-template-columns:repeat(6,1fr)!important}.emp-hero{border-color:#5a4624;background:linear-gradient(145deg,#17140f,#101820)}.emp-presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.emp-presets button{border:1px solid var(--line);border-radius:999px;background:#101820;color:#d8e0e7;padding:7px 10px;font-size:8px;font-weight:850}.emp-presets button:active{transform:scale(.97)}.emp-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.emp-kpi>div,.emp-detail-grid>div,.emp-math-grid>div{border:1px solid var(--line);background:#0b1219;border-radius:14px;padding:12px;min-width:0}.emp-kpi span,.emp-detail-grid span,.emp-math-grid span{display:block;color:var(--muted);font-size:8px;line-height:1.35}.emp-kpi strong,.emp-detail-grid strong,.emp-math-grid strong{display:block;margin-top:6px;font-size:16px;overflow-wrap:anywhere}.emp-kpi .highlight{border-color:#6a4d22;background:#21170b}.emp-kpi .highlight strong{color:var(--orange-2);font-size:20px}.emp-kpi .green{border-color:#326948;background:#0e2015}.emp-kpi .green strong{color:var(--green);font-size:20px}.emp-status{display:inline-block;margin-top:10px;padding:7px 10px;border-radius:999px;font-size:8px;font-weight:900}.emp-status.positive{background:#0e2015;color:#7fd39a;border:1px solid #326948}.emp-status.negative{background:#28171a;color:#ff9d9d;border:1px solid #74383d}.emp-detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.emp-math-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.emp-math-grid strong{font-size:14px}.emp-method{margin-top:12px;border:1px solid #665523;background:#292313;color:#e8dba9;border-radius:14px;padding:12px;font-size:9px;line-height:1.55}.emp-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.emp-coverage-table tr.active td{border-color:#8b5d24;background:#21170b}.emp-coverage-table tr.active td:first-child{color:var(--orange-2)}.emp-inline-action{margin-top:9px}.emp-inline-action .secondary-button{margin:0;width:100%}.emp-warning{margin-top:12px}.emp-section-title{margin-top:16px;font-size:12px;color:#dce4eb}.emp-subline{margin-top:5px;color:var(--muted);font-size:9px;line-height:1.5}@media(max-width:760px){.app-shell .bottom-nav{grid-template-columns:repeat(6,1fr)!important;width:calc(100% - 12px)}.bottom-nav button{padding:7px 2px!important;font-size:6.8px!important}.bottom-nav button span{font-size:14px!important}.emp-kpi{grid-template-columns:1fr 1fr}.emp-detail-grid,.emp-math-grid{grid-template-columns:1fr 1fr}}@media(max-width:430px){.emp-kpi,.emp-detail-grid,.emp-math-grid,.emp-actions{grid-template-columns:1fr}.emp-presets{gap:5px}.emp-presets button{padding:6px 8px;font-size:7.5px}}';
     document.head.appendChild(style);
   }
 
@@ -479,8 +554,9 @@
       '<div class="form-grid">',
       '<div class="field full"><label for="empCliente">Nome do cliente <span class="optional">opcional</span></label><div class="control"><input id="empCliente" type="text" maxlength="80" placeholder="Ex.: Empresa Silva Ltda." autocomplete="off"></div></div>',
       '<div class="field full"><label for="empProjeto">Tamanho do projeto</label><div class="control money-control"><span>R$</span><input id="empProjeto" type="text" inputmode="decimal" value="1.000.000"></div><div class="emp-presets" data-preset-target="empProjeto"><button type="button" data-money="500000">500 mil</button><button type="button" data-money="1000000">1 mi</button><button type="button" data-money="5000000">5 mi</button><button type="button" data-money="10000000">10 mi</button><button type="button" data-money="20000000">20 mi</button><button type="button" data-money="30000000">30 mi</button></div></div>',
-      '<div class="field"><label for="empCarta">Valor de cada carta</label><div class="control money-control"><span>R$</span><input id="empCarta" type="text" inputmode="decimal" value="80.000"></div><div class="emp-presets" data-preset-target="empCarta"><button type="button" data-money="80000">80k</button><button type="button" data-money="100000">100k</button><button type="button" data-money="120000">120k</button><button type="button" data-money="150000">150k</button><button type="button" data-money="200000">200k</button><button type="button" data-money="250000">250k</button></div></div>',
+      '<div class="field"><label for="empCarta">Valor de cada carta</label><div class="control money-control"><span>R$</span><input id="empCarta" type="text" inputmode="decimal" value="80.000"></div><div class="emp-presets" data-preset-target="empCarta"><button type="button" data-money="80000">80k</button><button type="button" data-money="100000">100k</button><button type="button" data-money="120000">120k</button><button type="button" data-money="130000">130k</button><button type="button" data-money="150000">150k</button><button type="button" data-money="200000">200k</button><button type="button" data-money="250000">250k</button><button type="button" data-money="500000">500k</button><button type="button" data-money="1000000">1 mi</button></div></div>',
       '<div class="field"><label for="empPrazo">Prazo total do grupo</label><div class="control"><input id="empPrazo" type="number" value="220" min="1" max="360"><span>meses</span></div></div>',
+      '<div class="field"><label for="empGroupSize">Quantidade de cotas do grupo</label><div class="control"><input id="empGroupSize" type="number" value="5000" min="1" max="9999"><span>cotas</span></div></div>',
       '<div class="field"><label for="empMeses">Período que quer analisar</label><div class="control"><input id="empMeses" type="number" value="3" min="1" max="360"><span>meses</span></div></div>',
       '<div class="field"><label for="empContemplacoes">Contemplações no cenário</label><div class="control"><input id="empContemplacoes" type="number" value="2" min="0" step="1"><span>cotas</span></div><div class="emp-inline-action"><button id="empUseAverageBtn" class="secondary-button" type="button">Usar média matemática do período</button></div></div>',
       '</div>',
@@ -503,7 +579,8 @@
       '<section id="empResultado" class="result-stack" hidden>',
       '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Resumo executivo</div><h2>Quanto capital foi ativado</h2><p class="lead">Os números abaixo separam capital próprio, crédito ativado e obrigação mensal. Liquidez incremental não é tratada como lucro.</p></div></div>',
       '<div class="emp-kpi"><div><span>Cotas inteiras</span><strong id="empResCotas">0</strong></div><div><span>Crédito estruturado</span><strong id="empResCreditoContratado">R$ 0</strong></div><div><span>Parcela reduzida do projeto</span><strong id="empResParcelaReduzida">R$ 0</strong></div><div><span>Parcela cheia do projeto</span><strong id="empResParcelaCheia">R$ 0</strong></div><div><span>Capital próprio aportado</span><strong id="empResCapitalAportado">R$ 0</strong></div><div class="highlight"><span>Crédito ativado</span><strong id="empResCreditoAtivado">R$ 0</strong></div><div class="green"><span>Liquidez incremental</span><strong id="empResLiquidez">R$ 0</strong></div><div class="highlight"><span>Multiplicador</span><strong id="empResMultiplicador">0x</strong></div></div><span id="empResStatus" class="emp-status">—</span><div id="empGuaranteeWarning" class="message warning emp-warning" hidden></div>',
-      '<h3 class="emp-section-title">Média matemática do grupo</h3><p class="emp-subline">É uma referência linear para entender escala; não é previsão de quando uma cota específica será contemplada.</p><div class="emp-math-grid"><div><span>Média por mês</span><strong id="empResMediaMes">0</strong></div><div><span>Intervalo equivalente</span><strong id="empResIntervalo">0</strong></div><div><span>Média no período</span><strong id="empResMediaPeriodo">0</strong></div><div><span>Cenário utilizado</span><strong id="empResContemplacoes">0</strong></div><div><span>Cotas para igualar o aporte</span><strong id="empResCotasEquilibrio">0</strong></div><div><span>Capital próprio por R$ 100 mil ativados</span><strong id="empResCapital100">—</strong></div></div>',
+      '<h3 class="emp-section-title">Cobertura matemática do grupo</h3><p class="emp-subline">A cobertura ±10 considera até 21 referências por cota quando elas estão espaçadas em pelo menos 21 números. A probabilidade mensal é um modelo uniforme aproximado, não garantia.</p><div class="emp-math-grid"><div><span>Média necessária do grupo</span><strong id="empResGrupoMedia">0</strong></div><div><span>Cobertura teórica ±10</span><strong id="empResCobertura">0%</strong></div><div><span>Território coberto</span><strong id="empResTerritorio">0</strong></div><div><span>Participação direta no grupo</span><strong id="empResParticipacao">0%</strong></div><div><span>Probabilidade mensal teórica*</span><strong id="empResProbMensal">0%</strong></div><div><span>Valor esperado da carteira</span><strong id="empResEsperadoProjeto">0/mês</strong></div></div><h3 class="emp-section-title">Média linear da carteira</h3><div class="emp-math-grid"><div><span>Média por mês</span><strong id="empResMediaMes">0</strong></div><div><span>Intervalo equivalente</span><strong id="empResIntervalo">0</strong></div><div><span>Média no período</span><strong id="empResMediaPeriodo">0</strong></div><div><span>Cenário utilizado</span><strong id="empResContemplacoes">0</strong></div><div><span>Cotas para igualar o aporte</span><strong id="empResCotasEquilibrio">0</strong></div><div><span>Capital próprio por R$ 100 mil ativados</span><strong id="empResCapital100">—</strong></div></div>',
+      '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Escolha do ticket</div><h2>Quanto do grupo cada valor de carta cobre</h2><p class="lead">Mantendo o mesmo tamanho de projeto, cartas menores geram mais cotas e ampliam a cobertura teórica. O cálculo sempre arredonda a quantidade de cotas para cima.</p></div></div><div class="table-wrap"><table class="comparison-table emp-coverage-table"><thead><tr><th>Valor da carta</th><th>Cotas</th><th>Cobertura ±10</th><th>Chance mensal teórica*</th><th>Média da carteira</th></tr></thead><tbody id="empCoverageCompareBody"></tbody></table></div><div class="emp-method"><b>*Modelo uniforme:</b> não transforma a média de contemplações do grupo em vários sorteios independentes da Federal. É uma aproximação de distribuição das contemplações entre as cotas do grupo.</div></article>',
       '<h3 class="emp-section-title">Capacidade do bem</h3><div class="emp-detail-grid"><div><span>Capacidade elegível do bem</span><strong id="empResBemElegivel">—</strong></div><div><span>Cotas suportadas</span><strong id="empResCotasGarantia">—</strong></div><div><span>Crédito suportado</span><strong id="empResCreditoGarantia">—</strong></div><div><span>Uso da capacidade no cenário</span><strong id="empResUsoGarantia">—</strong></div><div><span>Parcela reduzida por cota</span><strong id="empResParcelaCotaReduzida">—</strong></div><div><span>Parcela cheia por cota</span><strong id="empResParcelaCotaCheia">—</strong></div><div><span>Parcela do projeto após cenário</span><strong id="empResParcelaPosCenario">—</strong></div><div><span>Taxa adm. média simples</span><strong id="empResTaxaAnual">—</strong></div></div>',
       '<div class="emp-method"><b>Leitura correta:</b> o app não chama a diferença de lucro. Ele calcula quanto crédito foi efetivamente ativado frente ao capital próprio colocado até o marco analisado. As parcelas futuras continuam existindo e ficam explícitas na apresentação.</div>',
       '</article>',
