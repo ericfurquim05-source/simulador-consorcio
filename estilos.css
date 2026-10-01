@@ -553,3 +553,29 @@ button{cursor:pointer}
   .radar-free-actions{display:grid;grid-template-columns:1fr 1fr}
   .radar-free-chip{min-width:52px}
 }
+
+/* v2.8.0 — histórico Federal de 24 meses */
+.radar-federal-history-panel{border-color:#475268}
+.radar-history-note{padding:11px 12px;border:1px solid #554b2d;border-radius:12px;background:#17150d;color:#d8cfaa;font-size:9px;line-height:1.55}
+.radar-history-note strong{color:#fff}
+.radar-history-filter{display:flex;align-items:flex-start;gap:9px;margin-top:12px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:#0b1219;color:#dfe7ee;font-size:9px;line-height:1.45;cursor:pointer}
+.radar-history-filter input{margin-top:1px;accent-color:#4fa774}
+.radar-federal-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.radar-federal-kpis>div{padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:#0b1219}
+.radar-federal-kpis span{display:block;color:var(--muted);font-size:8px}
+.radar-federal-kpis strong{display:block;margin-top:4px;font-size:15px}
+.radar-federal-history-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}
+.radar-federal-history-row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:#0b1219}
+.radar-federal-history-row.in-range{border-color:#395446}
+.radar-federal-history-row>div:first-child strong{display:block;font:900 14px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff}
+.radar-federal-history-row>div:first-child span{display:block;margin-top:4px;color:var(--muted);font-size:7px;white-space:nowrap}
+.radar-federal-history-row>div:last-child{text-align:right;min-width:0}
+.radar-federal-history-row>div:last-child b{display:block;font-size:8px;color:#dfe7ee;white-space:nowrap}
+.radar-federal-owner{display:block;margin-top:4px;color:#ffb75b;font-size:7px}
+.radar-source-note{margin:10px 2px 0;color:var(--muted);font-size:8px;line-height:1.45}
+@media(max-width:620px){
+  .radar-federal-history-list{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  .radar-federal-kpis{grid-template-columns:1fr}
+}
