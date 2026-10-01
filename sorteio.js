@@ -151,6 +151,7 @@
     if($('sorteioAvgContemplations')) $('sorteioAvgContemplations').textContent = formatDecimal(average, 2) + ' cotas/mês';
     if($('sorteioRadarRange')) $('sorteioRadarRange').textContent = (ALERT_DISTANCE * 2 + 1) + ' números por cota';
     if($('sorteioMathUniverse')) $('sorteioMathUniverse').textContent = formatDecimal(groupSize, 0) + ' posições';
+    if($('sorteioMaxSeparated')) $('sorteioMaxSeparated').textContent = formatDecimal(Math.ceil(groupSize / MIN_QUOTA_DISTANCE), 0) + ' cotas';
   }
 
   function escapeHTML(value){
