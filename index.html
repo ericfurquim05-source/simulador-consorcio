@@ -403,7 +403,7 @@
               </div>
               <small>Se colar um número com ponto ou formatação, eu limpo automaticamente. Para números maiores, a comparação usa os 4 últimos dígitos.</small>
             </div>
-            <button id="sorteioCheckBtn" class="primary-button radar-check-button" type="button">Conferir e salvar</button>
+            <button id="sorteioCheckBtn" class="primary-button radar-check-button" type="button">Conferir</button>
           </div>
           <div id="sorteioDrawMessage" class="message success" hidden></div>
         </article>
@@ -454,7 +454,7 @@
 
         <details class="panel draw-collapsible radar-federal-history-panel">
           <summary>
-            <span><b>Histórico de números sorteados</b><small>Federal dos últimos 60 meses + números adicionados manualmente</small></span>
+            <span><b>Histórico de números sorteados</b><small>Somente os 60 registros oficiais da Federal usados como base</small></span>
             <strong id="sorteioUnifiedHistoryCount">60 sorteios</strong>
           </summary>
           <div class="draw-details-body">
@@ -467,12 +467,12 @@
               <span>Nas cotas livres, ocultar referências exatas que já apareceram no histórico oficial de 60 meses</span>
             </label>
             <div class="radar-federal-kpis">
-              <div><span>Oficiais carregados</span><strong id="sorteioOfficialHistoryCount">60</strong></div>
-              <div><span>Adicionados manualmente</span><strong id="sorteioManualHistoryCount">0</strong></div>
+              <div><span>Registros oficiais</span><strong id="sorteioOfficialHistoryCount">60</strong></div>
+              
               <div><span>Dentro de 0001–5000</span><strong id="sorteioFederalInRangeCount">0</strong></div>
             </div>
             <div id="sorteioUnifiedHistoryList" class="radar-unified-history-list"></div>
-            <p class="radar-source-note">Os registros oficiais usam 1 concurso por mês, o mais próximo do dia 18, mantendo uma janela móvel dos últimos 60 meses. Os registros manuais entram automaticamente neste mesmo histórico.</p>
+            <p class="radar-source-note">Os 60 registros abaixo são a única base histórica usada pelo sistema.</p>
           </div>
         </details>
 
@@ -572,6 +572,6 @@
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
   <script src="./federal-history.js?v=320" defer></script>
-  <script src="./sorteio.js?v=320" defer></script>
+  <script src="./sorteio.js?v=321" defer></script>
 </body>
 </html>
