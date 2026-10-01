@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.5.1-aposentadoria-financeira-v15';
+const VERSION = 'simulador-consorcio-v2.6.0-radar-sorteio-v1';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
