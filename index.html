@@ -12,7 +12,7 @@
   <title>Simulador de Consórcio — v2.5.0</title>
   <link rel="manifest" href="./manifest.json?v=250">
   <link rel="apple-touch-icon" href="./icon-192.png?v=250">
-  <link rel="stylesheet" href="./estilos.css?v=260">
+  <link rel="stylesheet" href="./estilos.css?v=250">
 </head>
 <body>
   <div class="app-shell">
@@ -385,80 +385,172 @@
       </section>
 
       <section id="view-sorteio" class="view" data-view="sorteio">
-        <article class="panel radar-draw-panel">
+        <article class="panel draw-group-panel">
           <div class="result-topline">
             <div>
-              <div class="eyebrow">Radar de sorteio</div>
-              <h2>Número sorteado</h2>
+              <div class="eyebrow">Radar de contemplações</div>
+              <h2 id="sorteioGrupoTitulo">Grupo 012186</h2>
             </div>
-            <span class="pill">± 10 cotas</span>
+            <span id="sorteioGrupoResumo" class="pill">9.999 cotas</span>
           </div>
-          <p class="lead">Digite ou cole o número da Loteria Federal. O sistema confere todas as cotas cadastradas e avisa imediatamente quando existir uma cota até 10 números abaixo ou acima.</p>
 
-          <div class="radar-draw-row">
+          <div class="group-selector-row">
             <div class="field">
-              <label for="sorteioNumero">Número sorteado</label>
-              <div class="control radar-number-control">
-                <input id="sorteioNumero" type="text" inputmode="numeric" maxlength="12" placeholder="Ex.: 5010" autocomplete="off">
-              </div>
-              <small>Se colar um número com ponto ou formatação, eu limpo automaticamente. Para números maiores, a comparação usa os 4 últimos dígitos.</small>
+              <label for="sorteioGrupoSelect">Grupo selecionado</label>
+              <div class="control"><select id="sorteioGrupoSelect"></select></div>
             </div>
-            <button id="sorteioCheckBtn" class="primary-button radar-check-button" type="button">Conferir e salvar</button>
+            <div id="sorteioGroupSnapshot" class="group-snapshot"></div>
           </div>
-          <div id="sorteioDrawMessage" class="message success" hidden></div>
+
+          <details class="draw-inner-details">
+            <summary><span><b>Gerenciar grupos</b><small>Adicione grupos e informe a quantidade total de cotas</small></span></summary>
+            <div class="draw-details-body">
+              <div class="form-grid group-create-grid">
+                <div class="field">
+                  <label for="sorteioNewGroupNumber">Número do grupo</label>
+                  <div class="control"><input id="sorteioNewGroupNumber" type="text" maxlength="20" placeholder="Ex.: 012186"></div>
+                </div>
+                <div class="field">
+                  <label for="sorteioNewGroupSize">Quantidade de cotas</label>
+                  <div class="control"><input id="sorteioNewGroupSize" type="number" inputmode="numeric" min="1" max="9999" value="9999"></div>
+                </div>
+              </div>
+              <button id="sorteioAddGroupBtn" class="secondary-button" type="button">Adicionar grupo</button>
+              <div id="sorteioGroupMessage" class="message success" hidden></div>
+              <div id="sorteioGroupList" class="group-edit-list"></div>
+            </div>
+          </details>
         </article>
 
-        <section id="sorteioAlerta" class="radar-alert-wrap" hidden>
-          <article id="sorteioAlertCard" class="panel radar-alert-card">
-            <div class="radar-alert-head">
-              <div>
-                <div id="sorteioAlertEyebrow" class="eyebrow">Resultado da conferência</div>
-                <h2 id="sorteioAlertTitle">Resultado</h2>
-                <p id="sorteioAlertText" class="lead"></p>
-              </div>
-              <span id="sorteioAlertBadge" class="radar-alert-badge">—</span>
+        <article class="panel hero-panel draw-hero">
+          <div class="result-topline">
+            <div>
+              <div class="eyebrow">Histórico real do grupo</div>
+              <h2>Registrar assembleia</h2>
             </div>
-            <div id="sorteioAlertList" class="radar-alert-list"></div>
+            <span class="pill">Cadastro manual</span>
+          </div>
+          <p class="lead">Cadastre cada cota contemplada e escolha a modalidade. Os registros ficam separados por grupo e alimentam automaticamente as estatísticas.</p>
+
+          <div class="form-grid draw-form">
+            <div class="field">
+              <label for="sorteioAssembleia">Número da assembleia</label>
+              <div class="control"><input id="sorteioAssembleia" type="text" inputmode="numeric" maxlength="20" placeholder="Ex.: 37"></div>
+            </div>
+            <div class="field">
+              <label for="sorteioData">Data da assembleia</label>
+              <div class="control"><input id="sorteioData" type="date"></div>
+            </div>
+
+            <div class="field full assembly-add-card">
+              <div class="assembly-add-heading">
+                <div>
+                  <label for="sorteioNovaCota">Adicionar cota contemplada</label>
+                  <small>Informe o número, selecione a modalidade e repita quantas vezes precisar.</small>
+                </div>
+                <strong id="sorteioDraftCount">0 cotas</strong>
+              </div>
+              <div class="assembly-add-grid">
+                <div class="control"><input id="sorteioNovaCota" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div>
+                <div class="control"><select id="sorteioNovaModalidade">
+                  <option value="sorteio">Sorteio</option>
+                  <option value="sorteio_excluido">Sorteio de excluídos</option>
+                  <option value="lance_fixo">Lance fixo</option>
+                  <option value="lance_limitado">Lance limitado</option>
+                  <option value="lance_livre">Lance livre</option>
+                  <option value="lance_fidelidade">Lance fidelidade</option>
+                  <option value="reposicao">Reposição / outra contemplação</option>
+                </select></div>
+                <button id="sorteioAddContempladaBtn" class="secondary-button" type="button">Adicionar cota</button>
+              </div>
+              <div id="sorteioDraftList" class="assembly-draft-list"></div>
+            </div>
+          </div>
+
+          <div id="sorteioFormMessage" class="message success" hidden></div>
+          <button id="sorteioConferirBtn" class="primary-button" type="button">Salvar assembleia</button>
+        </article>
+
+        <section id="sorteioResultado" class="result-stack" hidden>
+          <article class="panel draw-result-panel">
+            <div class="result-topline">
+              <div><div class="eyebrow">Assembleia salva</div><h2 id="sorteioResultadoTitulo">Assembleia</h2></div>
+              <span id="sorteioResultadoData" class="pill"></span>
+            </div>
+            <div id="sorteioDestaque" class="assembly-summary-grid"></div>
+            <div id="sorteioContemplados" class="assembly-winners-grid"></div>
           </article>
         </section>
 
-        <article class="panel radar-clients-panel">
-          <div class="result-topline">
-            <div>
-              <div class="eyebrow">Base de acompanhamento</div>
-              <h2>Clientes e cotas</h2>
+        <details class="panel draw-collapsible">
+          <summary><span><b>Clientes deste grupo</b><small>Os clientes ficam vinculados somente ao grupo selecionado</small></span><strong id="sorteioClientesCount">0 clientes</strong></summary>
+          <div class="draw-details-body">
+            <div class="form-grid add-client-grid">
+              <div class="field"><label for="sorteioNewClientName">Nome do cliente</label><div class="control"><input id="sorteioNewClientName" type="text" maxlength="70" placeholder="Ex.: Maria"></div></div>
+              <div class="field"><label for="sorteioNewClientQuota">Número da cota</label><div class="control"><input id="sorteioNewClientQuota" type="text" inputmode="numeric" maxlength="4" placeholder="0000"></div></div>
             </div>
-            <span id="sorteioClientesCount" class="pill">0 clientes</span>
+            <button id="sorteioAddClientBtn" class="secondary-button" type="button">Adicionar cliente</button>
+            <div id="sorteioClientesMessage" class="message success" hidden></div>
+            <div id="sorteioClientList" class="client-edit-list"></div>
           </div>
-          <p class="lead">Cadastre o cliente uma vez e cole todas as cotas dele de uma vez. Pode usar espaço, vírgula, ponto, quebra de linha ou texto copiado.</p>
+        </details>
 
-          <div class="radar-client-form">
-            <div class="field">
-              <label for="sorteioClientName">Nome do cliente</label>
-              <div class="control"><input id="sorteioClientName" type="text" maxlength="80" placeholder="Ex.: Maria" autocomplete="off"></div>
-            </div>
-            <div class="field">
-              <label for="sorteioClientQuotas">Cotas do cliente</label>
-              <div class="control textarea-control radar-quota-textarea"><textarea id="sorteioClientQuotas" rows="3" inputmode="text" placeholder="Ex.: 3446, 4559, 1.665, 5986"></textarea></div>
-              <div id="sorteioParsedPreview" class="radar-parsed-preview">Cole as cotas para visualizar antes de salvar.</div>
-            </div>
+        <article class="panel client-report-panel">
+          <div class="section-heading"><div><div class="eyebrow">Acompanhamento do grupo</div><h2>Gerar relatório para um cliente</h2></div></div>
+          <p class="lead">O PDF destaca a cota do cliente, reúne todas as assembleias cadastradas e mostra o acumulado de contemplações por modalidade.</p>
+          <div class="report-client-row">
+            <div class="field"><label for="sorteioReportClient">Cliente</label><div class="control"><select id="sorteioReportClient"></select></div></div>
+            <button id="sorteioGenerateReportBtn" class="primary-button" type="button">Gerar relatório em PDF</button>
           </div>
-          <button id="sorteioAddClientBtn" class="secondary-button radar-add-client" type="button">Adicionar cliente</button>
-          <div id="sorteioClientMessage" class="message success" hidden></div>
-
-          <div class="radar-client-toolbar">
-            <div class="control"><input id="sorteioClientSearch" type="search" placeholder="Buscar cliente ou cota" autocomplete="off"></div>
-          </div>
-          <div id="sorteioClientList" class="radar-client-list"></div>
+          <div id="sorteioReportMessage" class="message success" hidden></div>
         </article>
 
-        <details class="panel draw-collapsible radar-history-panel" open>
+        <details class="panel draw-collapsible">
+          <summary><span><b>Histórico de assembleias</b><small>Consulte, edite ou exclua os registros do grupo</small></span><strong id="sorteioHistoryCount">0 assembleias</strong></summary>
+          <div class="draw-details-body">
+            <div id="sorteioHistoryMessage" class="message success" hidden></div>
+            <div id="sorteioHistoryList" class="draw-history-list"></div>
+          </div>
+        </details>
+
+        <details class="panel draw-collapsible range-compact-panel">
           <summary>
-            <span><b>Histórico de números sorteados</b><small>Cada conferência fica salva e é recalculada contra a base atual de clientes</small></span>
-            <strong id="sorteioHistoryCount">0 sorteios</strong>
+            <span>
+              <b>Cotas ativas por faixa numérica</b>
+              <small>Selecione um intervalo para ver quantas cotas ainda permanecem no grupo</small>
+            </span>
+            <strong id="sorteioRangeCount">0 cotas ativas</strong>
           </summary>
           <div class="draw-details-body">
-            <div id="sorteioHistoryList" class="radar-history-list"></div>
+            <div class="field">
+              <label for="sorteioRangeSelect">Faixa numérica</label>
+              <div class="control"><select id="sorteioRangeSelect"></select></div>
+              <small>Exemplo: “1 a 500 — 490 cotas ativas” significa que 10 cotas desse intervalo já foram contempladas. Esta contagem não prevê o próximo sorteio.</small>
+            </div>
+          </div>
+        </details>
+
+        <article class="panel modality-panel">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">Acumulado do grupo</div>
+              <h2>Contemplações por modalidade</h2>
+            </div>
+            <span id="sorteioModalityAssemblies" class="pill">0 assembleias</span>
+          </div>
+          <div id="sorteioModalityGrid" class="modality-stats-grid"></div>
+        </article>
+
+        <details class="panel draw-collapsible">
+          <summary><span><b>Configuração do histórico</b><small>Use quando o grupo já tinha contemplações antes do primeiro registro</small></span><strong id="sorteioBaseCount">0 cotas anteriores</strong></summary>
+          <div class="draw-details-body">
+            <div class="field">
+              <label for="sorteioBaseContempladas">Cotas contempladas antes da primeira assembleia cadastrada</label>
+              <div class="control textarea-control compact-textarea"><textarea id="sorteioBaseContempladas" rows="5" inputmode="numeric" placeholder="Cole as cotas separadas por espaço, vírgula ou linha"></textarea></div>
+              <small>Essas cotas serão retiradas do mapa teórico do grupo selecionado.</small>
+            </div>
+            <button id="sorteioSaveBaseBtn" class="secondary-button" type="button">Salvar configuração</button>
+            <div id="sorteioBaseMessage" class="message success" hidden></div>
           </div>
         </details>
       </section>
@@ -535,6 +627,6 @@
   <script src="./pdf.js?v=250" defer></script>
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
-  <script src="./sorteio.js?v=261" defer></script>
+  <script src="./sorteio.js?v=250" defer></script>
 </body>
 </html>
