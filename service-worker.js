@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.9.1-history-labels';
+const VERSION = 'simulador-consorcio-v3.0.0-historico-unificado';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
