@@ -8,68 +8,48 @@
   const ALERT_DISTANCE = 10;
   const FREE_QUOTA_MAX = 5000;
   const MIN_QUOTA_DISTANCE = 21;
-  const FEDERAL_60_MONTHS = [
-{date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
-    {date:'19/08/2026', contest:6093, raw:'080574', reference:'0574'},
-    {date:'19/07/2026', contest:6084, raw:'017667', reference:'7667'},
-    {date:'17/06/2026', contest:6075, raw:'053952', reference:'3952'},
-    {date:'16/05/2026', contest:6066, raw:'008667', reference:'8667'},
-    {date:'18/04/2026', contest:6058, raw:'083358', reference:'3358'},
-    {date:'18/03/2026', contest:6050, raw:'034456', reference:'4456'},
-    {date:'21/02/2026', contest:6043, raw:'054522', reference:'4522'},
-    {date:'17/01/2026', contest:6034, raw:'094590', reference:'4590'},
-    {date:'17/12/2025', contest:6027, raw:'069015', reference:'9015'},
-    {date:'19/11/2025', contest:6019, raw:'042441', reference:'2441'},
-    {date:'18/10/2025', contest:6010, raw:'076478', reference:'6478'},
-    {date:'17/09/2025', contest:6001, raw:'050309', reference:'0309'},
-    {date:'16/08/2025', contest:5992, raw:'044771', reference:'4771'},
-    {date:'19/07/2025', contest:5984, raw:'067482', reference:'7482'},
-    {date:'18/06/2025', contest:5975, raw:'053681', reference:'3681'},
-    {date:'17/05/2025', contest:5966, raw:'021652', reference:'1652'},
-    {date:'16/04/2025', contest:5958, raw:'043165', reference:'3165'},
-    {date:'19/03/2025', contest:5950, raw:'054838', reference:'4838'},
-    {date:'19/02/2025', contest:5943, raw:'084978', reference:'4978'},
-    {date:'18/01/2025', contest:5934, raw:'025472', reference:'5472'},
-    {date:'21/12/2024', contest:5928, raw:'081282', reference:'1282'},
-    {date:'16/11/2024', contest:5919, raw:'026609', reference:'6609'},
-    {date:'19/10/2024', contest:5911, raw:'035189', reference:'5189'},
-    {date:'18/09/2024', contest:5902, raw:'045525', reference:'5525'},
-    {date:'17/08/2024', contest:5893, raw:'041547', reference:'1547'},
-    {date:'17/07/2024', contest:5884, raw:'012630', reference:'2630'},
-    {date:'19/06/2024', contest:5876, raw:'052749', reference:'2749'},
-    {date:'18/05/2024', contest:5867, raw:'035181', reference:'5181'},
-    {date:'17/04/2024', contest:5858, raw:'067610', reference:'7610'},
-    {date:'16/03/2024', contest:5849, raw:'007542', reference:'7542'},
-    {date:'17/02/2024', contest:5841, raw:'017178', reference:'7178'},
-    {date:'17/01/2024', contest:5833, raw:'060541', reference:'0541'},
-    {date:'16/12/2023', contest:5826, raw:'030255', reference:'0255'},
-    {date:'18/11/2023', contest:5818, raw:'060687', reference:'0687'},
-    {date:'18/10/2023', contest:5809, raw:'072525', reference:'2525'},
-    {date:'19/09/2023', contest:5792, raw:'012593', reference:'2593'},
-    {date:'16/08/2023', contest:5791, raw:'027413', reference:'7413'},
-    {date:'19/07/2023', contest:5783, raw:'021712', reference:'1712'},
-    {date:'17/06/2023', contest:5774, raw:'077129', reference:'7129'},
-    {date:'17/05/2023', contest:5765, raw:'033770', reference:'3770'},
-    {date:'19/04/2023', contest:5757, raw:'034125', reference:'4125'},
-    {date:'18/03/2023', contest:5748, raw:'085850', reference:'5850'},
-    {date:'18/02/2023', contest:5741, raw:'088869', reference:'8869'},
-    {date:'18/01/2023', contest:5732, raw:'050366', reference:'0366'},
-    {date:'17/12/2022', contest:5725, raw:'058657', reference:'8657'},
-    {date:'19/11/2022', contest:5717, raw:'045928', reference:'5928'},
-    {date:'19/10/2022', contest:5708, raw:'097990', reference:'7990'},
-    {date:'17/09/2022', contest:5699, raw:'049645', reference:'9645'},
-    {date:'17/08/2022', contest:5690, raw:'065426', reference:'5426'},
-    {date:'16/07/2022', contest:5681, raw:'047844', reference:'7844'},
-    {date:'18/06/2022', contest:5673, raw:'037325', reference:'7325'},
-    {date:'18/05/2022', contest:5664, raw:'070279', reference:'0279'},
-    {date:'16/04/2022', contest:5655, raw:'000871', reference:'0871'},
-    {date:'19/03/2022', contest:5646, raw:'082051', reference:'2051'},
-    {date:'19/02/2022', contest:5640, raw:'032646', reference:'2646'},
-    {date:'19/01/2022', contest:5631, raw:'005146', reference:'5146'},
-    {date:'18/12/2021', contest:5623, raw:'010118', reference:'0118'},
-    {date:'20/11/2021', contest:5615, raw:'014162', reference:'4162'},
-    {date:'16/10/2021', contest:5606, raw:'079603', reference:'9603'}
-  ];
+  const FEDERAL_DB = global.FEDERAL_HISTORY_DB || null;
+  const FEDERAL_60_MONTHS = Array.isArray(FEDERAL_DB?.records) ? FEDERAL_DB.records : [];
+
+  function validateFederalDatabase(){
+    const errors = [];
+    if(!FEDERAL_DB) errors.push('base não carregada');
+    if(FEDERAL_DB?.windowMonths !== 60) errors.push('janela diferente de 60 meses');
+    if(FEDERAL_60_MONTHS.length !== 60) errors.push('quantidade diferente de 60 registros');
+
+    const contests = new Set();
+    const months = new Set();
+
+    FEDERAL_60_MONTHS.forEach((item, index) => {
+      const raw = String(item?.raw || '');
+      const ref = String(item?.reference || '');
+      const match = String(item?.date || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+      if(!/^\d{6}$/.test(raw)) errors.push('1º prêmio inválido no registro ' + (index + 1));
+      if(!/^\d{4}$/.test(ref) || raw.slice(-4) !== ref) errors.push('referência divergente no registro ' + (index + 1));
+      if(!Number.isInteger(Number(item?.contest))) errors.push('concurso inválido no registro ' + (index + 1));
+
+      const contestKey = String(item?.contest);
+      if(contests.has(contestKey)) errors.push('concurso duplicado ' + contestKey);
+      contests.add(contestKey);
+
+      if(match){
+        const monthKey = match[3] + '-' + match[2];
+        if(months.has(monthKey)) errors.push('mês duplicado ' + monthKey);
+        months.add(monthKey);
+      }else{
+        errors.push('data inválida no registro ' + (index + 1));
+      }
+    });
+
+    return {
+      ok: errors.length === 0 && months.size === 60 && contests.size === 60,
+      errors
+    };
+  }
+
+  const FEDERAL_DB_STATUS = validateFederalDatabase();
+
   const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
 
   const IMPORT_RUI_HARI = [
@@ -373,6 +353,7 @@
   }
 
   function historicalReferenceSet(){
+    if(!FEDERAL_DB_STATUS.ok) return new Set();
     return new Set(federalHistoryWindow().map(item => item.reference));
   }
 
@@ -435,6 +416,20 @@
     $('sorteioOfficialHistoryCount').textContent = officialCount;
     $('sorteioManualHistoryCount').textContent = manualCount;
     $('sorteioFederalInRangeCount').textContent = inRange;
+
+    const dbStatus = $('sorteioFederalDbStatus');
+    if(dbStatus){
+      dbStatus.textContent = FEDERAL_DB_STATUS.ok
+        ? 'Base interna validada · ' + officialCount + '/60 registros'
+        : 'Base com erro · filtro histórico desativado';
+      dbStatus.className = 'radar-db-status ' + (FEDERAL_DB_STATUS.ok ? 'ok' : 'error');
+      if(!FEDERAL_DB_STATUS.ok) dbStatus.title = FEDERAL_DB_STATUS.errors.join(' | ');
+    }
+    const avoid = $('sorteioAvoidHistorical');
+    if(avoid && !FEDERAL_DB_STATUS.ok){
+      avoid.checked = false;
+      avoid.disabled = true;
+    }
 
     const registered = new Map();
     registeredQuotaEntries().forEach(entry => {
