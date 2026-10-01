@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v3.0.0-historico-unificado';
+const VERSION = 'simulador-consorcio-v3.1.0-federal-60m';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
