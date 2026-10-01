@@ -12,7 +12,7 @@
   <title>Simulador de Consórcio — v2.5.0</title>
   <link rel="manifest" href="./manifest.json?v=250">
   <link rel="apple-touch-icon" href="./icon-192.png?v=250">
-  <link rel="stylesheet" href="./estilos.css?v=290">
+  <link rel="stylesheet" href="./estilos.css?v=300">
 </head>
 <body>
   <div class="app-shell">
@@ -452,26 +452,26 @@
           <div id="sorteioClientList" class="radar-client-list"></div>
         </article>
 
-        <details class="panel draw-collapsible radar-federal-history-panel" open>
+        <details class="panel draw-collapsible radar-federal-history-panel">
           <summary>
-            <span><b>Referências da Federal — 36 meses</b><small>1 concurso por mês, próximo do dia 18, usando os 4 últimos dígitos do 1º prêmio</small></span>
-            <strong id="sorteioFederal36Count">36 sorteios</strong>
+            <span><b>Histórico de números sorteados</b><small>Federal dos últimos 36 meses + números adicionados manualmente</small></span>
+            <strong id="sorteioUnifiedHistoryCount">36 sorteios</strong>
           </summary>
           <div class="draw-details-body">
             <div class="radar-history-note">
-              <strong>Uso inteligente:</strong> estes números servem como referência histórica. Evitar um número que já saiu não aumenta a probabilidade do próximo sorteio, porque os concursos são independentes.
+              <strong>Base para escolha:</strong> o histórico ajuda a documentar o que já apareceu. A distribuição das novas cotas continua priorizando cobertura e distância mínima de 21 números.
             </div>
             <label class="radar-history-filter">
               <input id="sorteioAvoidHistorical" type="checkbox" checked>
-              <span>Nas cotas livres, ocultar referências exatas que apareceram nestes 36 meses</span>
+              <span>Nas cotas livres, ocultar referências exatas que já apareceram no histórico oficial de 36 meses</span>
             </label>
             <div class="radar-federal-kpis">
-              <div><span>Meses analisados</span><strong>36</strong></div>
-              <div><span>Referências repetidas</span><strong id="sorteioFederalRepeatCount">0</strong></div>
+              <div><span>Oficiais carregados</span><strong id="sorteioOfficialHistoryCount">36</strong></div>
+              <div><span>Adicionados manualmente</span><strong id="sorteioManualHistoryCount">0</strong></div>
               <div><span>Dentro de 0001–5000</span><strong id="sorteioFederalInRangeCount">0</strong></div>
             </div>
-            <div id="sorteioFederal36List" class="radar-federal-history-list"></div>
-            <p class="radar-source-note">Fonte histórica: resultados publicados da Loteria Federal. A seleção mensal usa o concurso mais próximo do dia 18; em caso de empate, usa o concurso anterior.</p>
+            <div id="sorteioUnifiedHistoryList" class="radar-unified-history-list"></div>
+            <p class="radar-source-note">Os registros oficiais usam 1 concurso por mês, o mais próximo do dia 18. Os registros manuais entram automaticamente neste mesmo histórico.</p>
           </div>
         </details>
 
@@ -483,8 +483,8 @@
           <div class="draw-details-body">
             <div class="radar-free-summary">
               <div><span>Cotas já usadas</span><strong id="sorteioUsedQuotaCount">0</strong></div>
-              <div><span>Distância mínima</span><strong>21 números</strong></div>
-              <div><span>Faixa</span><strong>0001–5000</strong></div>
+              <div><span>Cobertura do radar ±10</span><strong id="sorteioCoveragePct">0%</strong></div>
+              <div><span>Números cobertos</span><strong id="sorteioCoverageCount">0 / 5000</strong></div>
             </div>
             <p class="radar-free-help">Os números abaixo não repetem nenhuma cota cadastrada e ficam a pelo menos 21 números das cotas já usadas e também entre si. Toque em um número para adicioná-lo ao campo de cotas do cliente.</p>
             <div class="radar-free-actions">
@@ -495,15 +495,6 @@
             <div id="sorteioFreeList" class="radar-free-list"></div>
           </div>
         </details>
-
-        <details class="panel draw-collapsible radar-history-panel" open>
-          <summary>
-            <span><b>Conferências salvas neste aparelho</b><small>Aqui ficam apenas os números que tu conferiu manualmente no aplicativo</small></span>
-            <strong id="sorteioHistoryCount">0 conferências</strong>
-          </summary>
-          <div class="draw-details-body">
-            <div id="sorteioHistoryList" class="radar-history-list"></div>
-          </div>
         </details>
       </section>
 
@@ -579,6 +570,6 @@
   <script src="./pdf.js?v=250" defer></script>
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
-  <script src="./sorteio.js?v=291" defer></script>
+  <script src="./sorteio.js?v=300" defer></script>
 </body>
 </html>
