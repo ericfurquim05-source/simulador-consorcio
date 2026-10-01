@@ -9,10 +9,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Simulador">
-  <title>Simulador de Consórcio — v3.5.0</title>
+  <title>Simulador de Consórcio — v3.5.1</title>
   <link rel="manifest" href="./manifest.json?v=350">
   <link rel="apple-touch-icon" href="./icon-192.png?v=350">
-  <link rel="stylesheet" href="./estilos.css?v=350">
+  <link rel="stylesheet" href="./estilos.css?v=351">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,7 @@
         <div class="brand-mark">SC</div>
         <div>
           <h1>Simulador de Consórcio</h1>
-          <p>Simulações claras para apresentar ao cliente · v3.5.0</p>
+          <p>Simulações claras para apresentar ao cliente · v3.5.1</p>
         </div>
       </div>
       <button id="installBtn" class="icon-button" type="button" aria-label="Instalar aplicativo" title="Instalar aplicativo">↓</button>
@@ -411,12 +411,12 @@
         <article class="panel radar-probability-panel">
           <div class="result-topline">
             <div>
-              <div class="eyebrow">Matemática do grupo</div>
-              <h2>Cobertura e probabilidade teórica</h2>
+              <div class="eyebrow">Conta do grupo</div>
+              <h2>O que as cotas realmente cobrem</h2>
             </div>
-            <span class="pill">MODELO</span>
+            <span class="pill">CONTA</span>
           </div>
-          <p class="lead">Defina o tamanho e o prazo do grupo. O radar calcula a cobertura real das cotas cadastradas e uma referência matemática mensal, sem transformar isso em garantia de contemplação.</p>
+          <p class="lead">Coloca quantas cotas existem no grupo e o prazo. O app faz duas contas simples: quanto dos números tu cobre com as tuas cotas e qual é a chance matemática de ter pelo menos uma contemplação no mês.</p>
 
           <div class="form-grid radar-group-math-form">
             <div class="field">
@@ -430,13 +430,13 @@
           </div>
 
           <div class="radar-group-math-kpis">
-            <div><span>Universo do grupo</span><strong id="sorteioMathUniverse">5.000 posições</strong></div>
-            <div><span>Média necessária no grupo</span><strong id="sorteioAvgContemplations">22,73 cotas/mês</strong></div>
-            <div><span>Faixa de cobertura por cota</span><strong id="sorteioRadarRange">21 números por cota</strong></div><div><span>Máx. sem sobreposição</span><strong id="sorteioMaxSeparated">239 cotas</strong></div>
+            <div><span>Total de cotas do grupo</span><strong id="sorteioMathUniverse">5.000</strong></div>
+            <div><span>O grupo precisa contemplar, em média</span><strong id="sorteioAvgContemplations">22,73 por mês</strong></div>
+            <div><span>Cada cota cobre no radar</span><strong id="sorteioRadarRange">até 21 números</strong></div><div><span>Máximo sem repetir faixa</span><strong id="sorteioMaxSeparated">239 cotas</strong></div>
           </div>
 
           <div class="radar-math-note">
-            <b>Como ler:</b> uma cota cobre a referência exata e até 10 números para cada lado, ou até 21 referências quando não existe sobreposição. A “chance mensal teórica” dos clientes usa um modelo uniforme de distribuição das contemplações do grupo. Ela é uma aproximação matemática, não uma previsão do sorteio. A média de 22,73 contemplações não é tratada como 22,73 sorteios independentes da Federal.
+            <b>Exemplo fácil:</b> num grupo com 5.000 cotas e 220 meses, a conta dá 22,73 contemplações por mês em média. Se o cliente tiver várias cotas espalhadas, o app mostra quantos dos 5.000 números ficam dentro da faixa de ±10 dessas cotas. Separadamente, mostra a chance matemática mensal considerando a quantidade de cotas dele. <b>Não é garantia de contemplação.</b>
           </div>
         </article>
 
@@ -604,8 +604,8 @@
   <script src="./alavancagem.js?v=350" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <script src="./pdf-profissional.js?v=350" defer></script>
-  <script src="./empresarial.js?v=350" defer></script>
+  <script src="./empresarial.js?v=351" defer></script>
   <script src="./federal-history.js?v=330" defer></script>
-  <script src="./sorteio.js?v=350" defer></script>
+  <script src="./sorteio.js?v=351" defer></script>
 </body>
 </html>
