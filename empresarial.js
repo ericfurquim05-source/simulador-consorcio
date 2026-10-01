@@ -104,8 +104,11 @@
     const averageMonthsPerContemplation = averageContemplationsMonthly > 0 ? 1 / averageContemplationsMonthly : 0;
     const groupAverageContemplationsMonthly = input.groupSize / input.term;
     const quotaShare = Math.min(1, quotaCount / input.groupSize);
-    const theoreticalCoverageCount = Math.min(input.groupSize, quotaCount * 21);
+    const coverageWidth = 21;
+    const maxSeparatedQuotas = Math.ceil(input.groupSize / coverageWidth);
+    const theoreticalCoverageCount = Math.min(input.groupSize, quotaCount * coverageWidth);
     const theoreticalCoveragePercentage = input.groupSize ? theoreticalCoverageCount / input.groupSize * 100 : 0;
+    const coverageSaturated = quotaCount >= maxSeparatedQuotas;
     const monthlyProbabilityUniform = quotaShare > 0
       ? (1 - Math.pow(1 - quotaShare, groupAverageContemplationsMonthly)) * 100
       : 0;
@@ -158,6 +161,7 @@
       averageContemplationsMonthly, averageMonthsPerContemplation,
       groupAverageContemplationsMonthly, quotaShare, theoreticalCoverageCount,
       theoreticalCoveragePercentage, monthlyProbabilityUniform, expectedProjectContemplationsMonthly,
+      coverageWidth, maxSeparatedQuotas, coverageSaturated,
       quotaComparisons,
       linearContemplationsRaw, linearContemplationsRounded, scenarioContemplations,
       eligibleCollateral, collateralQuotaCapacity, alignedQuotaCapacity, alignedCreditCapacity,
@@ -196,6 +200,8 @@
     $('empResParticipacao').textContent = pct(result.quotaShare * 100,3);
     $('empResProbMensal').textContent = pct(result.monthlyProbabilityUniform,2);
     $('empResEsperadoProjeto').textContent = nfmt(result.expectedProjectContemplationsMonthly,3) + ' cota/mês';
+    $('empResMaxSemSobreposicao').textContent = nfmt(result.maxSeparatedQuotas) + ' cotas';
+    $('empResSaturacao').textContent = result.coverageSaturated ? 'Cobertura saturada' : 'Ainda há território livre';
     $('empResIntervalo').textContent = result.averageMonthsPerContemplation > 0 ? '1 a cada ' + nfmt(result.averageMonthsPerContemplation,2) + ' meses' : '—';
     $('empResMediaPeriodo').textContent = nfmt(result.linearContemplationsRaw,2) + ' ≈ ' + nfmt(result.linearContemplationsRounded) + ' cotas inteiras';
     $('empResContemplacoes').textContent = nfmt(result.usableContemplations) + ' cotas';
@@ -309,6 +315,7 @@
       'Prazo: ' + r.input.term + ' meses',
       'Grupo considerado: ' + nfmt(r.input.groupSize) + ' cotas',
       'Cobertura teórica máxima ±10: ' + pct(r.theoreticalCoveragePercentage,2) + ' (' + nfmt(r.theoreticalCoverageCount) + '/' + nfmt(r.input.groupSize) + ' referências)',
+      'Máximo sem sobreposição: ' + nfmt(r.maxSeparatedQuotas) + ' cotas',
       'Probabilidade mensal teórica — modelo uniforme: ' + pct(r.monthlyProbabilityUniform,2),
       'Parcela reduzida estimada do projeto: ' + brl(r.reducedProjectPayment) + '/mês',
       'Período analisado: ' + r.input.analysisMonths + ' meses',
@@ -441,27 +448,28 @@
     doc.text('Grupo considerado: ' + nfmt(r.input.groupSize) + ' cotas · prazo ' + r.input.term + ' meses',12,198);
     doc.text('Média necessária do grupo: ' + nfmt(r.groupAverageContemplationsMonthly,2) + ' contemplações/mês',12,204);
     doc.text('Cobertura máxima ±10: ' + pct(r.theoreticalCoveragePercentage,2) + ' · ' + nfmt(r.theoreticalCoverageCount) + '/' + nfmt(r.input.groupSize) + ' referências',12,210);
-    doc.text('Probabilidade mensal teórica (modelo uniforme): ' + pct(r.monthlyProbabilityUniform,2),12,216);
+    doc.text('Máximo sem sobreposição: ' + nfmt(r.maxSeparatedQuotas) + ' cotas · ' + (r.coverageSaturated ? 'território saturado' : 'território ainda não saturado'),12,216);
+    doc.text('Probabilidade mensal teórica (modelo uniforme): ' + pct(r.monthlyProbabilityUniform,2),12,222);
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(11);
-    doc.text('Referência matemática de contemplação da carteira',12,228);
+    doc.text('Referência matemática de contemplação da carteira',12,233);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.8);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.4);
-    doc.text('Média linear da carteira: ' + nfmt(r.averageContemplationsMonthly,3) + ' cota/mês',12,236);
-    doc.text('Intervalo equivalente: 1 contemplação a cada ' + nfmt(r.averageMonthsPerContemplation,2) + ' meses',12,242);
-    doc.text('No período de ' + r.input.analysisMonths + ' meses: ' + nfmt(r.linearContemplationsRaw,2) + ' cotas equivalentes, arredondadas para ' + nfmt(r.linearContemplationsRounded) + ' cotas inteiras.',12,248);
+    doc.text('Média linear da carteira: ' + nfmt(r.averageContemplationsMonthly,3) + ' cota/mês',12,241);
+    doc.text('Intervalo equivalente: 1 contemplação a cada ' + nfmt(r.averageMonthsPerContemplation,2) + ' meses',12,247);
+    doc.text('No período de ' + r.input.analysisMonths + ' meses: ' + nfmt(r.linearContemplationsRaw,2) + ' cotas equivalentes, arredondadas para ' + nfmt(r.linearContemplationsRounded) + ' cotas inteiras.',12,253);
 
     doc.setDrawColor(225,229,233);
-    doc.line(12,256,198,256);
+    doc.line(12,261,198,261);
     doc.setFontSize(7.1);
     doc.setTextColor(105,115,125);
     const note1 = 'Liquidez incremental não é lucro: representa crédito ativado menos o capital próprio aportado até o marco analisado. A conta usa a parcela reduzida do projeto até esse marco e mostra separadamente a parcela projetada após as contemplações do cenário.';
-    doc.text(doc.splitTextToSize(note1,186),12,262);
+    doc.text(doc.splitTextToSize(note1,186),12,267);
     const note2 = 'Contemplação, utilização do crédito, garantias próprias ou de terceiros, percentuais de garantia, liberação e demais condições dependem das regras do grupo, contrato e análise da administradora. A média de contemplação exibida é uma referência matemática linear, não uma previsão ou garantia.';
-    doc.text(doc.splitTextToSize(note2,186),12,274);
+    doc.text(doc.splitTextToSize(note2,186),12,279);
 
     doc.addPage();
     addPdfHeader(doc,'Memória de cálculo','Premissas auditáveis da simulação',profile);
@@ -477,6 +485,7 @@
       ['Quantidade de cotas do grupo', nfmt(r.input.groupSize)],
       ['Média necessária do grupo', nfmt(r.groupAverageContemplationsMonthly,2) + '/mês'],
       ['Cobertura teórica ±10', pct(r.theoreticalCoveragePercentage,2)],
+      ['Máximo sem sobreposição', nfmt(r.maxSeparatedQuotas) + ' cotas'],
       ['Probabilidade mensal teórica', pct(r.monthlyProbabilityUniform,2)],
       ['Taxa administrativa total', pct(r.input.adminRate*100,2)],
       ['Equivalência média simples', pct(r.annualAdminSimple,2) + ' a.a.'],
@@ -635,7 +644,7 @@
       '<section id="empResultado" class="result-stack" hidden>',
       '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Resumo executivo</div><h2>Quanto capital foi ativado</h2><p class="lead">Os números abaixo separam capital próprio, crédito ativado e obrigação mensal. Liquidez incremental não é tratada como lucro.</p></div></div>',
       '<div class="emp-kpi"><div><span>Cotas inteiras</span><strong id="empResCotas">0</strong></div><div><span>Crédito estruturado</span><strong id="empResCreditoContratado">R$ 0</strong></div><div><span>Parcela reduzida do projeto</span><strong id="empResParcelaReduzida">R$ 0</strong></div><div><span>Parcela cheia do projeto</span><strong id="empResParcelaCheia">R$ 0</strong></div><div><span>Capital próprio aportado</span><strong id="empResCapitalAportado">R$ 0</strong></div><div class="highlight"><span>Crédito ativado</span><strong id="empResCreditoAtivado">R$ 0</strong></div><div class="green"><span>Liquidez incremental</span><strong id="empResLiquidez">R$ 0</strong></div><div class="highlight"><span>Multiplicador</span><strong id="empResMultiplicador">0x</strong></div></div><span id="empResStatus" class="emp-status">—</span><div id="empGuaranteeWarning" class="message warning emp-warning" hidden></div>',
-      '<h3 class="emp-section-title">Cobertura matemática do grupo</h3><p class="emp-subline">A cobertura ±10 considera até 21 referências por cota quando elas estão espaçadas em pelo menos 21 números. A probabilidade mensal é um modelo uniforme aproximado, não garantia.</p><div class="emp-math-grid"><div><span>Média necessária do grupo</span><strong id="empResGrupoMedia">0</strong></div><div><span>Cobertura teórica ±10</span><strong id="empResCobertura">0%</strong></div><div><span>Território coberto</span><strong id="empResTerritorio">0</strong></div><div><span>Participação direta no grupo</span><strong id="empResParticipacao">0%</strong></div><div><span>Probabilidade mensal teórica*</span><strong id="empResProbMensal">0%</strong></div><div><span>Valor esperado da carteira</span><strong id="empResEsperadoProjeto">0/mês</strong></div></div><h3 class="emp-section-title">Média linear da carteira</h3><div class="emp-math-grid"><div><span>Média por mês</span><strong id="empResMediaMes">0</strong></div><div><span>Intervalo equivalente</span><strong id="empResIntervalo">0</strong></div><div><span>Média no período</span><strong id="empResMediaPeriodo">0</strong></div><div><span>Cenário utilizado</span><strong id="empResContemplacoes">0</strong></div><div><span>Cotas para igualar o aporte</span><strong id="empResCotasEquilibrio">0</strong></div><div><span>Capital próprio por R$ 100 mil ativados</span><strong id="empResCapital100">—</strong></div></div>',
+      '<h3 class="emp-section-title">Cobertura matemática do grupo</h3><p class="emp-subline">A cobertura ±10 considera até 21 referências por cota quando elas estão espaçadas em pelo menos 21 números. A probabilidade mensal é um modelo uniforme aproximado, não garantia.</p><div class="emp-math-grid"><div><span>Média necessária do grupo</span><strong id="empResGrupoMedia">0</strong></div><div><span>Cobertura teórica ±10</span><strong id="empResCobertura">0%</strong></div><div><span>Território coberto</span><strong id="empResTerritorio">0</strong></div><div><span>Participação direta no grupo</span><strong id="empResParticipacao">0%</strong></div><div><span>Probabilidade mensal teórica*</span><strong id="empResProbMensal">0%</strong></div><div><span>Valor esperado da carteira</span><strong id="empResEsperadoProjeto">0/mês</strong></div><div><span>Máx. cotas sem sobreposição</span><strong id="empResMaxSemSobreposicao">0</strong></div><div><span>Status do território</span><strong id="empResSaturacao">—</strong></div></div><h3 class="emp-section-title">Média linear da carteira</h3><div class="emp-math-grid"><div><span>Média por mês</span><strong id="empResMediaMes">0</strong></div><div><span>Intervalo equivalente</span><strong id="empResIntervalo">0</strong></div><div><span>Média no período</span><strong id="empResMediaPeriodo">0</strong></div><div><span>Cenário utilizado</span><strong id="empResContemplacoes">0</strong></div><div><span>Cotas para igualar o aporte</span><strong id="empResCotasEquilibrio">0</strong></div><div><span>Capital próprio por R$ 100 mil ativados</span><strong id="empResCapital100">—</strong></div></div>',
       '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Escolha do ticket</div><h2>Quanto do grupo cada valor de carta cobre</h2><p class="lead">Mantendo o mesmo tamanho de projeto, cartas menores geram mais cotas e ampliam a cobertura teórica. O cálculo sempre arredonda a quantidade de cotas para cima.</p></div></div><div class="table-wrap"><table class="comparison-table emp-coverage-table"><thead><tr><th>Valor da carta</th><th>Cotas</th><th>Cobertura ±10</th><th>Chance mensal teórica*</th><th>Média da carteira</th></tr></thead><tbody id="empCoverageCompareBody"></tbody></table></div><div class="emp-method"><b>*Modelo uniforme:</b> não transforma a média de contemplações do grupo em vários sorteios independentes da Federal. É uma aproximação de distribuição das contemplações entre as cotas do grupo.</div></article>',
       '<h3 class="emp-section-title">Capacidade do bem</h3><div class="emp-detail-grid"><div><span>Capacidade elegível do bem</span><strong id="empResBemElegivel">—</strong></div><div><span>Cotas suportadas</span><strong id="empResCotasGarantia">—</strong></div><div><span>Crédito suportado</span><strong id="empResCreditoGarantia">—</strong></div><div><span>Uso da capacidade no cenário</span><strong id="empResUsoGarantia">—</strong></div><div><span>Parcela reduzida por cota</span><strong id="empResParcelaCotaReduzida">—</strong></div><div><span>Parcela cheia por cota</span><strong id="empResParcelaCotaCheia">—</strong></div><div><span>Parcela do projeto após cenário</span><strong id="empResParcelaPosCenario">—</strong></div><div><span>Taxa adm. média simples</span><strong id="empResTaxaAnual">—</strong></div></div>',
       '<div class="emp-method"><b>Leitura correta:</b> o app não chama a diferença de lucro. Ele calcula quanto crédito foi efetivamente ativado frente ao capital próprio colocado até o marco analisado. As parcelas futuras continuam existindo e ficam explícitas na apresentação.</div>',
