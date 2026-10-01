@@ -581,3 +581,23 @@ button{cursor:pointer}
 }
 
 /* v2.9.0 — histórico Federal de 36 meses */
+
+
+/* v3.0.0 — histórico unificado + cobertura matemática */
+.radar-unified-history-list{display:grid;gap:8px;margin-top:12px}
+.radar-unified-history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:#0b1219}
+.radar-unified-history-row.official{border-color:#344b40}
+.radar-unified-history-row.manual{border-color:#60451f}
+.radar-unified-history-main{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(140px,1.2fr);gap:12px;align-items:center}
+.radar-unified-history-main>div:first-child strong{display:block;font:950 18px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.05em}
+.radar-unified-history-main span{display:block;margin-top:4px;color:var(--muted);font-size:8px}
+.radar-unified-history-main b{display:inline-flex;padding:4px 6px;border:1px solid #365244;border-radius:999px;color:#8fd0a7;font-size:7px;letter-spacing:.05em}
+.radar-unified-history-row.manual .radar-unified-history-main b{border-color:#674a25;color:#ffb75b}
+.radar-unified-history-side{display:flex;align-items:center;gap:8px}
+.radar-unified-history-side>span{color:var(--muted);font-size:8px;white-space:nowrap}
+.radar-unified-history-side button{border:1px solid #673940;border-radius:9px;padding:7px 9px;background:#28171a;color:#ff9d9d;font-size:8px;font-weight:900}
+@media(max-width:620px){
+  .radar-unified-history-row{grid-template-columns:1fr}
+  .radar-unified-history-main{grid-template-columns:1fr}
+  .radar-unified-history-side{justify-content:space-between}
+}
