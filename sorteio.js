@@ -247,24 +247,25 @@
 
   function load(){
     const stored = loadJSON(STORAGE_KEY, null);
-    if(stored && Array.isArray(stored.clients) && Array.isArray(stored.history)){
+    if(stored && Array.isArray(stored.clients)){
       state.clients = stored.clients.map(normalizeClient).filter(Boolean);
-      state.history = stored.history.map(normalizeRecord).filter(Boolean).sort((a, b) => b.createdAt - a.createdAt);
     }else{
       const migrated = migrateLegacy();
       state.clients = migrated.clients;
-      state.history = migrated.history;
-      save();
     }
 
+    // O histórico oficial vem exclusivamente da base Federal interna.
+    // Remove definitivamente conferências manuais antigas salvas em versões anteriores.
+    state.history = [];
+    state.currentRecordId = null;
     applyRuiHariImport();
-    state.currentRecordId = state.history[0]?.id || null;
+    save();
   }
 
   function save(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       clients: state.clients,
-      history: state.history
+      history: []
     }));
   }
 
@@ -377,7 +378,7 @@
   }
 
   function unifiedHistoryRows(){
-    const official = federalHistoryWindow().map(item => ({
+    return federalHistoryWindow().map(item => ({
       id: 'official-' + item.contest,
       source: 'official',
       date: item.date,
@@ -388,19 +389,7 @@
         const [day, month, year] = item.date.split('/').map(Number);
         return new Date(year, month - 1, day, 12, 0, 0).getTime();
       })()
-    }));
-
-    const manual = state.history.map(record => ({
-      id: record.id,
-      source: 'manual',
-      date: '',
-      contest: null,
-      raw: record.raw,
-      reference: record.reference,
-      createdAt: record.createdAt
-    }));
-
-    return official.concat(manual).sort((a, b) => b.createdAt - a.createdAt);
+    })).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   function renderUnifiedHistory(){
@@ -409,12 +398,10 @@
 
     const rows = unifiedHistoryRows();
     const officialCount = federalHistoryWindow().length;
-    const manualCount = state.history.length;
     const inRange = rows.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
 
     $('sorteioUnifiedHistoryCount').textContent = rows.length + (rows.length === 1 ? ' sorteio' : ' sorteios');
     $('sorteioOfficialHistoryCount').textContent = officialCount;
-    $('sorteioManualHistoryCount').textContent = manualCount;
     $('sorteioFederalInRangeCount').textContent = inRange;
 
     const dbStatus = $('sorteioFederalDbStatus');
@@ -441,29 +428,22 @@
       const owners = registered.get(item.reference) || [];
       const matches = computeMatches(item.reference);
       const exact = matches.some(match => match.distance === 0);
-      const sourceLabel = item.source === 'official' ? 'OFICIAL' : 'MANUAL';
-      const date = item.source === 'official'
-        ? item.date + ' · concurso ' + item.contest
-        : new Date(item.createdAt).toLocaleString('pt-BR');
+      const sourceLabel = 'OFICIAL';
+      const date = item.date + ' · concurso ' + item.contest;
       const owner = owners.length
         ? '<span class="radar-federal-owner">Cota cadastrada: ' + escapeHTML(owners.join(', ')) + '</span>'
         : '';
       const matchLabel = exact ? 'cota exata' : matches.length ? matches.length + (matches.length === 1 ? ' alerta' : ' alertas') : 'sem alerta';
 
-      return '<div class="radar-unified-history-row ' + item.source + '" data-record-id="' + escapeHTML(item.id) + '">' +
+      return '<div class="radar-unified-history-row official" data-record-id="' + escapeHTML(item.id) + '">' +
         '<div class="radar-unified-history-main">' +
           '<div><strong>' + item.reference + '</strong><span>' + escapeHTML(date) + '</span></div>' +
           '<div><b>' + sourceLabel + '</b><span>1º prêmio/ref. ' + escapeHTML(item.raw) + '</span>' + owner + '</div>' +
         '</div>' +
-        '<div class="radar-unified-history-side"><span>' + matchLabel + '</span>' +
-          (item.source === 'manual' ? '<button type="button" data-action="delete" class="danger">Excluir</button>' : '') +
-        '</div>' +
+        '<div class="radar-unified-history-side"><span>' + matchLabel + '</span></div>' +
       '</div>';
     }).join('');
 
-    list.querySelectorAll('.radar-unified-history-row.manual').forEach(row => {
-      row.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteHistory(row.dataset.recordId));
-    });
   }
 
   function freeQuotaSuggestions(){
@@ -726,9 +706,7 @@
     renderClients();
     renderUnifiedHistory();
     renderFreeQuotas();
-    const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
-    state.currentRecordId = record?.id || null;
-    renderAlert(record);
+    renderAlert(null);
   }
 
   function saveDraw(){
@@ -739,18 +717,15 @@
     }
 
     const record = normalizeRecord({
-      id: uid('sorteio'),
+      id: uid('conferencia'),
       raw: parsed.raw,
       reference: parsed.reference,
       createdAt: Date.now()
     });
 
-    state.history.unshift(record);
-    state.currentRecordId = record.id;
-    save();
-    renderAll();
-
     const matches = computeMatches(record.reference);
+    renderAlert(record);
+
     if(matches.length && navigator.vibrate){
       try{ navigator.vibrate([180, 80, 180]); }catch(_error){}
     }
@@ -758,8 +733,8 @@
     showMessage(
       'sorteioDrawMessage',
       matches.length
-        ? 'Número adicionado ao histórico. Atenção: encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
-        : 'Número adicionado ao histórico. Nenhuma cota ficou na faixa de ±10.',
+        ? 'Conferência feita. Encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
+        : 'Conferência feita. Nenhuma cota ficou na faixa de ±10.',
       matches.length ? 'warning' : 'success'
     );
 
@@ -872,16 +847,6 @@
     save();
     renderAll();
     showMessage('sorteioClientMessage', 'Cliente excluído.');
-  }
-
-  function deleteHistory(id){
-    const record = state.history.find(item => item.id === id);
-    if(!record) return;
-    if(!confirm('Excluir o número ' + record.reference + ' do histórico?')) return;
-    state.history = state.history.filter(item => item.id !== id);
-    if(state.currentRecordId === id) state.currentRecordId = state.history[0]?.id || null;
-    save();
-    renderAll();
   }
 
   function bind(){
