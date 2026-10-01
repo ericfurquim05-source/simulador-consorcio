@@ -520,6 +520,62 @@
     doc.setFontSize(7.3); doc.setTextColor(100,110,120);
     doc.text(doc.splitTextToSize('Documento de simulação matemática para apoio à reunião. Não substitui proposta, contrato, análise de crédito, avaliação de garantia ou confirmação formal da administradora.',186),12,266);
 
+
+    doc.addPage();
+    addPdfHeader(doc,'Comparação de Tickets','Cobertura matemática por valor de carta',profile);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(35,45,55);
+    doc.text('Mesmo projeto, diferentes tamanhos de carta',12,48);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8.4);
+    doc.setTextColor(95,105,115);
+    doc.text('Projeto: ' + brl(r.input.projectValue) + ' · grupo: ' + nfmt(r.input.groupSize) + ' cotas · prazo: ' + r.input.term + ' meses',12,55);
+    doc.text('A quantidade de cotas é sempre arredondada para cima. Cobertura ±10 pressupõe distribuição com distância mínima de 21 números.',12,61,{maxWidth:186});
+
+    const cols = [12,55,88,128,164,198];
+    let ty = 72;
+    doc.setFillColor(19,27,36);
+    doc.rect(12,ty-6,186,10,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7.1);
+    doc.text('Carta',cols[0]+3,ty);
+    doc.text('Cotas',cols[1]-3,ty,{align:'right'});
+    doc.text('Cobertura',cols[2]-3,ty,{align:'right'});
+    doc.text('Chance mensal*',cols[3]-3,ty,{align:'right'});
+    doc.text('Média carteira',cols[4]-3,ty,{align:'right'});
+    doc.text('Território',cols[5]-3,ty,{align:'right'});
+    ty += 10;
+
+    r.quotaComparisons.forEach(function(item,index){
+      const active = Math.abs(item.quotaValue - r.input.quotaValue) < 1;
+      if(active){ doc.setFillColor(255,248,239); doc.setDrawColor(255,180,93); }
+      else if(index % 2 === 0){ doc.setFillColor(248,250,251); doc.setDrawColor(235,238,241); }
+      else{ doc.setFillColor(255,255,255); doc.setDrawColor(235,238,241); }
+      doc.rect(12,ty-6,186,10,'FD');
+      doc.setFont('helvetica',active ? 'bold' : 'normal');
+      doc.setFontSize(7.6);
+      doc.setTextColor(active ? 185 : 45,active ? 102 : 55,active ? 0 : 65);
+      doc.text(brl(item.quotaValue),cols[0]+3,ty);
+      doc.text(nfmt(item.quotaCount),cols[1]-3,ty,{align:'right'});
+      doc.text(pct(item.coveragePercentage,2),cols[2]-3,ty,{align:'right'});
+      doc.text(pct(item.monthlyProbability,2),cols[3]-3,ty,{align:'right'});
+      doc.text(nfmt(item.averageProjectMonthly,3) + '/mês',cols[4]-3,ty,{align:'right'});
+      doc.text(nfmt(item.coverageCount) + '/' + nfmt(r.input.groupSize),cols[5]-3,ty,{align:'right'});
+      ty += 10;
+    });
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(35,45,55);
+    doc.text('Leitura das métricas',12,ty+8);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(95,105,115);
+    const ticketNote = '* Chance mensal teórica: modelo uniforme aproximado baseado na participação direta das cotas e na média necessária de contemplações do grupo. A cobertura ±10 mede a fração das referências do grupo alcançada pelo território das cotas. As duas métricas são mostradas separadamente para não contar a mesma oportunidade duas vezes.';
+    doc.text(doc.splitTextToSize(ticketNote,186),12,ty+15);
+
     doc.save('projeto-empresarial-' + safeFileName(r.input.client) + '.pdf');
     $('empMessage').textContent = 'PDF profissional gerado.';
     $('empMessage').hidden = false;
@@ -584,7 +640,7 @@
       '<h3 class="emp-section-title">Capacidade do bem</h3><div class="emp-detail-grid"><div><span>Capacidade elegível do bem</span><strong id="empResBemElegivel">—</strong></div><div><span>Cotas suportadas</span><strong id="empResCotasGarantia">—</strong></div><div><span>Crédito suportado</span><strong id="empResCreditoGarantia">—</strong></div><div><span>Uso da capacidade no cenário</span><strong id="empResUsoGarantia">—</strong></div><div><span>Parcela reduzida por cota</span><strong id="empResParcelaCotaReduzida">—</strong></div><div><span>Parcela cheia por cota</span><strong id="empResParcelaCotaCheia">—</strong></div><div><span>Parcela do projeto após cenário</span><strong id="empResParcelaPosCenario">—</strong></div><div><span>Taxa adm. média simples</span><strong id="empResTaxaAnual">—</strong></div></div>',
       '<div class="emp-method"><b>Leitura correta:</b> o app não chama a diferença de lucro. Ele calcula quanto crédito foi efetivamente ativado frente ao capital próprio colocado até o marco analisado. As parcelas futuras continuam existindo e ficam explícitas na apresentação.</div>',
       '</article>',
-      '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Apresentação</div><h2>Entregar ao empresário</h2><p class="lead">Gere um PDF de duas páginas com resumo executivo e memória de cálculo para o cliente ou contador conferir.</p></div></div><div class="emp-actions"><button id="empPdfBtn" class="action-button" type="button"><span>▣</span>Gerar PDF profissional</button><button id="empCopiarBtn" class="action-button" type="button"><span>⧉</span>Copiar resumo</button></div><div id="empMessage" class="message success" hidden></div></article>',
+      '<article class="panel"><div class="section-heading"><div><div class="eyebrow">Apresentação</div><h2>Entregar ao empresário</h2><p class="lead">Gere um PDF profissional com resumo executivo, memória de cálculo e comparação de tickets para o cliente ou contador conferir.</p></div></div><div class="emp-actions"><button id="empPdfBtn" class="action-button" type="button"><span>▣</span>Gerar PDF profissional</button><button id="empCopiarBtn" class="action-button" type="button"><span>⧉</span>Copiar resumo</button></div><div id="empMessage" class="message success" hidden></div></article>',
       '<article class="disclaimer"><b>Importante:</b> simulação matemática. Não garante contemplação, liberação, aceitação de garantia, uso de bem de terceiro ou disponibilidade do crédito. As condições reais devem ser conferidas no contrato e na análise da administradora.</article>',
       '</section></section>'
     ].join('');
