@@ -579,3 +579,5 @@ button{cursor:pointer}
 @media(max-width:430px){
   .radar-federal-kpis{grid-template-columns:1fr}
 }
+
+/* v2.9.0 — histórico Federal de 36 meses */
