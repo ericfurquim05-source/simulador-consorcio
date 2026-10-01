@@ -258,6 +258,8 @@
     // Remove definitivamente conferências manuais antigas salvas em versões anteriores.
     state.history = [];
     state.currentRecordId = null;
+    localStorage.removeItem('simulador-sorteio-clientes-v1');
+    localStorage.setItem('simulador-sorteio-manual-history-purged-v1', '1');
     applyRuiHariImport();
     save();
   }
