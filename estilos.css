@@ -608,3 +608,27 @@ button{cursor:pointer}
 .radar-db-status{margin-top:10px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#0b1219;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.02em}
 .radar-db-status.ok{border-color:#355443;color:#91d5aa;background:#0d1b14}
 .radar-db-status.error{border-color:#74383d;color:#ff9d9d;background:#28171a}
+
+
+/* v3.5.0 — cobertura matemática e probabilidade teórica */
+.radar-probability-panel{border-color:#4e5664}
+.radar-group-math-form{margin-top:14px}
+.radar-group-math-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.radar-group-math-kpis>div{border:1px solid var(--line);border-radius:13px;background:#0b1219;padding:12px;min-width:0}
+.radar-group-math-kpis span{display:block;color:var(--muted);font-size:8px;line-height:1.35}
+.radar-group-math-kpis strong{display:block;margin-top:6px;font-size:15px;overflow-wrap:anywhere}
+.radar-math-note{margin-top:12px;padding:11px 12px;border:1px solid #5a4b2a;border-radius:12px;background:#1b170d;color:#ded3aa;font-size:9px;line-height:1.55}
+.radar-client-probability{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 11px}
+.radar-client-probability>div{border:1px solid var(--line);border-radius:11px;background:#0b1219;padding:9px;min-width:0}
+.radar-client-probability span{display:block;color:var(--muted);font-size:6.7px;line-height:1.35;text-transform:uppercase;letter-spacing:.03em}
+.radar-client-probability strong{display:block;margin-top:5px;font-size:11px;overflow-wrap:anywhere}
+.radar-client-probability small{display:block;margin-top:4px;color:#8e9aa5;font-size:6.8px;line-height:1.3}
+@media(max-width:680px){
+  .radar-group-math-kpis{grid-template-columns:1fr 1fr}
+  .radar-group-math-kpis>div:last-child{grid-column:1/-1}
+  .radar-client-probability{grid-template-columns:1fr 1fr}
+}
+@media(max-width:380px){
+  .radar-group-math-kpis,.radar-client-probability{grid-template-columns:1fr}
+  .radar-group-math-kpis>div:last-child{grid-column:auto}
+}
