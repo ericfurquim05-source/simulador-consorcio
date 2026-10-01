@@ -66,6 +66,40 @@
     {date:'16/10/2021', contest:5606, raw:'079603', reference:'9603'}
   ];
 
+  function renderOfficialHistoryFallback(){
+    const list = document.getElementById('sorteioUnifiedHistoryList');
+    if(!list) return;
+
+    const ordered = records.slice().sort((a, b) => {
+      const [da, ma, ya] = a.date.split('/').map(Number);
+      const [db, mb, yb] = b.date.split('/').map(Number);
+      return new Date(yb, mb - 1, db) - new Date(ya, ma - 1, da);
+    }).slice(0, 60);
+
+    const count = document.getElementById('sorteioUnifiedHistoryCount');
+    const officialCount = document.getElementById('sorteioOfficialHistoryCount');
+    const inRange = document.getElementById('sorteioFederalInRangeCount');
+
+    if(count) count.textContent = ordered.length + ' sorteios';
+    if(officialCount) officialCount.textContent = ordered.length;
+    if(inRange) inRange.textContent = ordered.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= 5000).length;
+
+    list.innerHTML = ordered.map(item => (
+      '<div class="radar-unified-history-row official">' +
+        '<div class="radar-unified-history-main">' +
+          '<div><strong>' + item.reference + '</strong><span>' + item.date + ' · concurso ' + item.contest + '</span></div>' +
+          '<div><b>OFICIAL</b><span>1º prêmio ' + item.raw + '</span></div>' +
+        '</div>' +
+      '</div>'
+    )).join('');
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', renderOfficialHistoryFallback, {once:true});
+  }else{
+    renderOfficialHistoryFallback();
+  }
+
   global.FEDERAL_HISTORY_DB = Object.freeze({
     version: '2026-10-01.1',
     source: 'Loterias CAIXA — Loteria Federal',
