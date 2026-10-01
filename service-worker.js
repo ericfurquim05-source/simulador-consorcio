@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v2.6.0-radar-sorteio-v1';
+const VERSION = 'simulador-consorcio-v2.6.1-radar-clientes-rui-hari';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
