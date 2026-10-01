@@ -12,7 +12,7 @@
   <title>Simulador de Consórcio — v2.5.0</title>
   <link rel="manifest" href="./manifest.json?v=250">
   <link rel="apple-touch-icon" href="./icon-192.png?v=250">
-  <link rel="stylesheet" href="./estilos.css?v=260">
+  <link rel="stylesheet" href="./estilos.css?v=270">
 </head>
 <body>
   <div class="app-shell">
@@ -452,6 +452,27 @@
           <div id="sorteioClientList" class="radar-client-list"></div>
         </article>
 
+        <details class="panel draw-collapsible radar-free-panel" open>
+          <summary>
+            <span><b>Cotas livres</b><small>Sugestões entre 0001 e 5000 com distância mínima de 21 números</small></span>
+            <strong id="sorteioFreeCount">0 livres</strong>
+          </summary>
+          <div class="draw-details-body">
+            <div class="radar-free-summary">
+              <div><span>Cotas já usadas</span><strong id="sorteioUsedQuotaCount">0</strong></div>
+              <div><span>Distância mínima</span><strong>21 números</strong></div>
+              <div><span>Faixa</span><strong>0001–5000</strong></div>
+            </div>
+            <p class="radar-free-help">Os números abaixo não repetem nenhuma cota cadastrada e ficam a pelo menos 21 números das cotas já usadas e também entre si. Toque em um número para adicioná-lo ao campo de cotas do cliente.</p>
+            <div class="radar-free-actions">
+              <button id="sorteioUseNextFreeBtn" class="secondary-button" type="button">Usar próxima livre</button>
+              <button id="sorteioCopyFreeBtn" class="secondary-button" type="button">Copiar todas</button>
+            </div>
+            <div id="sorteioFreeMessage" class="message success" hidden></div>
+            <div id="sorteioFreeList" class="radar-free-list"></div>
+          </div>
+        </details>
+
         <details class="panel draw-collapsible radar-history-panel" open>
           <summary>
             <span><b>Histórico de números sorteados</b><small>Cada conferência fica salva e é recalculada contra a base atual de clientes</small></span>
@@ -535,6 +556,6 @@
   <script src="./pdf.js?v=250" defer></script>
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
-  <script src="./sorteio.js?v=261" defer></script>
+  <script src="./sorteio.js?v=270" defer></script>
 </body>
 </html>
