@@ -8,6 +8,32 @@
   const ALERT_DISTANCE = 10;
   const FREE_QUOTA_MAX = 5000;
   const MIN_QUOTA_DISTANCE = 21;
+  const FEDERAL_24_MONTHS = [
+    {date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
+    {date:'19/08/2026', contest:6093, raw:'080574', reference:'0574'},
+    {date:'19/07/2026', contest:6084, raw:'017667', reference:'7667'},
+    {date:'17/06/2026', contest:6075, raw:'053952', reference:'3952'},
+    {date:'16/05/2026', contest:6066, raw:'008667', reference:'8667'},
+    {date:'18/04/2026', contest:6058, raw:'083358', reference:'3358'},
+    {date:'18/03/2026', contest:6050, raw:'034456', reference:'4456'},
+    {date:'21/02/2026', contest:6043, raw:'054522', reference:'4522'},
+    {date:'17/01/2026', contest:6034, raw:'094590', reference:'4590'},
+    {date:'17/12/2025', contest:6027, raw:'069015', reference:'9015'},
+    {date:'19/11/2025', contest:6019, raw:'042441', reference:'2441'},
+    {date:'18/10/2025', contest:6010, raw:'076478', reference:'6478'},
+    {date:'17/09/2025', contest:6001, raw:'050309', reference:'0309'},
+    {date:'16/08/2025', contest:5992, raw:'044771', reference:'4771'},
+    {date:'19/07/2025', contest:5984, raw:'067482', reference:'7482'},
+    {date:'18/06/2025', contest:5975, raw:'053681', reference:'3681'},
+    {date:'17/05/2025', contest:5966, raw:'021652', reference:'1652'},
+    {date:'16/04/2025', contest:5958, raw:'043165', reference:'3165'},
+    {date:'19/03/2025', contest:5950, raw:'054838', reference:'4838'},
+    {date:'19/02/2025', contest:5943, raw:'084978', reference:'4978'},
+    {date:'18/01/2025', contest:5934, raw:'025472', reference:'5472'},
+    {date:'21/12/2024', contest:5928, raw:'081282', reference:'1282'},
+    {date:'16/11/2024', contest:5919, raw:'026609', reference:'6609'},
+    {date:'19/10/2024', contest:5911, raw:'035189', reference:'5189'}
+  ];
   const IMPORT_RUI_HARI_KEY = 'simulador-sorteio-import-rui-hari-v1';
 
   const IMPORT_RUI_HARI = [
@@ -300,6 +326,46 @@
       .filter(number => number >= 1 && number <= FREE_QUOTA_MAX);
   }
 
+  function historicalReferenceSet(){
+    return new Set(FEDERAL_24_MONTHS.map(item => item.reference));
+  }
+
+  function avoidHistoricalEnabled(){
+    const control = $('sorteioAvoidHistorical');
+    return control ? control.checked : true;
+  }
+
+  function renderFederal24History(){
+    const list = $('sorteioFederal24List');
+    if(!list) return;
+
+    const counts = new Map();
+    FEDERAL_24_MONTHS.forEach(item => counts.set(item.reference, (counts.get(item.reference) || 0) + 1));
+    const repeated = [...counts.values()].filter(count => count > 1).reduce((sum, count) => sum + (count - 1), 0);
+    const inRange = FEDERAL_24_MONTHS.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= FREE_QUOTA_MAX).length;
+
+    $('sorteioFederalRepeatCount').textContent = repeated;
+    $('sorteioFederalInRangeCount').textContent = inRange;
+
+    const registered = new Map();
+    registeredQuotaEntries().forEach(entry => {
+      if(!registered.has(entry.cota)) registered.set(entry.cota, []);
+      registered.get(entry.cota).push(entry.nome);
+    });
+
+    list.innerHTML = FEDERAL_24_MONTHS.map(item => {
+      const owners = registered.get(item.reference) || [];
+      const rangeClass = Number(item.reference) <= FREE_QUOTA_MAX ? ' in-range' : ' out-range';
+      const owner = owners.length
+        ? '<span class="radar-federal-owner">Cota cadastrada: ' + escapeHTML(owners.join(', ')) + '</span>'
+        : '';
+      return '<div class="radar-federal-history-row' + rangeClass + '">' +
+        '<div><strong>' + item.reference + '</strong><span>' + item.date + ' · concurso ' + item.contest + '</span></div>' +
+        '<div><b>1º prêmio ' + item.raw + '</b>' + owner + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
   function freeQuotaSuggestions(){
     const occupied = registeredQuotaEntries()
       .map(entry => entry.number)
@@ -307,8 +373,11 @@
       .concat(pendingQuotaNumbers())
       .sort((a, b) => a - b);
 
+    const historical = historicalReferenceSet();
     const selected = [];
     for(let number = 1; number <= FREE_QUOTA_MAX; number += 1){
+      const formatted = String(number).padStart(4, '0');
+      if(avoidHistoricalEnabled() && historical.has(formatted)) continue;
       const farFromOccupied = occupied.every(used => Math.abs(number - used) >= MIN_QUOTA_DISTANCE);
       if(!farFromOccupied) continue;
       const previousSuggested = selected[selected.length - 1];
@@ -587,6 +656,7 @@
   function renderAll(){
     renderParsedPreview();
     renderClients();
+    renderFederal24History();
     renderFreeQuotas();
     renderHistory();
     const record = state.history.find(item => item.id === state.currentRecordId) || state.history[0] || null;
@@ -763,6 +833,7 @@
     $('sorteioAddClientBtn').addEventListener('click', addClient);
     $('sorteioUseNextFreeBtn')?.addEventListener('click', useNextFreeQuota);
     $('sorteioCopyFreeBtn')?.addEventListener('click', copyFreeQuotas);
+    $('sorteioAvoidHistorical')?.addEventListener('change', renderFreeQuotas);
 
     $('sorteioClientSearch').addEventListener('input', event => {
       state.search = event.target.value;
