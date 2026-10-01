@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v3.3.0-60-oficiais-visiveis';
+const VERSION = 'simulador-consorcio-v3.4.0-empresarial-pdf';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
@@ -9,6 +9,8 @@ const ASSETS = [
   './graficos.js',
   './configuracoes.js',
   './pdf.js',
+  './pdf-profissional.js',
+  './empresarial.js',
   './app.js',
   './alavancagem.js',
   './sorteio.js',
