@@ -12,7 +12,7 @@
   <title>Simulador de Consórcio — v2.5.0</title>
   <link rel="manifest" href="./manifest.json?v=250">
   <link rel="apple-touch-icon" href="./icon-192.png?v=250">
-  <link rel="stylesheet" href="./estilos.css?v=310">
+  <link rel="stylesheet" href="./estilos.css?v=320">
 </head>
 <body>
   <div class="app-shell">
@@ -461,6 +461,7 @@
             <div class="radar-history-note">
               <strong>Base para escolha:</strong> o histórico ajuda a documentar o que já apareceu. A distribuição das novas cotas continua priorizando cobertura e distância mínima de 21 números.
             </div>
+            <div id="sorteioFederalDbStatus" class="radar-db-status">Validando base interna…</div>
             <label class="radar-history-filter">
               <input id="sorteioAvoidHistorical" type="checkbox" checked>
               <span>Nas cotas livres, ocultar referências exatas que já apareceram no histórico oficial de 60 meses</span>
@@ -570,6 +571,7 @@
   <script src="./pdf.js?v=250" defer></script>
   <script src="./app.js?v=250" defer></script>
   <script src="./alavancagem.js?v=250" defer></script>
-  <script src="./sorteio.js?v=310" defer></script>
+  <script src="./federal-history.js?v=320" defer></script>
+  <script src="./sorteio.js?v=320" defer></script>
 </body>
 </html>
