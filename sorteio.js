@@ -8,7 +8,7 @@
   const ALERT_DISTANCE = 10;
   const DEFAULT_GROUP_SIZE = 5000;
   const DEFAULT_GROUP_TERM = 220;
-  const MIN_QUOTA_DISTANCE = 21;
+  const MIN_QUOTA_DISTANCE = 1;
   const FEDERAL_DB = global.FEDERAL_HISTORY_DB || null;
   const FEDERAL_60_MONTHS = Array.isArray(FEDERAL_DB?.records) ? FEDERAL_DB.records : [];
 
@@ -374,6 +374,12 @@
   }
 
   function computeMatches(reference){
+    const structuralEngine = global.SORTEIO_STRUCTURAL_ENGINE;
+    if(structuralEngine && typeof structuralEngine.matchesForClients === 'function'){
+      const structuralMatches = structuralEngine.matchesForClients(reference, state.clients);
+      if(Array.isArray(structuralMatches)) return structuralMatches;
+    }
+
     const ref = Number(reference);
     const matches = [];
 
@@ -826,8 +832,8 @@
     showMessage(
       'sorteioDrawMessage',
       matches.length
-        ? 'Conferência feita. Encontrei ' + matches.length + (matches.length === 1 ? ' cota na faixa de ±10.' : ' cotas na faixa de ±10.')
-        : 'Conferência feita. Nenhuma cota ficou na faixa de ±10.',
+        ? 'Conferência feita. Encontrei ' + matches.length + (matches.length === 1 ? ' cota no alcance ativo.' : ' cotas no alcance ativo.')
+        : 'Conferência feita. Nenhuma cota cadastrada ficou no alcance ativo.',
       matches.length ? 'warning' : 'success'
     );
 
