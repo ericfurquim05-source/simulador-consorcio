@@ -4,7 +4,7 @@
   // Base canônica local usada pelo radar. O aplicativo não depende do chat para estes números.
   // Fonte de referência: Loterias CAIXA / Loteria Federal.
   const records = [
-{date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
+    {date:'16/09/2026', contest:6101, raw:'047125', reference:'7125'},
     {date:'19/08/2026', contest:6093, raw:'080574', reference:'0574'},
     {date:'19/07/2026', contest:6084, raw:'017667', reference:'7667'},
     {date:'17/06/2026', contest:6075, raw:'053952', reference:'3952'},
@@ -66,10 +66,77 @@
     {date:'16/10/2021', contest:5606, raw:'079603', reference:'9603'}
   ];
 
+  const STORAGE_KEY = 'simulador-sorteio-radar-v3';
+  const DEFAULT_GROUP_SIZE = 5000;
+  const MAX_GROUP_SIZE = 9999;
+  let pendingManualDraw = null;
+  let historyObserver = null;
+
+  function clampGroupSize(value){
+    return Math.min(MAX_GROUP_SIZE, Math.max(1, Math.round(Number(value) || DEFAULT_GROUP_SIZE)));
+  }
+
+  function storedGroupSize(){
+    try{
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if(stored && stored.groupSize) return clampGroupSize(stored.groupSize);
+    }catch(_error){}
+    const input = document.getElementById('sorteioGroupSize');
+    return clampGroupSize(input?.value || DEFAULT_GROUP_SIZE);
+  }
+
+  function federalBaseNumber(value){
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if(!digits) return null;
+    const lastFour = digits.slice(-4).padStart(4, '0');
+    const parsed = Number(lastFour);
+    if(!Number.isInteger(parsed)) return null;
+    // Na referência de 4 dígitos, 0000 representa o topo do ciclo (10.000).
+    return parsed === 0 ? 10000 : parsed;
+  }
+
+  function originalReferenceLabel(value){
+    const base = federalBaseNumber(value);
+    if(base === null) return '';
+    return base === 10000 ? '0000' : String(base).padStart(4, '0');
+  }
+
+  function groupReference(value, groupSize){
+    const base = federalBaseNumber(value);
+    if(base === null) return '';
+    const size = clampGroupSize(groupSize);
+    const reduced = ((base - 1) % size) + 1;
+    return String(reduced).padStart(4, '0');
+  }
+
+  // O sorteio.js valida a base logo ao carregar. Por isso exportamos inicialmente
+  // as referências oficiais originais e só aplicamos a regra do grupo no DOMContentLoaded.
+  const runtimeRecords = records.map(item => ({...item, originalReference: item.reference}));
+
+  global.FEDERAL_HISTORY_DB = {
+    version: '2026-10-07.1',
+    source: 'Loterias CAIXA — Loteria Federal',
+    sourceEndpoint: 'https://servicebus2.caixa.gov.br/portaldeloterias/api/federal',
+    selectionRule: '1 concurso por mês, o mais próximo do dia 18',
+    groupRule: 'referência Federal reduzida ciclicamente ao total de participantes do grupo',
+    windowMonths: 60,
+    records: runtimeRecords
+  };
+
+  function applyGroupRule(groupSize){
+    const size = clampGroupSize(groupSize);
+    runtimeRecords.forEach(item => {
+      item.originalReference = item.originalReference || item.reference;
+      item.reference = groupReference(item.originalReference, size);
+    });
+    return size;
+  }
+
   function renderOfficialHistoryFallback(){
     const list = document.getElementById('sorteioUnifiedHistoryList');
     if(!list) return;
 
+    const size = storedGroupSize();
     const ordered = records.slice().sort((a, b) => {
       const [da, ma, ya] = a.date.split('/').map(Number);
       const [db, mb, yb] = b.date.split('/').map(Number);
@@ -82,30 +149,150 @@
 
     if(count) count.textContent = ordered.length + ' sorteios';
     if(officialCount) officialCount.textContent = ordered.length;
-    if(inRange) inRange.textContent = ordered.filter(item => Number(item.reference) >= 1 && Number(item.reference) <= 5000).length;
+    if(inRange) inRange.textContent = ordered.length;
 
-    list.innerHTML = ordered.map(item => (
-      '<div class="radar-unified-history-row official">' +
-        '<div class="radar-unified-history-main">' +
-          '<div><strong>' + item.reference + '</strong><span>' + item.date + ' · concurso ' + item.contest + '</span></div>' +
-          '<div><b>OFICIAL</b><span>1º prêmio ' + item.raw + '</span></div>' +
-        '</div>' +
-      '</div>'
-    )).join('');
+    list.innerHTML = ordered.map(item => {
+      const original = originalReferenceLabel(item.reference);
+      const normalized = groupReference(item.reference, size);
+      const label = original === normalized ? normalized : original + ' → ' + normalized;
+      return (
+        '<div class="radar-unified-history-row official">' +
+          '<div class="radar-unified-history-main">' +
+            '<div><strong>' + label + '</strong><span>' + item.date + ' · concurso ' + item.contest + '</span></div>' +
+            '<div><b>OFICIAL</b><span>1º prêmio ' + item.raw + ' · Federal ' + original + (original === normalized ? '' : ' → grupo ' + normalized) + '</span></div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function patchHistoryPresentation(groupSize){
+    const size = clampGroupSize(groupSize);
+    const list = document.getElementById('sorteioUnifiedHistoryList');
+
+    runtimeRecords.forEach(item => {
+      const original = originalReferenceLabel(item.originalReference);
+      const normalized = groupReference(item.originalReference, size);
+      const row = list?.querySelector('[data-record-id="official-' + item.contest + '"]');
+      if(!row) return;
+
+      const primary = row.querySelector('.radar-unified-history-main > div:first-child strong');
+      const desiredPrimary = original === normalized ? normalized : original + ' → ' + normalized;
+      if(primary && primary.textContent !== desiredPrimary) primary.textContent = desiredPrimary;
+
+      const officialLine = row.querySelector('.radar-unified-history-main > div:nth-child(2) > span');
+      const desiredOfficial = '1º prêmio ' + item.raw + ' · Federal ' + original + (original === normalized ? '' : ' → grupo ' + normalized);
+      if(officialLine && officialLine.textContent !== desiredOfficial) officialLine.textContent = desiredOfficial;
+    });
+
+    const note = document.querySelector('.radar-federal-history-panel .radar-history-note');
+    if(note){
+      const example = groupReference('7125', size);
+      const desired = '<strong>Regra do grupo:</strong> usamos os 4 últimos dígitos da Federal e, se o número passar de ' + size.toLocaleString('pt-BR') + ', ele volta para dentro do grupo. Ex.: 7125 → ' + example + '. A análise de histórico, alertas e cotas livres usa o número já ajustado.';
+      if(note.innerHTML !== desired) note.innerHTML = desired;
+    }
+
+    const inRange = document.getElementById('sorteioFederalInRangeCount');
+    if(inRange){
+      inRange.textContent = String(runtimeRecords.length);
+      const label = inRange.parentElement?.querySelector('span');
+      const desiredLabel = 'Válidos no grupo após a regra';
+      if(label && label.textContent !== desiredLabel) label.textContent = desiredLabel;
+    }
+
+    const helper = document.getElementById('sorteioNumero')?.closest('.field')?.querySelector('small');
+    if(helper){
+      const example = groupReference('7125', size);
+      const desired = 'Usamos os 4 últimos dígitos da Federal e reduzimos pelo tamanho do grupo. Ex.: grupo ' + size.toLocaleString('pt-BR') + ', 7125 → ' + example + '.';
+      if(helper.textContent !== desired) helper.textContent = desired;
+    }
+
+    const dbStatus = document.getElementById('sorteioFederalDbStatus');
+    if(dbStatus && dbStatus.classList.contains('ok') && !dbStatus.textContent.includes('regra do grupo')){
+      dbStatus.textContent += ' · regra do grupo ativa';
+    }
+  }
+
+  function installHistoryObserver(){
+    const list = document.getElementById('sorteioUnifiedHistoryList');
+    if(!list || typeof MutationObserver === 'undefined') return;
+    historyObserver?.disconnect();
+    historyObserver = new MutationObserver(() => patchHistoryPresentation(storedGroupSize()));
+    historyObserver.observe(list, {childList: true, subtree: true});
+  }
+
+  function prepareManualDraw(){
+    const input = document.getElementById('sorteioNumero');
+    if(!input) return;
+    const digits = String(input.value || '').replace(/\D/g, '');
+    if(!digits) return;
+
+    const size = storedGroupSize();
+    const original = originalReferenceLabel(digits);
+    const normalized = groupReference(digits, size);
+    if(!normalized) return;
+
+    pendingManualDraw = {
+      raw: digits,
+      original,
+      normalized,
+      groupSize: size
+    };
+
+    // O sorteio.js recebe já o número final do grupo; assim toda a lógica de alertas
+    // continua a mesma, mas usando a regra correta do consórcio.
+    input.value = normalized;
+  }
+
+  function patchManualDrawText(){
+    if(!pendingManualDraw) return;
+    const alertText = document.getElementById('sorteioAlertText');
+    if(alertText && !document.getElementById('sorteioAlerta')?.hidden){
+      const {original, normalized, groupSize} = pendingManualDraw;
+      const explanation = original === normalized
+        ? ' Sorteio Federal ' + original + ' → número usado no grupo: ' + normalized + '.'
+        : ' Sorteio Federal ' + original + ' → número usado no grupo de ' + groupSize.toLocaleString('pt-BR') + ': ' + normalized + '.';
+      const cleaned = alertText.textContent
+        .replace(/ Número informado:.*$/,'')
+        .replace(/ Número conferido:.*$/,'');
+      alertText.textContent = cleaned + explanation;
+    }
+    pendingManualDraw = null;
+  }
+
+  function installInteractionFixes(){
+    document.addEventListener('change', event => {
+      if(event.target?.id !== 'sorteioGroupSize') return;
+      const size = clampGroupSize(event.target.value);
+      applyGroupRule(size);
+      queueMicrotask(() => patchHistoryPresentation(size));
+    }, true);
+
+    document.addEventListener('click', event => {
+      const button = event.target?.closest?.('#sorteioCheckBtn');
+      if(!button) return;
+      prepareManualDraw();
+      queueMicrotask(patchManualDrawText);
+    }, true);
+
+    document.addEventListener('keydown', event => {
+      if(event.target?.id !== 'sorteioNumero' || event.key !== 'Enter') return;
+      prepareManualDraw();
+      queueMicrotask(patchManualDrawText);
+    }, true);
+  }
+
+  function boot(){
+    renderOfficialHistoryFallback();
+    const size = applyGroupRule(storedGroupSize());
+    installInteractionFixes();
+    installHistoryObserver();
+    queueMicrotask(() => patchHistoryPresentation(size));
   }
 
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', renderOfficialHistoryFallback, {once:true});
+    document.addEventListener('DOMContentLoaded', boot, {once:true});
   }else{
-    renderOfficialHistoryFallback();
+    boot();
   }
-
-  global.FEDERAL_HISTORY_DB = Object.freeze({
-    version: '2026-10-01.1',
-    source: 'Loterias CAIXA — Loteria Federal',
-    sourceEndpoint: 'https://servicebus2.caixa.gov.br/portaldeloterias/api/federal',
-    selectionRule: '1 concurso por mês, o mais próximo do dia 18',
-    windowMonths: 60,
-    records: Object.freeze(records.map(item => Object.freeze({...item})))
-  });
 })(window);
