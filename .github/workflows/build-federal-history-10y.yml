@@ -26,7 +26,7 @@ jobs:
         run: node scripts/build-federal-history-10y.mjs
       - name: Commitar base atualizada
         run: |
-          if git diff --quiet -- federal-history-10y.js; then
+          if [ -z "$(git status --porcelain -- federal-history-10y.js)" ]; then
             echo "Sem alterações"
             exit 0
           fi
