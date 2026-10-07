@@ -1,4 +1,4 @@
-const VERSION = 'simulador-consorcio-v3.6.1-alcance-ativo';
+const VERSION = 'simulador-consorcio-v3.7.0-sorteio-simples';
 const STATIC_CACHE = `${VERSION}-static`;
 
 const ASSETS = [
