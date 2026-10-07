@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 
+// Gera a base compacta usada pelo radar histórico de 10 anos.
 const SOURCE_URL = 'https://lotoagora.com.br/downloads/federal-historico.json';
 const OUT = 'federal-history-10y.js';
 const START = '2016-01-01';
