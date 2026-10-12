@@ -327,6 +327,20 @@
     localStorage.setItem(IMPORT_RUI_HARI_KEY, '1');
   }
 
+  // Inclusão única das nove cotas do Hari no grupo 012126, conferidas em 12/10/2026.
+  // Mescla com o cadastro existente sem apagar cotas ou alterar outros clientes.
+  function applyHariOctoberImport(){
+    const key = 'simulador-sorteio-import-hari-012126-20261012-v1';
+    if(localStorage.getItem(key) === '1') return;
+    const incoming = normalizeClient({
+      nome: 'Hari',
+      cotas: ['0112','0138','0595','0991','1116','1334','1512','1988','2271']
+    });
+    if(incoming) mergeClient(state.clients, incoming);
+    save();
+    localStorage.setItem(key, '1');
+  }
+
   function load(){
     const stored = loadJSON(STORAGE_KEY, null);
     if(stored && Array.isArray(stored.clients)){
@@ -345,6 +359,7 @@
     localStorage.removeItem('simulador-sorteio-clientes-v1');
     localStorage.setItem('simulador-sorteio-manual-history-purged-v1', '1');
     applyRuiHariImport();
+    applyHariOctoberImport();
     save();
   }
 
